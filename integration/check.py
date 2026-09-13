@@ -11,6 +11,8 @@ ROOT=HERE.parent
 def run(*args, cwd=None):subprocess.run(args,cwd=cwd,check=True)
 def fetch(url,commit,path):
     run('git','init','-q',str(path))
+    # KodiSeerr has CRLF sources; match the patch-generation normalization.
+    run('git','config','core.autocrlf','input',cwd=path)
     run('git','fetch','-q','--depth=1',url,commit,cwd=path)
     run('git','checkout','-q','--detach','FETCH_HEAD',cwd=path)
 

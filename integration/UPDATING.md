@@ -10,7 +10,10 @@
    not become PlayMedia; real media must not become a request.
 4. If Jellyfin/KodiSeerr changed, create fresh pinned checkouts. Run
    `git apply --check integration/patches/<component>.patch` from the appropriate
-   checkout (use an absolute patch path). A failure means **stop and port/review**,
+   checkout (use an absolute patch path). Set `git config core.autocrlf input`
+   in these disposable checkouts first: KodiSeerr contains CRLF source files,
+   and patches were generated using Git's input normalization. Do not change
+   global Git settings. A failure means **stop and port/review**,
    not use fuzzy patching or copy the old entire player file over a new version.
 5. Update source pins and patches together. Run `python integration/check.py` and
    review CI. Inspect upstream release notes and permissions/dependency changes.
