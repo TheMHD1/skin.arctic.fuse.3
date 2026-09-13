@@ -14,4 +14,4 @@ addon.xml merge=ours
 *.xbt binary
 
 # Unified diff blank context lines must retain their leading space.
-integration/patches/*.patch -whitespace
+integration/patches/*.patch -text -whitespace
