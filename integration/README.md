@@ -60,6 +60,11 @@ use direct PlayMedia IMDb routes for exact-ID context actions: SlyGuy's generic
 script can otherwise misinterpret an IMDb route's video_id as a YouTube ID.
 The generic script remains the fallback for titles without a known IMDb ID.
 This repo does not bundle SlyGuy binaries or replace the YouTube addon.
+Install/enable InputStream Adaptive from the device's matching CoreELEC/Kodi
+repository as well: YouTube/DASH trailer results can require it even when direct
+IMDb trailers already work. Do not use a binary built for another Kodi major
+version or CPU architecture. Normal OK on an unavailable Discover title opens
+the request action; Watch trailer is a separate context-menu action.
 
 Back up Kodi configuration, addon source and custom CoreELEC files to a private
 server. Make online SQLite backup copies instead of copying live library DB/WAL
