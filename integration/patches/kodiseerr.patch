@@ -1,0 +1,273 @@
+diff --git a/plugin.video.kodiseerr/browse.py b/plugin.video.kodiseerr/browse.py
+index 7fa848b..c5127fd 100644
+--- a/plugin.video.kodiseerr/browse.py
++++ b/plugin.video.kodiseerr/browse.py
+@@ -247,7 +247,15 @@ def show_collection_details(collection_id):
+     xbmcplugin.endOfDirectory(context.addon_handle)
+ 
+ 
+-def list_items(data, mode, display_type=None, genre_id=None):
++def list_items(data, mode, display_type=None, genre_id=None):
++    import jellyfin_bridge
++    import time
++    started=time.monotonic()
++    try:
++        owned=jellyfin_bridge.library_index()
++    except Exception as error:
++        owned={}
++        xbmc.log('[Habibi Discover] Jellyfin lookup unavailable: '+type(error).__name__,xbmc.LOGWARNING)
+     items = data.get('results', [])
+     current_page = data.get('page', 1)
+     total_pages = data.get('totalPages', 1)
+@@ -330,10 +338,34 @@ def list_items(data, mode, display_type=None, genre_id=None):
+         media_utils.set_info_tag(list_item, info)
+         art = media_utils.make_art(item)
+         list_item.setArt(art)
+-        xbmcplugin.addDirectoryItem(context.addon_handle, url, list_item, is_folder)
+-
+-    if show_pagination:
+-        next_params = {'mode': mode}
++        match=owned.get(str(media_type)+':'+str(item_id))
++        # Keep the default card action server-authoritative when the title exists.
++        ctx_menu=[x for x in ctx_menu if 'Favorite' not in x[0] and x[0] not in ('View in Local Library','Play Next Episode')]
++        if match:
++            url,is_folder=jellyfin_bridge.route(match)
++            list_item.setProperty('IsPlayable','false' if is_folder else 'true')
++            list_item.setProperty('KodiSeerr.Status','5')
++            list_item.setProperty('jellyfinid',match['Id'])
++            ids={k.lower():str(v) for k,v in match.get('ProviderIds',{}).items() if v}
++            if ids:list_item.getVideoInfoTag().setUniqueIDs(ids)
++            if ids.get('imdb') and xbmc.getCondVisibility('System.HasAddon(slyguy.trailers)'):
++                from urllib.parse import urlencode
++                list_item.getVideoInfoTag().setTrailer('plugin://slyguy.trailers/?'+urlencode({'_':'/imdb','video_id':ids['imdb']}))
++            list_item.setLabel2('Available in Jellyfin')
++            list_item.getVideoInfoTag().setPlot('Available in Jellyfin\n'+(item.get('overview') or ''))
++            ctx_menu.insert(0,jellyfin_bridge.favorite_menu(match))
++        elif status==5:
++            # Never launch a guessed local file when this account cannot match it.
++            url=build_url({'mode':'show_details','type':media_type,'id':item_id})
++            list_item.setProperty('IsPlayable','false')
++        list_item.addContextMenuItems(ctx_menu,replaceItems=True)
++        if xbmc.getCondVisibility('System.HasAddon(slyguy.trailers)'):
++            list_item.addContextMenuItems([('Watch trailer','RunScript(slyguy.trailers)')])
++        xbmcplugin.addDirectoryItem(context.addon_handle, url, list_item, is_folder)
++
++    xbmc.log('[Habibi Discover] {}: {} cards in {:.3f}s'.format(mode,len(items),time.monotonic()-started),xbmc.LOGINFO)
++    if show_pagination:
++        next_params = {'mode': mode}
+         if mode == "genre":
+             next_params['genre_id'] = genre_id
+             next_params['display_type'] = display_type
+diff --git a/plugin.video.kodiseerr/cache.py b/plugin.video.kodiseerr/cache.py
+index a2a3283..8deddd5 100644
+--- a/plugin.video.kodiseerr/cache.py
++++ b/plugin.video.kodiseerr/cache.py
+@@ -44,7 +44,9 @@ def set_cached(key, data):
+     import context
+     if not context.addon.getSettingBool('enable_caching'):
+         return
+-    duration = context.addon.getSettingInt('cache_duration') * 60
++    duration = context.addon.getSettingInt('cache_duration') * 60
++    if str(key).startswith(('trending_','popular_','upcoming_','status_')):
++        duration=min(duration,60)
+     hashed = _hash_key(key)
+     _cache[hashed] = {'data': data, 'timestamp': time.time(), 'duration': duration}
+     save_cache()
+diff --git a/plugin.video.kodiseerr/default.py b/plugin.video.kodiseerr/default.py
+index 09cf49a..b9ed2ca 100644
+--- a/plugin.video.kodiseerr/default.py
++++ b/plugin.video.kodiseerr/default.py
+@@ -13,6 +13,7 @@ import play_local_file
+ 
+ context.init(sys.argv)
+ cache.load_cache()
++cache.clean_cache()
+ 
+ mode = context.args.get('mode') or context.args.get('action')
+ page = context.args.get('page', 1)
+diff --git a/plugin.video.kodiseerr/jellyfin_bridge.py b/plugin.video.kodiseerr/jellyfin_bridge.py
+new file mode 100644
+index 0000000..4ef2332
+--- /dev/null
++++ b/plugin.video.kodiseerr/jellyfin_bridge.py
+@@ -0,0 +1,49 @@
++"""Exact provider-ID matching and shared Jellyfin playback/favorites for Discover."""
++import json
++import sys
++import time
++from pathlib import Path
++from urllib.parse import urlencode
++import xbmc
++import xbmcgui
++import xbmcvfs
++
++def library_index():
++    home=xbmcgui.Window(10000)
++    raw=home.getProperty('Habibi.Discover.LibraryIndex')
++    revision=home.getProperty('Habibi.Home.Refresh')
++    if raw:
++        try:
++            saved=json.loads(raw)
++            if saved['revision']==revision and time.time()-saved['time']<60:
++                return saved['items']
++        except (ValueError,KeyError):pass
++    sys.path.insert(0,xbmcvfs.translatePath('special://home/addons/plugin.video.habibi.resume'))
++    from client import Client
++    auth=Path(xbmcvfs.translatePath('special://profile/addon_data/plugin.video.jellyfin/data.json'))
++    client=Client(json.loads(auth.read_text())['Servers'][0])
++    index={};start=0
++    while True:
++        page=client.get('Users/'+client.user+'/Items',Recursive='true',IncludeItemTypes='Movie,Series',
++                        Fields='ProviderIds',Limit=500,StartIndex=start)['Items']
++        for item in page:
++            ids={k.lower():str(v) for k,v in item.get('ProviderIds',{}).items() if v}
++            tmdb=ids.get('tmdb')
++            if tmdb:
++                key=('movie' if item['Type']=='Movie' else 'tv')+':'+tmdb
++                # Duplicate editions must not select a different title by fuzzy name.
++                index.setdefault(key,item)
++        if len(page)<500:break
++        start+=len(page)
++    home.setProperty('Habibi.Discover.LibraryIndex',json.dumps({'time':time.time(),'revision':revision,'items':index}))
++    return index
++
++def route(item):
++    if item['Type']=='Series':
++        return 'plugin://plugin.video.habibi.resume/?'+urlencode({'mode':'series','series':item['Id']}),True
++    return 'plugin://plugin.video.jellyfin/?'+urlencode({'mode':'play','id':item['Id']}),False
++
++def favorite_menu(item):
++    favorite=bool(item.get('UserData',{}).get('IsFavorite'))
++    path='plugin://plugin.video.habibi.resume/?'+urlencode({'mode':'setfavorite','id':item['Id'],'value':'false' if favorite else 'true'})
++    return ('Remove from Jellyfin Favorites' if favorite else 'Add to Jellyfin Favorites','RunPlugin('+path+')')
+diff --git a/plugin.video.kodiseerr/library_utils.py b/plugin.video.kodiseerr/library_utils.py
+index dc73b94..d6abf00 100644
+--- a/plugin.video.kodiseerr/library_utils.py
++++ b/plugin.video.kodiseerr/library_utils.py
+@@ -13,11 +13,7 @@ _addon_check_cache = {}
+ 
+ def _addon_installed(addon_id):
+     if addon_id not in _addon_check_cache:
+-        try:
+-            xbmcaddon.Addon(addon_id)
+-            _addon_check_cache[addon_id] = True
+-        except Exception:
+-            _addon_check_cache[addon_id] = False
++        _addon_check_cache[addon_id] = bool(xbmc.getCondVisibility('System.HasAddon('+addon_id+')'))
+     return _addon_check_cache[addon_id]
+ 
+ 
+diff --git a/plugin.video.kodiseerr/requests_view.py b/plugin.video.kodiseerr/requests_view.py
+index 1f5352e..a08c5b8 100644
+--- a/plugin.video.kodiseerr/requests_view.py
++++ b/plugin.video.kodiseerr/requests_view.py
+@@ -134,8 +134,17 @@ def get_quality_profiles():
+     return []
+ 
+ 
+-def do_request(media_type, media_id):
+-    status = media_utils.get_media_status(media_type, media_id)
++def do_request(media_type, media_id):
++    # A cached discovery card must never authorize a duplicate request.
++    fresh = api_client.client.api_request(f'/{media_type}/{media_id}')
++    if not isinstance(fresh,dict):
++        xbmcgui.Dialog().notification('KodiSeerr','Cannot verify request status. Please try again later.',xbmcgui.NOTIFICATION_ERROR)
++        return
++    status=(fresh.get('mediaInfo') or {}).get('status',1)
++    if media_type=='movie' and status in (2,3,4,5):
++        xbmcgui.Dialog().ok('KodiSeerr','Already available in Jellyfin.' if status==5 else 'Already requested or processing. No duplicate request was sent.')
++        cache.clear()
++        return
+     if status >= 5:
+         if not xbmcgui.Dialog().yesno('KodiSeerr', 'This content is already available. Request anyway?'):
+             return
+@@ -223,7 +232,7 @@ def do_request(media_type, media_id):
+     root_folder = None
+     tags = None
+ 
+-    if has_manage_requests_permission():
++    if context.addon.getSettingBool('show_quality_profiles') and has_manage_requests_permission():
+         advanced = prompt_advanced_options(media_type, is4k)
+         if advanced is None:
+             return
+@@ -289,12 +298,16 @@ def do_request(media_type, media_id):
+         if tags:
+             payload["tags"] = tags
+         try:
+-            api_client.client.api_request("/request", method="POST", data=payload)
++            result = api_client.client.api_request("/request", method="POST", data=payload)
++            if not isinstance(result, dict) or not result.get('id'):
++                raise RuntimeError('Server did not confirm the request. Check Seerr status before retrying.')
+             xbmcgui.Dialog().notification('KodiSeerr', 'Request Sent!', xbmcgui.NOTIFICATION_INFO, 3000)
+-            cache.remove(f"status_{media_type}_{media_id}")
++            cache.remove(f"status_{media_type}_{media_id}")
+         except Exception as e:
+             xbmcgui.Dialog().notification('KodiSeerr', f'Request Failed: {str(e)}', xbmcgui.NOTIFICATION_ERROR, 4000)
+-    xbmc.executebuiltin("Action(Back)")
++    cache.clear()
++    import time
++    xbmcgui.Window(10000).setProperty('Habibi.Discover.Refresh',str(time.time_ns()))
+ 
+ 
+ def cancel_request(request_id):
+@@ -316,7 +329,10 @@ def retry_request(request_id):
+     xbmc.executebuiltin('Container.Refresh')
+ 
+ 
+-def show_requests(data, mode, current_page):
++def show_requests(data, mode, current_page):
++    import jellyfin_bridge
++    try: owned=jellyfin_bridge.library_index()
++    except Exception: owned={}
+     xbmcplugin.setContent(context.addon_handle, 'videos')
+     items = data.get('results', [])
+     page_info = data.get('pageInfo', {})
+@@ -400,7 +416,13 @@ def show_requests(data, mode, current_page):
+         media_utils.set_info_tag(list_item, {'title': label_text, 'plot': f"Media ID: {media_id}, Type: {media_type}"})
+         art = media_utils.make_art(media_data)
+         list_item.setArt(art)
+-        xbmcplugin.addDirectoryItem(context.addon_handle, url, list_item, is_folder)
++        match=owned.get(str(media_type)+':'+str(media_id))
++        if match:
++            url,is_folder=jellyfin_bridge.route(match)
++            list_item.setLabel((media_data.get('title') or media_data.get('name') or 'Untitled')+' [COLOR lime](Available in Jellyfin)[/COLOR]')
++            list_item.setProperty('IsPlayable','false' if is_folder else 'true')
++            list_item.addContextMenuItems([jellyfin_bridge.favorite_menu(match)])
++        xbmcplugin.addDirectoryItem(context.addon_handle, url, list_item, is_folder)
+ 
+     if not (is_widget and hide_pagination):
+         if current_page < total_pages:
+diff --git a/plugin.video.kodiseerr/service.py b/plugin.video.kodiseerr/service.py
+index 4ed15d8..bda113e 100644
+--- a/plugin.video.kodiseerr/service.py
++++ b/plugin.video.kodiseerr/service.py
+@@ -54,6 +54,7 @@ def main_loop():
+         notified_declined = []
+ 
+     interval = get_interval()
++    first_poll = not os.path.exists(notified_file)
+ 
+     while not monitor.abortRequested():
+         if addon.getSettingBool('enable_request_notifications'):
+@@ -76,6 +77,13 @@ def main_loop():
+                     request_id = str(item.get('id') or "")
+                     poster = _get_poster(media)
+ 
++                    if first_poll:
++                        if media_id:
++                            notified_media[media_id]={'status':media_status,'title':title}
++                        if request_status==3 and request_id:
++                            notified_declined.append(request_id)
++                        continue
++
+                     if request_status == 3 and request_id and request_id not in notified_declined:
+                         if addon.getSettingBool('notify_declined'):
+                             xbmcgui.Dialog().notification('KodiSeerr', f'{title} request was declined', xbmcgui.NOTIFICATION_WARNING, 5000)
+@@ -99,6 +107,7 @@ def main_loop():
+ 
+                 with open(notified_file, 'w') as f:
+                     json.dump({'media': notified_media, 'declined': notified_declined}, f)
++                first_poll=False
+ 
+         if monitor.waitForAbort(interval):
+             break

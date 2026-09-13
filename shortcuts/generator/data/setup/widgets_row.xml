@@ -179,6 +179,14 @@
     </rules>
     <rules name="widget_custom_onclick">
         <rule>
+            <condition>{item_path}&lt;&lt;plugin://plugin.video.kodiseerr/</condition>
+            <value><![CDATA[
+                <onclick condition="String.Contains(ListItem.FolderPath,mode=request) | String.Contains(ListItem.FolderPath,mode=show_details)">RunPlugin($INFO[ListItem.FolderPath])</onclick>
+                <onclick condition="!String.Contains(ListItem.FolderPath,mode=request) + !String.Contains(ListItem.FolderPath,mode=show_details) + ListItem.IsFolder">ActivateWindow(videos,$INFO[ListItem.FolderPath],return)</onclick>
+                <onclick condition="!String.Contains(ListItem.FolderPath,mode=request) + !String.Contains(ListItem.FolderPath,mode=show_details) + !ListItem.IsFolder">PlayMedia($INFO[ListItem.FolderPath])</onclick>
+            ]]></value>
+        </rule>
+        <rule>
             <condition>{item_path}==Custom_Submenu</condition>
             <value><![CDATA[
                 <onclick condition="String.IsEmpty(ListItem.Property(target))">$INFO[ListItem.FolderPath]</onclick>

@@ -12,3 +12,6 @@ addon.xml merge=ours
 *.wav binary
 *.mp3 binary
 *.xbt binary
+
+# Unified diff blank context lines must retain their leading space.
+integration/patches/*.patch -whitespace

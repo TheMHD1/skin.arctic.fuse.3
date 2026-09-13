@@ -1,0 +1,122 @@
+--- a/jellyfin_kodi/player.py
++++ b/jellyfin_kodi/player.py
+@@ -129,6 +129,14 @@
+             LOG.warning("Failed to report session playing: %s", e)
+         window("jellyfin.skip.%s.bool" % item["Id"], True)
+ 
++        # Publish next-episode data before a seek can jump past the old 2%
++        # progress trigger. Up Next owns prompts/cancellation/autoplay policy.
++        if item.get("Type") == "Episode" and not self.up_next:
++            try:
++                self.up_next = bool(self.next_up())
++            except Exception as error:
++                LOG.warning("Could not prepare next episode yet: %s", type(error).__name__)
++
+         # Immediate skip check for segments starting at 0:00
+         if settings("mediaSegmentsEnabled.bool"):
+             try:
+@@ -288,9 +296,12 @@
+                 except IndexError:
+                     LOG.warning("No next up episode.")
+ 
+-                    return
++                    return True  # Valid end of series; no repeated lookups.
+ 
+                 break
++        else:
++            LOG.warning("Current episode absent from adjacent episode response")
++            return False
+         server_address = item["Server"].auth.get_server_info(
+             item["Server"].auth.server_id
+         )["address"]
+@@ -317,6 +328,7 @@
+ 
+         LOG.info("--[ next up ] %s", next_info)
+         event("upnext_data", next_info, hexlify=True)
++        return True
+ 
+     def onPlayBackPaused(self):
+         current_file = self.get_playing_file()
+@@ -391,8 +403,7 @@
+ 
+             if played > 2.0 and not self.up_next:
+ 
+-                self.up_next = True
+-                self.next_up()
++                self.up_next = bool(self.next_up()) if item.get("Type") == "Episode" else True
+ 
+             if (item["CurrentPosition"] - previous) < 30:
+                 return
+@@ -530,6 +541,7 @@
+             LOG.info("Loaded media segments for %s: %s", item_id, list(segments.keys()))
+ 
+     def _convert_media_segments(self, response):
++        import math
+         if not response or "Items" not in response:
+             return None
+ 
+@@ -541,15 +553,29 @@
+             "Commercial": "Commercial",
+         }
+ 
+-        segments = {}
++        grouped = {}
+         for item in response["Items"]:
+             seg_type = type_map.get(item.get("Type"))
+             if seg_type:
+-                segments[seg_type] = {
+-                    "EpisodeId": item.get("ItemId"),
+-                    "Start": item.get("StartTicks", 0) / 10000000.0,
+-                    "End": item.get("EndTicks", 0) / 10000000.0,
+-                }
++                try:
++                    start = float(item.get("StartTicks", 0)) / 10000000.0
++                    end = float(item.get("EndTicks", 0)) / 10000000.0
++                except (TypeError, ValueError, OverflowError):
++                    continue
++                if not math.isfinite(start) or not math.isfinite(end) or start < 0 or end <= start:
++                    continue
++                grouped.setdefault(seg_type, []).append((start, end, item.get("ItemId")))
++        segments = {}
++        for seg_type, intervals in grouped.items():
++            merged = []
++            for start, end, episode_id in sorted(intervals, key=lambda value: (value[0], value[1])):
++                if merged and start <= merged[-1][1]:
++                    merged[-1][1] = max(merged[-1][1], end)
++                else:
++                    merged.append([start, end, episode_id])
++            for start, end, episode_id in merged:
++                key = "%s:%s:%s" % (seg_type, start, end)
++                segments[key] = {"Type": seg_type, "EpisodeId": episode_id, "Start": start, "End": end}
+         return segments if segments else None
+ 
+     def _process_segment(
+@@ -581,7 +607,8 @@
+         if not segments:
+             return
+ 
+-        for segment_type, segment in segments.items():
++        for segment_id, segment in segments.items():
++            segment_type = segment.get("Type", segment_id)
+             skip_mode = self._get_segment_skip_mode(segment_type)
+             if skip_mode == 0:  # Off
+                 continue
+@@ -593,7 +620,7 @@
+                 continue
+ 
+             start, end = bounds
+-            segment_key = "%s:%s" % (item_id, segment_type)
++            segment_key = "%s:%s" % (item_id, segment_id)
+             LOG.debug(
+                 "Skip check: IN WINDOW! segment_key=%s, already_prompted=%s",
+                 segment_key,
+@@ -608,8 +635,7 @@
+             )
+ 
+             if segment_type == "Credits" and not self.up_next:
+-                self.up_next = True
+-                self.next_up()
++                self.up_next = bool(self.next_up())
+ 
+             self._handle_skip_segment(segment_type, start, end, skip_mode)
+             break

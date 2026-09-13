@@ -1,0 +1,6 @@
+[
+    {"label":"Trending — Seerr","path":"plugin://plugin.video.kodiseerr/?mode=trending&widget=1&reload=$INFO[Window(Home).Property(Habibi.Discover.Refresh)]","target":"videos","icon":"","guid":"habibi-discover-trending-movies","limit":"20"},
+    {"label":"Popular Movies","path":"plugin://plugin.video.kodiseerr/?mode=popular_movies&widget=1&reload=$INFO[Window(Home).Property(Habibi.Discover.Refresh)]","target":"videos","icon":"","guid":"habibi-discover-popular-movies","limit":"20"},
+    {"label":"Popular Shows","path":"plugin://plugin.video.kodiseerr/?mode=popular_tv&widget=1&reload=$INFO[Window(Home).Property(Habibi.Discover.Refresh)]","target":"videos","icon":"","guid":"habibi-discover-trending-shows","limit":"20"},
+    {"label":"Upcoming Movies","path":"plugin://plugin.video.kodiseerr/?mode=upcoming_movies&widget=1&reload=$INFO[Window(Home).Property(Habibi.Discover.Refresh)]","target":"videos","icon":"","guid":"habibi-discover-popular-shows","limit":"20"}
+]

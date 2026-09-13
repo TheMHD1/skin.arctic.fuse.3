@@ -1,0 +1,36 @@
+{
+  "versions": {
+    "plugin.video.jellyfin": "2.1.0+py3",
+    "plugin.video.kodiseerr": "4.5",
+    "skin.arctic.fuse.3": "3.2.19",
+    "plugin.video.habibi.resume": "1.1.0",
+    "service.upnext": "1.1.9+matrix.1"
+  },
+  "files": {
+    "addons/plugin.video.habibi.resume/client.py": "3fced570f994030c603f0fbf0e29857564ff0794db76b2be31161541905a02fa",
+    "addons/plugin.video.habibi.resume/default.py": "f7179f43affaa45d8b566576b86b8d551f8d08ef7a0c75592146c68ba0159e1f",
+    "addons/plugin.video.habibi.resume/integrity.py": "f5f48edfbac1ac3e35e270fce85fab2c4c3247bd2e2a96b8877f474ed59dd893",
+    "addons/plugin.video.habibi.resume/service.py": "62664f772afabcd20e26e37b17d59ca41a2f4501a9be304a685066d2b606e1d9",
+    "addons/plugin.video.habibi.resume/titles.py": "fcacf85f938e8e228a0bbb70442ad5fd2eb942e7d6fe5d71311cbc9243c29fd2",
+    "addons/plugin.video.jellyfin/jellyfin_kodi/player.py": "1dbfba7bd33a10f47d18489afec00a63dbaaab3a79a3dd209ad4c995867fe5d1",
+    "addons/plugin.video.kodiseerr/actions.py": "e5a3242288b9d11bddaa1ecf1d4071f8d09dd2cc67a439e1fad6a679799e356c",
+    "addons/plugin.video.kodiseerr/api_client.py": "c1ebe38f0ee64e303162ce58048936e40fa158434134335c06080d9a2eec48c5",
+    "addons/plugin.video.kodiseerr/backup_restore.py": "d7e8f591f900e520539262cc303c38a40b58ee3a43777ddc0fa5fcfcfb461336",
+    "addons/plugin.video.kodiseerr/browse.py": "323bb05e5e619a2dcfe4e3fd7a7f5fd938bf9ca6d86188a587f9f3d8f3f5d44e",
+    "addons/plugin.video.kodiseerr/cache.py": "4b8b7551a3ebaba0c960afa0eecdc2acc5e0fb7f6c1c7818460a5cfc185b3079",
+    "addons/plugin.video.kodiseerr/context.py": "00159841c03be87e43e8b6c48100654a5ec33c306f35532a2aadf6653df0b1ac",
+    "addons/plugin.video.kodiseerr/context_menu.py": "aedcb8ec8699d8b4cdc129b5409b06735058b54b8359871deb214266aa16a854",
+    "addons/plugin.video.kodiseerr/default.py": "8b350041b0f8eabf711ec40dad91e19db3d5a20744a2ecb5893178d951ffe4c6",
+    "addons/plugin.video.kodiseerr/embuary_patch.py": "14c71db21037b0b5e4c223c5204cd8b9215ca60f77bd02fce43f06053f9378fc",
+    "addons/plugin.video.kodiseerr/jellyfin_bridge.py": "2e522b3ad837874d130584174c5a5ed1836c74cc07e85fd945fd75729a98587b",
+    "addons/plugin.video.kodiseerr/library_utils.py": "7a40099b4a11f819c960add5644d42efcf519a0040a2171ace13696ac35b4a77",
+    "addons/plugin.video.kodiseerr/media_utils.py": "97bf2ec5803017c45a8058af90e40c7da4313784896d4ef4cb9071db50f5c332",
+    "addons/plugin.video.kodiseerr/play_local_file.py": "49b1894aab46dd25fd27684956cae7e4f287867a0419dac1ee5cc9320b314044",
+    "addons/plugin.video.kodiseerr/requests_view.py": "6f0fe1135949558eb6415e5d740eae42558e448680ebefb42dbc6897562f3778",
+    "addons/plugin.video.kodiseerr/seerr_api.py": "837919d80c719912e76f7743cc28cbb6a9cd0e252322f202b2a29ce81305a7f8",
+    "addons/plugin.video.kodiseerr/service.py": "8681d053ff0bb5440c5ffff13f8efe0a0d05dd5789595c9723505c2cbe59f037",
+    "addons/plugin.video.kodiseerr/storage.py": "6c21cb156f296212568bce2ee66a1d5d3b75649185da2a11e86f1728fdb1e34a",
+    "addons/plugin.video.kodiseerr/utils.py": "49ee6c2569a1153cb12eac5f708bf4743cedd1520680f4ea52de4568f068fb3b",
+    "addons/skin.arctic.fuse.3/shortcuts/generator/data/setup/widgets_row.xml": "a2f456c5a5652575c37de61c70848942c3cc52002561424e354533d1946146c6"
+  }
+}

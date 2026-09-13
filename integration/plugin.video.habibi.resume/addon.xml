@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<addon id="plugin.video.habibi.resume" name="Jellyfin Home" version="1.1.0" provider-name="Habibi">
+  <requires><import addon="xbmc.python" version="3.0.0"/><import addon="plugin.video.jellyfin" version="2.1.0"/></requires>
+  <extension point="xbmc.python.pluginsource" library="default.py"><provides>video</provides></extension>
+  <extension point="xbmc.service" library="service.py"/>
+  <extension point="xbmc.addon.metadata"><summary lang="en_GB">Live Jellyfin resume widget using the existing signed-in account</summary><description lang="en_GB">Read-only server list; delegates playback to Jellyfin for Kodi.</description><platform>all</platform><license>MIT</license></extension>
+</addon>

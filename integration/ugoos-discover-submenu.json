@@ -1,0 +1,4 @@
+[
+ {"label":"Requests & Status","path":"plugin://plugin.video.kodiseerr/?mode=requests","target":"videos","icon":"special://skin/extras/icons/recentlyadded.png","guid":"habibi-discover-requests"},
+ {"label":"Search & Request","path":"plugin://plugin.video.kodiseerr/?mode=search","target":"videos","icon":"special://skin/extras/icons/search.png","guid":"habibi-discover-search"}
+]
