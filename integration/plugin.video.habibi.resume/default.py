@@ -72,7 +72,8 @@ def main():
             li.setProperty('jellyfinserver', '')
             context = []
             if kind in ('Movie','Series') and xbmc.getCondVisibility('System.HasAddon(slyguy.trailers)'):
-                context.append(('Watch trailer','RunScript(slyguy.trailers)'))
+                trailer_action = ('PlayMedia(plugin://slyguy.trailers/?'+urlencode({'_':'/imdb','video_id':provider_ids['imdb']})+')') if provider_ids.get('imdb') else 'RunScript(slyguy.trailers)'
+                context.append(('Watch trailer',trailer_action))
             if mode != 'series':
                 context.append(('View all — '+LABELS[mode], 'ActivateWindow(Videos,plugin://plugin.video.habibi.resume/?mode='+mode+',return)'))
             favorite = bool(user.get('IsFavorite'))

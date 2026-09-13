@@ -55,8 +55,11 @@ where they differ. Intro/outro buttons require compatible server media segments.
 
 Optional SlyGuy Trailers adds Watch trailer actions. Home supplies provider IDs,
 with an IMDb trailer route where possible; discovery-only titles use the addon's
-lookup. No autoplay previews. External trailer availability can change. This repo
-does not bundle SlyGuy binaries or replace the YouTube addon.
+lookup. No autoplay previews. External trailer availability can change. We
+use direct PlayMedia IMDb routes for exact-ID context actions: SlyGuy's generic
+script can otherwise misinterpret an IMDb route's video_id as a YouTube ID.
+The generic script remains the fallback for titles without a known IMDb ID.
+This repo does not bundle SlyGuy binaries or replace the YouTube addon.
 
 Back up Kodi configuration, addon source and custom CoreELEC files to a private
 server. Make online SQLite backup copies instead of copying live library DB/WAL

@@ -1,5 +1,5 @@
 diff --git a/plugin.video.kodiseerr/browse.py b/plugin.video.kodiseerr/browse.py
-index 7fa848b..c5127fd 100644
+index 7fa848b..faf5e2f 100644
 --- a/plugin.video.kodiseerr/browse.py
 +++ b/plugin.video.kodiseerr/browse.py
 @@ -247,7 +247,15 @@ def show_collection_details(collection_id):
@@ -19,7 +19,7 @@ index 7fa848b..c5127fd 100644
      items = data.get('results', [])
      current_page = data.get('page', 1)
      total_pages = data.get('totalPages', 1)
-@@ -330,10 +338,34 @@ def list_items(data, mode, display_type=None, genre_id=None):
+@@ -330,10 +338,39 @@ def list_items(data, mode, display_type=None, genre_id=None):
          media_utils.set_info_tag(list_item, info)
          art = media_utils.make_art(item)
          list_item.setArt(art)
@@ -49,7 +49,12 @@ index 7fa848b..c5127fd 100644
 +            list_item.setProperty('IsPlayable','false')
 +        list_item.addContextMenuItems(ctx_menu,replaceItems=True)
 +        if xbmc.getCondVisibility('System.HasAddon(slyguy.trailers)'):
-+            list_item.addContextMenuItems([('Watch trailer','RunScript(slyguy.trailers)')])
++            trailer_action='RunScript(slyguy.trailers)'
++            trailer_ids={k.lower():str(v) for k,v in (match or {}).get('ProviderIds',{}).items() if v}
++            if trailer_ids.get('imdb'):
++                from urllib.parse import urlencode
++                trailer_action='PlayMedia(plugin://slyguy.trailers/?'+urlencode({'_':'/imdb','video_id':trailer_ids['imdb']})+')'
++            list_item.addContextMenuItems([('Watch trailer',trailer_action)])
 +        xbmcplugin.addDirectoryItem(context.addon_handle, url, list_item, is_folder)
 +
 +    xbmc.log('[Habibi Discover] {}: {} cards in {:.3f}s'.format(mode,len(items),time.monotonic()-started),xbmc.LOGINFO)
