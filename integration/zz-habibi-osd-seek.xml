@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<keymap>
+  <VideoOSD>
+    <keyboard>
+      <right>RunScript(/storage/.config/ugoos-osd-seek.py,right)</right>
+      <left>RunScript(/storage/.config/ugoos-osd-seek.py,left)</left>
+    </keyboard>
+    <remote>
+      <right>RunScript(/storage/.config/ugoos-osd-seek.py,right)</right>
+      <left>RunScript(/storage/.config/ugoos-osd-seek.py,left)</left>
+    </remote>
+  </VideoOSD>
+</keymap>

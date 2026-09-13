@@ -33,6 +33,11 @@ automatic-update repository. Do not install both variants under the same ID.
 
 ## Install / update
 
+For another device, start with [SECOND-UGOOS.md](SECOND-UGOOS.md). It documents
+the setup, private/public backup boundary, audio/UI preferences and the complete
+request-to-Jellyfin-to-Kodi notification path. `settings-reference.json` is a
+redacted reference inventory, not a file to import into Kodi.
+
 Read [UPDATING.md](UPDATING.md) before deploying. Never deploy during playback,
 including paused playback. Never copy an entire Kodi userdata directory from GitHub.
 There are no accounts, API keys, databases, device IPs or personal logs in this repo.

@@ -1,0 +1,9 @@
+[
+    {
+        "label": "$LOCALIZE[3]",
+        "icon": "special://skin/extras/icons/video.png",
+        "path": "ActivateWindow(videos)",
+        "target": "",
+        "guid": "guid-b7f5929d"
+    }
+]

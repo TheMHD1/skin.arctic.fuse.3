@@ -1,0 +1,44 @@
+[
+    {
+        "label": "Continue Watching",
+        "icon": "",
+        "path": "plugin://plugin.video.habibi.resume/?mode=resume&reload=$INFO[Window(Home).Property(Habibi.Home.Refresh)]",
+        "target": "videos",
+        "guid": "guid-1df12460"
+    },
+    {
+        "label": "Next Up",
+        "icon": "",
+        "path": "plugin://plugin.video.habibi.resume/?mode=nextup&reload=$INFO[Window(Home).Property(Habibi.Home.Refresh)]",
+        "target": "videos",
+        "guid": "guid-494e99f5"
+    },
+    {
+        "label": "Latest Movies",
+        "icon": "",
+        "path": "plugin://plugin.video.habibi.resume/?mode=movies&reload=$INFO[Window(Home).Property(Habibi.Home.Refresh)]",
+        "target": "videos",
+        "guid": "guid-5ed929a0"
+    },
+    {
+        "label": "Latest Shows",
+        "icon": "",
+        "path": "plugin://plugin.video.habibi.resume/?mode=shows&reload=$INFO[Window(Home).Property(Habibi.Home.Refresh)]",
+        "target": "videos",
+        "guid": "guid-07213623"
+    },
+    {
+        "label": "Favorites",
+        "icon": "",
+        "path": "plugin://plugin.video.habibi.resume/?mode=favorites&reload=$INFO[Window(Home).Property(Habibi.Home.Refresh)]",
+        "target": "videos",
+        "guid": "guid-a5580669"
+    },
+    {
+        "label": "Top Rated Movies",
+        "icon": "",
+        "path": "plugin://plugin.video.habibi.resume/?mode=toprated&reload=$INFO[Window(Home).Property(Habibi.Home.Refresh)]",
+        "target": "videos",
+        "guid": "guid-f36a9f45"
+    }
+]
