@@ -472,3 +472,25 @@ test. The independent tester/publisher continues without configuration changes.
 All-account audit again reported 26 accounts, no missing visibility, no unseeded
 favourites, and no disabled Live TV access. Native phone rendering and a real
 confirmed-dead hide/restore cycle remain separate unverified requirements.
+
+## 2026-09-14 — first expansion pass finished
+
+All 660 staged expansion candidates have initial automatic decoder results:
+545 working and 115 inconclusive, zero untested. Including retained original
+channels outside that candidate pool: 668 observed, 552 working, 116
+inconclusive. This is not a scan of all 11,249 provider channels.
+
+Publishing completed successfully. Selection: 587 unique native channels,
+552 fresh working and 35 retained inconclusive, zero untested. Newly admitted
+channels required working results; original uncertain favourites were not
+silently removed. Group memberships (may overlap): Arabic news 41, Arabic
+general 106, Arabic movies/drama 43, Arabic kids 27, Arabic sports 107,
+Canada 39, English news 29, English kids 32, English movies/entertainment 74,
+English sports 89. Quality variants and fallback channels remain represented.
+
+The timer remains enabled for idle-only retries after six hours and periodic
+successful-channel rechecks after seven days. A one-pass failure is not proof
+of permanent death. Actual client rendering on the user's phone and the
+confirmed-dead hide/restore lifecycle still cannot be declared verified.
+Ugoos remains intentionally off. No need to keep changing the working pipeline
+while waiting for the next eligible retry or user-side acceptance evidence.
