@@ -6,6 +6,7 @@ After=network-online.target docker.service
 Type=oneshot
 ExecStart=/usr/bin/flock -n /data/config/dispatcharr/provider-presence.lock /usr/bin/docker exec dispatcharr python manage.py shell -c "exec(open('/data/venom-provider-presence-audit.py').read())"
 ExecStartPost=/usr/bin/flock -n -E 75 /data/config/iptv-venom/channel-checker.lock /usr/bin/docker exec -e VENOM_PROVIDER_CHECK_LOCKED=1 dispatcharr python manage.py shell -c "import runpy; runpy.run_path('/data/venom-provider-missing-check.py',run_name='__main__')"
+ExecStartPost=/usr/bin/python3 /data/config/iptv-venom/venom-hide-confirmed.py --apply
 SuccessExitStatus=75
 TimeoutStartSec=15min
 Nice=15

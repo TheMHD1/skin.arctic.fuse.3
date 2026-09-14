@@ -114,6 +114,7 @@ def main():
         probed+=1
         after=bool(code and idle() and control_decodes(control[1]))
         record={'time':time.time(),'capacity_available':True,'control_ok':after,
+                'provider_source_ids':[str(item.stream_id)],
                 'control_channel_id':control[0],'http_status':code,'response_origin':'provider',
                 'absent_from_provider_catalogue':True,'decoded_video_frames':0}
         with db:db.execute('insert into observations values (?,?,?)',(channel.pk,record['time'],json.dumps(record)))

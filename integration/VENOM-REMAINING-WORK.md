@@ -86,6 +86,36 @@ No reliable higher distinct-stream capacity was proven by previous tests.
 
 ## Current implementation evidence
 
+### Guarded reversible visibility worker, 2026-09-14
+
+Implemented venom-hide-confirmed.py (media CT controller),
+venom-hide-confirmed-worker.py (Dispatcharr) and pure venom-hide-plan.py.
+The daily presence service now runs guarded --apply after evidence collection.
+Writes share the checker lock and defer during playback. Dry-run can inspect a
+read-only snapshot while testing runs. At most five changes per invocation.
+
+Hiding requires three independent days / 48 hours of controlled origin 404/410,
+fresh catalogue absence, matching provider source identity and no subsequent
+successful playback. New negative records include provider_source_ids; older
+records lacking those identities cannot authorize a hide. Existing user hides
+are not claimed. User-unhidden managed entries are never forcibly rehidden.
+UUID/source changes and compact-numbering groups are refused. Reappearance
+restores only this worker's managed entries. Number changes cause DB rollback.
+Recovery ledger /data/config/dispatcharr/venom-hidden-channels.json is written
+before mutation; no channel deletion is performed.
+
+Eight visibility tests pass (pure decisions and synthetic worker hide/restore,
+dry-run, manual hides, successful-playback override); seven health-policy tests
+also pass. Production dry-run succeeded with zero eligible targets/changes.
+Explicit apply attempt correctly deferred while the checker held its lock.
+No real channel has been hidden to test this. End-to-end disappearance and
+restoration in clients remain unverified until a genuine qualified case exists;
+normal downstream playlist/guide refresh is still required.
+
+Expansion meanwhile reached 425 unique curated channels. Read-only audit
+verified all 26 accounts can see and have favourited all 425; zero unseeded IDs.
+English sports now has 61 and English movies/entertainment 45 channels.
+
 ### Provider-origin negative evidence collection, 2026-09-14
 
 Added venom-provider-missing-check.py after the daily provider-presence audit.

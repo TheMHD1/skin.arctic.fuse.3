@@ -74,7 +74,7 @@ def main():
         rows=db.execute('select result,count(*) from observations where id in (select max(id) from observations group by channel_id) group by result').fetchall()
         count=sum(n for _,n in rows)
         total=len(json.loads((ROOT/'live-catalogue-redacted.json').read_text())['channels'])
-        print(json.dumps({'tested_channels':count,'catalogue_channels':total,'not_yet_tested':max(0,total-count),'latest_results':dict(rows),'automatic_hiding_enabled':False}));return
+        print(json.dumps({'tested_channels':count,'catalogue_channels':total,'not_yet_tested':max(0,total-count),'latest_results':dict(rows),'visibility_changes_by_this_worker':False,'visibility_worker':'venom-hide-confirmed.py'}));return
     lock=(ROOT/'channel-checker.lock').open('a')
     try:fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
     except BlockingIOError:return
