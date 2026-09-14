@@ -1,5 +1,20 @@
 # HD/HDR companion groups and reviewed artwork
 
+## Channel caption typography — web helper v14
+
+User requested smaller channel names in category grids/mobile. Captions now
+use max(12px, .8rem), normal wrapping instead of single-line ellipsis, and
+automatic height with a two-line minimum. Longer names may wrap further; there
+is no line clamp. Missing-artwork text is reduced to 1rem. Selectors target
+TvChannel cards only; movie/series typography and touch menu buttons are unchanged.
+Root-relative scaling remains supported for larger-text preferences.
+
+Android touch emulation at 412x915 verified long Sky Sports captions at 12px
+over two lines, no horizontal overflow and retained menu buttons. Desktop
+rendering also verified. Jellyfin's web-based Android app receives the server
+helper on reload; stock native clients that do not use this web UI do not inherit
+its CSS. Deployed v14 cache-busted index; v13 helper saved in server backups.
+
 ## Final requested behavior
 
 The initial request for 4K/8K was clarified to HD and above, including HDR,

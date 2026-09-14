@@ -66,6 +66,25 @@
     style.textContent='.venomNavHidden{display:none!important}.venomIndexNotice{padding:12px 24px;opacity:.75;font-size:.9rem}.venomBrowseLinks{display:flex;gap:12px;flex-wrap:wrap;padding:12px 24px}.venomBrowseLinks a{color:inherit;text-decoration:none;border:1px solid #8886;border-radius:20px;padding:8px 16px}.venomBrowseLinks a:hover,.venomBrowseLinks a:focus-visible{background:#8884}';
     style.textContent+='.venomCategoryDialog{color:inherit;background:#181818;border:1px solid #666;border-radius:12px;width:min(900px,90vw);max-height:80vh;padding:20px}.venomCategoryDialog::backdrop{background:#000a}.venomCategoryGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}.venomCategoryGrid a{color:inherit;text-decoration:none;background:#ffffff0d;border:1px solid #8886;border-radius:8px;padding:16px;min-height:50px}.venomCategoryGrid a:hover,.venomCategoryGrid a:focus-visible{background:#ffffff22}.venomCategoryGrid small{display:block;opacity:.7;margin-top:8px}.venomCategoryDialog button{padding:8px 16px;margin-bottom:16px}';
     document.head.append(style);
+    // Channel captions only: retain full names, touch menus and movie typography.
+    const channelStyle=document.createElement('style');
+    channelStyle.id='venom-channel-caption-style';
+    channelStyle.textContent=`
+        .card[data-type="TvChannel"] .cardFooter .cardText-first {
+            height:auto!important;max-height:none!important;white-space:normal!important;
+            overflow:visible!important;text-overflow:clip!important;line-height:1.3!important;
+        }
+        .card[data-type="TvChannel"] .cardFooter .cardText-first a.textActionButton {
+            display:block!important;font-size:max(12px,.8rem)!important;line-height:1.3!important;
+            white-space:normal!important;overflow-wrap:anywhere;word-break:normal;
+            overflow:visible!important;text-overflow:clip!important;min-height:2.6em;
+        }
+        .card[data-type="TvChannel"] .cardDefaultText {
+            font-size:1rem!important;line-height:1.3!important;white-space:normal!important;
+            overflow-wrap:anywhere;
+        }
+    `;
+    document.head.append(channelStyle);
     function openCategories(current,client) {
         document.querySelector('.venomCategoryDialog')?.remove();
         const dialog=document.createElement('dialog');dialog.className='venomCategoryDialog';dialog.setAttribute('aria-label','Venom provider categories');

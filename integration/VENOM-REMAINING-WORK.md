@@ -1,5 +1,13 @@
 # Existing-app scope — 2026-09-14
 
+## Latest: smaller wrapped channel captions — web helper v14
+
+Channel grid captions use max(12px,.8rem) and wrap onto multiple lines instead
+of clipping with ellipsis. Only TvChannel cards affected. Android touch layout
+412x915 and desktop checked; long sports names wrap, no horizontal overflow,
+touch menu buttons retained. Applies to Jellyfin web/web-based mobile app, not
+unrelated native Moonfin/Kodi typography. Source and deployment notes in the fork.
+
 ## Latest: HD/HDR groups and whole-selection artwork
 
 Added MBC & related and Syrian selections, plus adjacent HD & above companions
