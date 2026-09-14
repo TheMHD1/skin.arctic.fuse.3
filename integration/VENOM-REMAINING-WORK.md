@@ -86,6 +86,24 @@ No reliable higher distinct-stream capacity was proven by previous tests.
 
 ## Current implementation evidence
 
+### Provider-origin negative evidence collection, 2026-09-14
+
+Added venom-provider-missing-check.py after the daily provider-presence audit.
+It shares the CT checker flock, probes at most two fresh catalogue absences,
+requires gateway AND provider-account idle state, verifies a decoding control
+before and after an origin 404/410, and refuses redirected errors or multiple-
+source channels. Event-like channels are skipped. Authentication/limit errors,
+timeouts, stale absences, reappearance and failed controls never prove death.
+It stores redacted provider-negative-evidence.sqlite3 observations, now merged
+by the read-only health report. No visibility changes are performed.
+
+Four collector unit tests plus two evidence-report and seven policy tests pass.
+Runtime invocation in Dispatcharr succeeded with fresh_absences=0, probed=0;
+the real negative-stream branch is not yet verified because no current absent
+channel exists. Service unit verification passed. Evidence collector is deployed,
+but automated reversible hiding is still unfinished/disabled. Do not describe
+this as a completed dead-channel removal pipeline.
+
 ### CoreELEC update and real web verification, 2026-09-14
 
 User explicitly requested update, post-update checks and clean shutdown. Checked
