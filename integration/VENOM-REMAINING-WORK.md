@@ -1,5 +1,17 @@
 # Existing-app scope — 2026-09-14
 
+## Latest: sports by discipline; duplicate HD categories removed
+
+HD-and-above companion groups are no longer generated. All sports combines the
+old Arabic/English sports lists, with sport-specific bilingual groups and separate
+Arabic/English soccer. Full sports/English entertainment rescan expanded the
+test scope to 1,680 unique candidates; only working new feeds are published.
+Prior quality records are preserved. The quality worker now follows the dynamic
+candidate/published scope and contributes successful decoder evidence to the
+normal publisher. Current service: `venom-quality-audit-sports.service`.
+See `integration/SPORTS-ENTERTAINMENT-EXPANSION-2026-09-14.md` for caveats and rollout.
+Earlier notes about retaining HD companion navigation are superseded.
+
 ## Latest: high-quality rescan and 6K/8K inclusion
 
 Removed the old 6K/8K exclusion and candidate cap for high-quality alternatives.
