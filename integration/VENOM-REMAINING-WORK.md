@@ -86,6 +86,20 @@ No reliable higher distinct-stream capacity was proven by previous tests.
 
 ## Current implementation evidence
 
+### Reproducible standalone package, 2026-09-14
+
+Found the full Venom add-on and server health-policy dependency were untracked
+despite recent diffs being pushed. Added the complete add-on, MIT license,
+missing policy/tests and integration/check-venom-package.py to the fork.
+The four Python source hashes and window XML match the last verified live
+Ugoos manifest. A fresh git archive (no untracked workspace files) passes syntax,
+XML navigation and 26 shared-favourite/evidence/visibility tests.
+
+See integration/VENOM-PACKAGE.md. This proves the standalone source package,
+not automatic installation of all private settings, all Arctic home layout
+patches or native Moonfin parity. Broader integration worktree changes remain
+separate and were not indiscriminately committed. No live device changes made.
+
 ### Guarded reversible visibility worker, 2026-09-14
 
 Implemented venom-hide-confirmed.py (media CT controller),
