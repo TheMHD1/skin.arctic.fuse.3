@@ -48,7 +48,9 @@ def probe(url,seconds):
     started=time.monotonic()
     cmd=['docker','exec','jellyfin','timeout','--signal=TERM','--kill-after=3',str(seconds),
          '/usr/lib/jellyfin-ffmpeg/ffmpeg','-hide_banner','-loglevel','info','-nostdin',
-         '-rw_timeout',str(min(seconds,20)*1000000),'-analyzeduration','3000000','-probesize','2097152',
+         # The longer retry must really allow a slow source to start. The outer
+         # timeout still bounds the entire probe, including decoding/cleanup.
+         '-rw_timeout',str(seconds*1000000),'-analyzeduration','3000000','-probesize','2097152',
          '-i',url,'-map','0:v:0','-frames:v','3','-an','-vf','showinfo=checksum=0,scale=16:16','-progress','pipe:1','-f','null','-']
     try:
         result=subprocess.run(cmd,capture_output=True,text=True,timeout=seconds+8)

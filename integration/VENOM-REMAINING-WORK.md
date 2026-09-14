@@ -86,6 +86,21 @@ No reliable higher distinct-stream capacity was proven by previous tests.
 
 ## Current implementation evidence
 
+### All-account verification and tester correction, 2026-09-14
+
+Read-only account audit verified all 26 accounts: Live TV enabled, all 397
+curated native IDs visible, all 397 currently favourited, no unseeded IDs.
+Provider-order audit separately confirmed all 26 receive ten pinned custom
+groups plus 304 provider groups, source order preserved and no empty groups.
+These verify server data, not identical native Moonfin/Jellyfin layouts.
+
+Found a tester timeout bug: the nominal 55-second retry still set FFmpeg's
+network-read timeout to 20 seconds. Changed it to match the requested probe
+budget, retaining the outer hard deadline. Six regression tests pass, including
+22/55-second budgets. No automatic hiding or concurrent provider probes added.
+290 channels had observations at audit: 222 recently working, 68 inconclusive;
+no channel met the evidence threshold for permanent hiding.
+
 ### Native VOD category and list audit
 
 Read-only `venom-vod-category-check.py` verified Habibi's 78 movie provider
