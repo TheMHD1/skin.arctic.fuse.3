@@ -4,9 +4,10 @@
 
 Removed the old 6K/8K exclusion and candidate cap for high-quality alternatives.
 Full catalogue scan staged 36 additional entries; fresh decoder success is still
-required before publishing. Both normal and HD-and-above lists regenerate in
-HDR-first, descending-resolution order (including 6K). Measured resolution wins
-over labels. Automatic idle-only checking/promotion remains enabled. See fork
+required before publishing. Both normal and HD-and-above lists now follow
+provider labels: HDR first, then 8K > 6K > 4K > 1080p > HD. This supersedes
+measurement-first display ordering; measurements remain in diagnostic records
+and the verified-resolution companion only. Automatic checking/promotion remains enabled. See fork
 `integration/HIGH-QUALITY-RESCAN-2026-09-14.md` (also in the media server's IPTV
 config directory) for scope, verification, backups and continuation details.
 

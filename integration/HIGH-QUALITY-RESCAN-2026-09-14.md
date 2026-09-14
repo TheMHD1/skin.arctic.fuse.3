@@ -1,5 +1,16 @@
 # High-quality channel rescan — 2026-09-14
 
+## Superseding display-order correction
+
+The user explicitly wants the channels labelled 8K at the top, even when decoded
+video was lower resolution. Browse ordering and HD-and-above membership now
+follow provider labels: HDR first, then 8K > 6K > 4K > 1080p > HD > SD.
+Measurements are retained for diagnostics and fill in unlabelled channels only.
+The separate >1080p verified companion still requires measured dimensions.
+This supersedes the measurement-first display policy described in the original
+rollout below. Tests cover labelled 8K measured at SD remaining first and in the
+HD-and-above companion without falsely entering the verified-resolution list.
+
 ## Cause and correction
 
 The old starter-list builder explicitly skipped 6K/8K-labelled channels. That

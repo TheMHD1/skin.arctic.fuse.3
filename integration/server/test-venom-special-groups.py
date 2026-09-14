@@ -10,7 +10,15 @@ class Tests(unittest.TestCase):
     def test_hdr_first_then_resolution_and_duplicate_variants(self):
         rows=[{'name':s} for s in ['Station HD','Station 4K','Station 8K','Station FHD','Station 4K HDR','Station 8K HDR','Station FHD HDR']]
         self.assertEqual([r['name'] for r in sorted(rows,key=priority)],['Station 8K HDR','Station 4K HDR','Station FHD HDR','Station 8K','Station 4K','Station FHD','Station HD'])
-        self.assertGreater(priority({'name':'Fake 8K HDR','decoded_height':720,'decoded_hdr':False}),priority({'name':'Real FHD','decoded_height':1080,'decoded_hdr':False}))
+        self.assertLess(priority({'name':'Provider 8K HDR','decoded_height':720,'decoded_hdr':False}),priority({'name':'Real FHD','decoded_height':1080,'decoded_hdr':False}))
+    def test_label_order_and_hd_membership_survive_lower_measured_resolution(self):
+        rows=[dict(stream_id=i,name=n) for i,n in enumerate(['Station 4K','Station 8K','Station 6K','Station HD'])]
+        geometry={str(i):{'decoded_height':480,'decoded_width':720} for i in range(4)}
+        result=extend({'groups':[dict(id='sport',name='Sport',channels=rows)]},{'categories':[],'channels':[]},set(),geometry)
+        for group in result['groups']:
+            self.assertEqual([c['stream_id'] for c in group['channels']],[1,2,0,3])
+        self.assertEqual([g['id'] for g in result['groups']],['sport','sport-hd-plus'])
+        self.assertTrue(all(c['decoded_height']==480 for c in result['groups'][0]['channels']))
     def test_measured_quality_and_nonempty_lists(self):
         rows=[dict(stream_id=1,name='MBC 1 4K',category_id='5'),dict(stream_id=2,name='MBC 2 UHD',category_id='5')]
         source={'categories':[dict(category_id='5',category_name='|AR| MBC 4K')],'channels':rows}
