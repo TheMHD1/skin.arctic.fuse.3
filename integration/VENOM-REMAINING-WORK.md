@@ -68,6 +68,11 @@ TSN 1 HD (9329), TSN 2 FHD (9330), etc. Stock clients may display the separate
 channel number beside the cleaned name. Numbers are retained for stable mapping.
 Reruns now use a paged name snapshot to skip clean items efficiently, still
 reading and verifying the complete DTO for every actual write.
+Final readback after the repair confirms all 1,242 target names changed; all
+11,249 native channel IDs and channel numbers remain unchanged. Kodi's latest
+deployed browser relaunch loaded categories in 0.105s. Compatibility manifest
+updated only for this verified browser file (SHA256
+3d43b90b583c4f3e2f7b424fc0ebaa72ccd7277d8737881170ac6dc96ff26598).
 
 Update inventory: installed CoreELEC 22.0-Piers nightly 20260913, bundled Kodi
 22.0-BETA2 (21.90.802), Jellyfin for Kodi 2.1.0+py3, Arctic Fuse 3.2.19,
