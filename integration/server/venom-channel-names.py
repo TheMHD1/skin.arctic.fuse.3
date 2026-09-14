@@ -19,6 +19,7 @@ def clean_name(value):
     # required so real station names such as US TV/ARTE remain intact.
     label=re.sub(r'^\s*(?:\d{1,6}\s+)?\[SPO\]\s*','',label,flags=re.I)
     label=re.sub(r'^(?:\d{1,6}\s+)?(?:(?:USA|US|UK|CA|AR|SP|DS|NW|KD|LB|SY|UAE)\s*[:|]\s*)+','',label,flags=re.I)
+    label=re.sub(r'^LB\s*,\s*','',label,flags=re.I)
     label=re.sub(r'^(MBC|OSN)\s*:\s*',r'\1 ',label,flags=re.I)
     label=re.sub(r'\s+',' ',label).strip()
     return label or original

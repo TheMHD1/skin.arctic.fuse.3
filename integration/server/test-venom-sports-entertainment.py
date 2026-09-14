@@ -16,7 +16,12 @@ class Tests(unittest.TestCase):
     def test_entertainment_and_regional_fox(self):
         for name in ['HBO HD','SHOWTIME 2','CINEMAX','FOX MOVIES']:self.assertIn('en-movies',self.classify(name,'|US| USA CINEMA'))
         self.assertNotIn('en-movies',self.classify('HBO Latin','|US| USA CINEMA'))
-        self.assertIn('en-movies',self.classify('PT| FOX MOVIES HD','|PT| PORTUGAL'))
+        self.assertNotIn('en-movies',self.classify('PT| FOX MOVIES HD','|PT| PORTUGAL'))
+    def test_language_rule_also_filters_existing_provider_groups(self):
+        rows=[{'stream_id':1,'name':'CNN en Espanol','category_id':1},{'stream_id':2,'name':'CNN HD','category_id':1}]
+        source={'categories':[{'category_id':1,'category_name':'|US| USA NEWS'}],'channels':rows}
+        result=m['extend']({'groups':[{'id':'news','name':'News','channels':rows}]},source,set(),{})
+        self.assertEqual([c['stream_id'] for c in result['groups'][0]['channels']],[2])
     def test_new_feeds_require_success_existing_ids_preserved(self):
         old={'groups':[{'id':'en-sport','name':'English sports','channels':[{'stream_id':1,'name':'TSN 1'}]}]}
         source={'categories':[{'category_id':2,'category_name':'|UK| SPORTS'}],'channels':[{'stream_id':2,'name':'UFC FIGHT PASS','category_id':2}]}

@@ -4,6 +4,13 @@ from pathlib import Path
 extend=runpy.run_path(str(Path(__file__).with_name('venom-special-groups.py')))['extend']
 priority=runpy.run_path(str(Path(__file__).with_name('venom-special-groups.py')))['priority']
 class Tests(unittest.TestCase):
+    def test_lebanon_candidates_and_working_publication(self):
+        source={'categories':[dict(category_id='9',category_name='|AR| LEBANON لبنان')], 'channels':[dict(stream_id=i,name='MTV HD',category_id='9') for i in [1,2]]}
+        staged=extend({'groups':[]},source,set(),{},True)
+        self.assertEqual(len(staged['groups'][0]['channels']),2)
+        published=extend({'groups':[]},source,{'1'},{})
+        self.assertEqual(published['groups'][0]['id'],'ar-lebanon')
+        self.assertEqual([c['stream_id'] for c in published['groups'][0]['channels']],[1])
     def test_6k_and_spaced_8k_resolution_order(self):
         rows=[{'name':n} for n in ['Station 4K','Station 6K','Station 8 K','Station 1440P','Station HDR HD']]
         self.assertEqual([c['name'] for c in sorted(rows,key=priority)],['Station HDR HD','Station 8 K','Station 6K','Station 4K','Station 1440P'])

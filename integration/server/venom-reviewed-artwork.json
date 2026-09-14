@@ -1518,8 +1518,7 @@
   "AR:SY : ALSOURIYA TV": {
     "channel": "AlSouriyaTV.sy",
     "url": "https://i.imgur.com/8FILgXT.jpeg"
-  }
-,
+  },
   "AR:AD SPORT 1": {
     "channel": "AbuDhabiSports1.ae",
     "url": "https://i.imgur.com/6BVWk8z.png"
@@ -1761,5 +1760,97 @@
   "IT: SKY SPORT CALCIO": {
     "channel": "SkySportCalcio.it",
     "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/Sky_Sport_Calcio.svg/960px-Sky_Sport_Calcio.svg.png"
+  },
+  "AR:OTV": {
+    "channel": "OTV.lb",
+    "url": "https://i.imgur.com/toxFMeY.png"
+  },
+  "AR:RED TV": {
+    "channel": "RedTVLebanon.lb",
+    "url": "https://i.imgur.com/bWwY885.png"
+  },
+  "AR:FUTURE": {
+    "channel": "FutureTV.lb",
+    "url": "https://i.imgur.com/OaqEpwe.png"
+  },
+  "AR:FUTURE TV": {
+    "channel": "FutureTV.lb",
+    "url": "https://i.imgur.com/OaqEpwe.png"
+  },
+  "AR:ALWIFAK NEWSTV": {
+    "channel": "ALWifakNewsTV.lb",
+    "url": "https://i.imgur.com/1vqhmNz.png"
+  },
+  "AR:LBC": {
+    "channel": "LBCInternational.lb",
+    "url": "https://i.imgur.com/h26xtUv.png"
+  },
+  "AR:LBC 2": {
+    "channel": "LB2International.lb",
+    "url": "https://static.wikia.nocookie.net/logopedia/images/0/01/Lb2.png"
+  },
+  "AR:TELELIBAN": {
+    "channel": "TeleLiban.lb",
+    "url": "https://i.imgur.com/5VPYxJi.png"
+  },
+  "AR:ONE TV": {
+    "channel": "OneTV.lb",
+    "url": "https://i.imgur.com/O4DuR9G.png"
+  },
+  "AR:ETIHAD": {
+    "channel": "AlIttihadTV.lb",
+    "url": "https://i.imgur.com/QMUjPXx.png"
+  },
+  "AR:AL ITTIHAD": {
+    "channel": "AlIttihadTV.lb",
+    "url": "https://i.imgur.com/QMUjPXx.png"
+  },
+  "AR:AL IMAN": {
+    "channel": "AlImanTV.lb",
+    "url": "https://i.imgur.com/4WKQppG.png"
+  },
+  "AR:AL MAYADEEN": {
+    "channel": "AlMayadeenTV.lb",
+    "url": "https://i.imgur.com/GtQOKeW.png"
+  },
+  "AR:ALMANAR": {
+    "channel": "AlManar.lb",
+    "url": "https://i.imgur.com/sOQLV7L.png"
+  },
+  "AR:AL MANAR": {
+    "channel": "AlManar.lb",
+    "url": "https://i.imgur.com/sOQLV7L.png"
+  },
+  "AR:ONEFM": {
+    "channel": "OneFM.lb",
+    "url": "https://i.ibb.co/Vp2G9wTz/onefmlb.png"
+  },
+  "AR:ARABICA TV": {
+    "channel": "ArabicaTV.lb",
+    "url": "https://i.imgur.com/sTOoDy1.png"
+  },
+  "AR:CHARITY TV": {
+    "channel": "CharityTV.lb",
+    "url": "https://i.imgur.com/U9z8WBY.png"
+  },
+  "AR:NOUR AL KODDAS": {
+    "channel": "NourAlKoddass.lb",
+    "url": "https://i.imgur.com/dF4Mvts.png"
+  },
+  "AR:NOUR AL SHARQ": {
+    "channel": "NourAlSharq.lb",
+    "url": "https://i.imgur.com/EEy2dUr.png"
+  },
+  "AR:NOURSAT": {
+    "channel": "Noursat.lb",
+    "url": "https://i.imgur.com/6Zs5rx4.png"
+  },
+  "AR:SENSESTV": {
+    "channel": "SensesTV.lb",
+    "url": "https://i.imgur.com/hnTx8eK.png"
+  },
+  "AR:VDL 24": {
+    "channel": "VoiceofLebanon.lb",
+    "url": "https://i.imgur.com/f8WcqRY.png"
   }
 }

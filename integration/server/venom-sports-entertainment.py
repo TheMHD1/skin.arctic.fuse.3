@@ -29,6 +29,7 @@ def norm(s):return unicodedata.normalize('NFKC',s).upper()
 def language(name,category):
     n=norm(name);cat=norm(category)
     if re.search(FOREIGN,n.replace('*',' ')):return None
+    if re.fullmatch(r'JADEED\s+4K',n):return 'ar'
     if re.search(r'\bENGLISH\b|\bEN\b|\[UK\]|\|UK\||\bUSA[: ]|\bUS[: ]',n):return 'en'
     if re.search(r'\|(UK|US|CA)\|',cat) and not re.search(r'FRANCE|ASIA',cat):return 'en'
     if re.search(r'\|AR\|',cat):return 'ar'
@@ -58,9 +59,6 @@ def classify(channel,category):
         entertainment_category=bool(re.search(r'MOVIES TV|USA CINEMA|ENTERTAINMENT|ENTERTIMENT',cat))
         if lang=='en' and (entertainment_category or re.search(ENTERTAINMENT,n)) and not sport and not re.search(r'NEWS|WEATHER|QVC|\bHSN\b',n):result.append('en-movies')
         if lang=='ar' and re.search(r'OSN|BEIN MEDIA',cat) and re.search(r'MOVIES|HOLLYWOOD|PREMIERE|STAR WORLD|SHOWCASE|BOX OFFICE|SERIES',n) and not re.search(r'ARABI|YAHALA|AFLAM',n):result.append('en-movies')
-    # Explicitly requested FOX Movies feeds exist only in regional provider
-    # bins; retain region labels and do not claim measured English audio.
-    if re.search(r'\bFOX MOVIES\b',n):result.append('en-movies')
     return list(dict.fromkeys(result))
 
 def extend(manifest,catalogue,working,geometry,candidates=False):
@@ -87,4 +85,11 @@ def extend(manifest,catalogue,working,geometry,candidates=False):
         if key.startswith('sport-'):continue
         ordered.append(g)
         if key=='ar-sport':ordered.extend(groups[k] for k,_,_ in SPORTS if k in groups and groups[k]['channels'])
+    # Enforce the user's Arabic/English-only rule across every custom group,
+    # including old starter lists and provider-family groups. Use original names
+    # so display-prefix cleanup cannot disguise a foreign-language variant.
+    source={str(c['stream_id']):c for c in catalogue['channels']}
+    for g in ordered:
+        g['channels']=[c for c in g['channels'] if str(c['stream_id']) not in source or language(source[str(c['stream_id'])]['name'],categories.get(str(source[str(c['stream_id'])].get('category_id')),'')) in ('ar','en')]
+    ordered=[g for g in ordered if g['channels']]
     return {**manifest,'groups':ordered,'unique_channels':len({str(c['stream_id']) for g in ordered for c in g['channels']})}

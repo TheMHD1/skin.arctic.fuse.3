@@ -13,6 +13,7 @@ def key(name):
     name=_clean_name(name)
     name=re.sub(r'^(MBC|OSN)\s*[:.]\s*',r'\1 ',name,flags=re.I)
     name=re.sub(r'\s*· BACKUP.*$','',name.upper())
+    name=re.sub(r'\[NOT 24/7\]|\(\d{3,4}P\)',' ',name)
     name=re.sub(r'(?<!\w)(?:[468]K|UHD|FHD|HDF|HD|SD|1080P|720P|50FPS)(?!\w)\.?\+?',' ',name)
     return re.sub(r'\s+',' ',name).strip(' /')
 

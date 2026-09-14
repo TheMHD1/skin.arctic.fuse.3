@@ -4,7 +4,8 @@ import runpy
 from pathlib import Path
 
 SPECIAL = [('ar-mbc', 'MBC & related · MBC وقنوات مرتبطة', r'^\s*\|AR\|\s*MBC\b'),
-           ('ar-syria', 'سوريا · Syrian channels', r'^\s*\|AR\|\s*SYRIA\b')]
+           ('ar-syria', 'سوريا · Syrian channels', r'^\s*\|AR\|\s*SYRIA\b'),
+           ('ar-lebanon', 'لبنان · Lebanese channels', r'^\s*\|AR\|\s*LEBANON\b')]
 
 def is_hdr(channel):
     return channel.get('decoded_hdr') is True or bool(re.search(r'\b(?:HDR(?:10\+?)?|HLG|DOLBY[ ._-]*VISION|DV)\b',channel['name'],re.I))
@@ -29,7 +30,10 @@ def extend(manifest, catalogue, working, geometry, candidates=False):
         rows={str(c['stream_id']):c for c in (previous or {}).get('channels',[])}
         for c in catalogue['channels']:
             cid=str(c['stream_id'])
-            if re.search(pattern,categories.get(str(c['category_id']),''),re.I) and (candidates or cid in working or cid in existing):
+            provider_match=re.search(pattern,categories.get(str(c['category_id']),''),re.I)
+            # The general Arabic bin also carries this reviewed Lebanese feed.
+            lebanese_extra=key=='ar-lebanon' and str(c['category_id'])=='2' and c['name'].strip().upper()=='JADEED 4K'
+            if (provider_match or lebanese_extra) and (candidates or cid in working or cid in existing):
                 rows[cid]={**c,**geometry.get(cid,{})}
         group={'id':key,'name':name,'channels':list(rows.values())}
         groups=[g for g in groups if g['id']!=key]
