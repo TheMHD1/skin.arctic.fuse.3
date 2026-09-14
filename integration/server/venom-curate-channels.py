@@ -147,6 +147,26 @@ def fresh_geometry(rows,now):
         except (TypeError,ValueError,AttributeError):continue
     return geometry
 
+def repeatedly_unavailable(rows,now):
+    """Two separated capacity-available failures; a newer success restores it."""
+    histories={}
+    for cid,stamp,status,payload in rows:
+        if not 0<=now-stamp<=7*86400:continue
+        histories.setdefault(str(cid),[]).append((stamp,status,payload))
+    blocked={}
+    for cid,history in histories.items():
+        history.sort(reverse=True,key=lambda x:x[0])
+        failures=[]
+        for stamp,status,payload in history:
+            if status=='working':break
+            try:record=json.loads(payload)
+            except (ValueError,TypeError):continue
+            if status=='inconclusive_playback' and record.get('capacity_available') is True:
+                failures.append(stamp)
+        if len(failures)>=2 and max(failures)-min(failures)>=1800:
+            blocked[cid]={'reason':'repeated_unavailable_not_permanent_failure','failures':len(failures),'latest_failure':max(failures)}
+    return blocked
+
 def main():
     parser=argparse.ArgumentParser()
     parser.add_argument('--candidates',action='store_true',help='Stage expanded candidates without publishing or favouriting them')
@@ -157,6 +177,7 @@ def main():
     if args.approve_tested:
         with sqlite3.connect('file:'+str(root/'channel-health.sqlite3')+'?mode=ro',uri=True) as db:
             rows=db.execute('select channel_id,time,result,record from observations where id in (select max(id) from observations group by channel_id)').fetchall()
+            history=db.execute('select channel_id,time,result,record from observations where time>=?',(time.time()-7*86400,)).fetchall()
         now=time.time()
         working={cid for cid,stamp,status,_ in rows if status=='working' and 0<=now-stamp<=7*86400}
         result=approved_additions(json.loads((root/'curated-channels.json').read_text()),json.loads((root/'curated-candidates.json').read_text()),working,fresh_geometry(rows,now))
@@ -165,6 +186,14 @@ def main():
     if args.approve_tested or args.candidates:
         extend=runpy.run_path(str(root/'venom-special-groups.py'))['extend']
         result=extend(result,json.loads((root/'live-catalogue-redacted.json').read_text()),working if args.approve_tested else set(),fresh_geometry(rows,now) if args.approve_tested else {},args.candidates)
+    if args.approve_tested:
+        blocked=repeatedly_unavailable(history,now)
+        removed={str(c['stream_id']):c['name'] for g in result['groups'] for c in g['channels'] if str(c['stream_id']) in blocked}
+        result['groups']=[{**g,'channels':[c for c in g['channels'] if str(c['stream_id']) not in blocked]} for g in result['groups']]
+        result['groups']=[g for g in result['groups'] if g['channels']]
+        result['unique_channels']=len({str(c['stream_id']) for g in result['groups'] for c in g['channels']})
+        report=root/'unavailable-channel-exclusions.json';tmp=report.with_suffix('.tmp')
+        tmp.write_text(json.dumps({'updated':now,'excluded':blocked,'removed_this_pass':removed},ensure_ascii=False,indent=2));tmp.chmod(0o600);tmp.replace(report)
     target=root/('curated-candidates.json' if args.candidates else 'curated-channels.json');temporary=target.with_suffix('.tmp')
     temporary.write_text(json.dumps(result,ensure_ascii=False,indent=2));temporary.chmod(0o600);temporary.replace(target)
     print(json.dumps({'unique_channels':result['unique_channels'],'groups':[{ 'name':g['name'],'count':len(g['channels']),'sample':[c['name'] for c in g['channels'][:5]]} for g in result['groups']]},ensure_ascii=False))

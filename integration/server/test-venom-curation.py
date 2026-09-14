@@ -7,6 +7,16 @@ m=runpy.run_path(str(Path(__file__).with_name('venom-curate-channels.py')))
 s=runpy.run_path(str(Path(__file__).with_name('venom-seed-favourites.py')))
 
 class CurationTests(unittest.TestCase):
+    def test_repeated_unavailable_and_recovery(self):
+        failed=json.dumps({'capacity_available':True})
+        rows=[('1',100,'inconclusive_playback',failed),('1',2000,'inconclusive_playback',failed)]
+        check=m['repeatedly_unavailable']
+        self.assertIn('1',check(rows,2100))
+        self.assertFalse(check(rows[:1],2100))
+        self.assertFalse(check(rows+[('1',2050,'working','{}')],2100))
+        self.assertFalse(check([('1',100,'inconclusive_playback','{}'),rows[1]],2100))
+        self.assertFalse(check([rows[0],('1',200,'inconclusive_playback',failed)],2100))
+        self.assertFalse(check(rows,8*86400))
     def test_expanded_provider_prefixes_preserve_station_and_quality(self):
         clean=runpy.run_path(str(Path(__file__).with_name('venom-channel-names.py')))['clean_name']
         for raw,want in [('1234 USA: UFC 1 HD','UFC 1 HD'),('DS: SS Rugby HD','SS Rugby HD'),('[SPO] NFL Network','NFL Network'),('OSN : WWE FHD','OSN WWE FHD'),('LB : JADEED 8K','JADEED 8K'),('PT| FOX MOVIES HD','PT| FOX MOVIES HD'),('24 NEWS','24 NEWS')]:
