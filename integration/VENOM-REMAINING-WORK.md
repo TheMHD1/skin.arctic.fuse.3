@@ -1,5 +1,15 @@
 # Existing-app scope — 2026-09-14
 
+## Latest: high-quality rescan and 6K/8K inclusion
+
+Removed the old 6K/8K exclusion and candidate cap for high-quality alternatives.
+Full catalogue scan staged 36 additional entries; fresh decoder success is still
+required before publishing. Both normal and HD-and-above lists regenerate in
+HDR-first, descending-resolution order (including 6K). Measured resolution wins
+over labels. Automatic idle-only checking/promotion remains enabled. See fork
+`integration/HIGH-QUALITY-RESCAN-2026-09-14.md` (also in the media server's IPTV
+config directory) for scope, verification, backups and continuation details.
+
 ## Latest: smaller wrapped channel captions — web helper v14
 
 Channel grid captions use max(12px,.8rem) and wrap onto multiple lines instead
