@@ -1,5 +1,7 @@
 """Provider-label browse ordering; measured quality remains separately verified."""
 import re
+import runpy
+from pathlib import Path
 
 SPECIAL = [('ar-mbc', 'MBC & related · MBC وقنوات مرتبطة', r'^\s*\|AR\|\s*MBC\b'),
            ('ar-syria', 'سوريا · Syrian channels', r'^\s*\|AR\|\s*SYRIA\b')]
@@ -32,20 +34,9 @@ def extend(manifest, catalogue, working, geometry, candidates=False):
         group={'id':key,'name':name,'channels':list(rows.values())}
         groups=[g for g in groups if g['id']!=key]
         if group['channels']:groups.append(group)
+    sports=runpy.run_path(str(Path(__file__).with_name('venom-sports-entertainment.py')))['extend']
+    groups=sports({**manifest,'groups':groups},catalogue,working,geometry,candidates)['groups']
     if not candidates:
         groups=[{**g,'channels':sorted([{**{k:v for k,v in c.items() if not k.startswith('decoded_')},**geometry.get(str(c['stream_id']),{})} for c in g['channels']],key=priority)} for g in groups]
-        derived=[]
-        for g in groups:
-            # Pixel dimensions, not a provider's marketing label, establish quality.
-            verified=[c for c in g['channels'] if geometry.get(str(c['stream_id']),{}).get('decoded_height',0)>1080]
-            hd=[c for c in g['channels'] if is_hdr(c) or -priority(c)[1]>=720]
-            for suffix,label,rows in [('above-fhd','>1080p verified · دقة مثبتة',verified),('hd-plus','HD & above · HD وأعلى',hd)]:
-                if rows:derived.append({'id':g['id']+'-'+suffix,'name':g['name']+' · '+label,'derived_quality':suffix,'channels':rows})
-        # Keep each companion beside its main category in the browse menu.
-        paired=[]
-        for g in groups:
-            paired.append(g)
-            paired.extend(d for d in derived if d['id'] in (g['id']+'-above-fhd',g['id']+'-hd-plus'))
-        groups=paired
     return {**manifest,'groups':groups,'unique_channels':len({str(c['stream_id']) for g in groups for c in g['channels']}),
-            'quality_basis':'browse order: HDR first, then provider-labelled resolution; decoded fallback for unlabelled channels; verified companions use measurements only'}
+            'quality_basis':'browse order: HDR first, then provider-labelled resolution; decoded fallback for unlabelled channels; no duplicate quality categories'}
