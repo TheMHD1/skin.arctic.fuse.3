@@ -42,7 +42,11 @@ def decoded_geometry(stderr):
     if not sizes:return {}
     width,height=map(int,sizes[0])
     if not (16<=width<=16384 and 16<=height<=16384):return {}
-    return {'decoded_width':width,'decoded_height':height}
+    geometry={'decoded_width':width,'decoded_height':height}
+    transfer=re.search(r'\[Parsed_showinfo_0[^\]]*\][^\n]*\bcolor_trc:(\S+)',stderr)
+    if transfer and transfer[1] in ('smpte2084','arib-std-b67','bt709','iec61966-2-1','gamma22','gamma28'):
+        geometry.update(decoded_transfer=transfer[1],decoded_hdr=transfer[1] in ('smpte2084','arib-std-b67'))
+    return geometry
 
 def probe(url,seconds):
     started=time.monotonic()

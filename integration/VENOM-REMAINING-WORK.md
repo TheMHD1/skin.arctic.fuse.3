@@ -1,5 +1,21 @@
 # Existing-app scope — 2026-09-14
 
+## Latest: HD/HDR groups and whole-selection artwork
+
+Added MBC & related and Syrian selections, plus adjacent HD & above companions
+for all 12 base groups. User clarified HD+, HDR included, duplicate qualities
+retained, HDR first then 8K/4K/1080p/HD. Fresh decoded measurements override
+provider claims; no verified >1080p was present at the initial audit. Existing
+idle checker now records PQ/HLG from decoded frames. No new player/APK.
+
+Full artwork audit: 643/652 items had working images, 9 unresolved; 261 distinct
+items in uploaded-image ledger, including 14 explicit network-logo fallbacks.
+Mapped images persist via gateway logo overrides and a daily reviewed-only
+repair timer. Unknown identities were not replaced with unrelated station art.
+Full source/deployment/recovery notes and caveats:
+integration/HD-HDR-GROUPS-AND-ARTWORK-2026-09-14.md in the GitHub fork.
+Ugoos was left off; public Jellyfin MBC HD group and logos were browser-verified.
+
 ## Correction: mobile touch card numbers — 11:10 UTC
 
 User still saw numbers after cache clearing. Reproduced under actual Android

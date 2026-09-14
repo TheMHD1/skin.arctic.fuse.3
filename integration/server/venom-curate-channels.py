@@ -11,6 +11,7 @@ import time
 from pathlib import Path
 import re
 import unicodedata
+import runpy
 from collections import OrderedDict
 
 RULES=[
@@ -131,6 +132,8 @@ def fresh_geometry(rows,now):
             width,height=record.get('decoded_width'),record.get('decoded_height')
             if type(width) is int and type(height) is int and 16<=width<=16384 and 16<=height<=16384:
                 geometry[str(cid)]={'decoded_width':width,'decoded_height':height}
+                if type(record.get('decoded_hdr')) is bool:
+                    geometry[str(cid)].update(decoded_hdr=record['decoded_hdr'],decoded_transfer=record.get('decoded_transfer'))
         except (TypeError,ValueError,AttributeError):continue
     return geometry
 
@@ -149,6 +152,9 @@ def main():
         result=approved_additions(json.loads((root/'curated-channels.json').read_text()),json.loads((root/'curated-candidates.json').read_text()),working,fresh_geometry(rows,now))
     else:
         result=build(json.loads((root/'live-catalogue-redacted.json').read_text()),120 if args.candidates else None)
+    if args.approve_tested or args.candidates:
+        extend=runpy.run_path(str(root/'venom-special-groups.py'))['extend']
+        result=extend(result,json.loads((root/'live-catalogue-redacted.json').read_text()),working if args.approve_tested else set(),fresh_geometry(rows,now) if args.approve_tested else {},args.candidates)
     target=root/('curated-candidates.json' if args.candidates else 'curated-channels.json');temporary=target.with_suffix('.tmp')
     temporary.write_text(json.dumps(result,ensure_ascii=False,indent=2));temporary.chmod(0o600);temporary.replace(target)
     print(json.dumps({'unique_channels':result['unique_channels'],'groups':[{ 'name':g['name'],'count':len(g['channels']),'sample':[c['name'] for c in g['channels'][:5]]} for g in result['groups']]},ensure_ascii=False))

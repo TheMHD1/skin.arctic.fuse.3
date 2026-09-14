@@ -1,0 +1,1522 @@
+{
+  "MBC 1": {
+    "channel": "MBC1.ae",
+    "url": "https://i.imgur.com/CiA3plN.png"
+  },
+  "MBC 2": {
+    "channel": "MBC2.ae",
+    "url": "https://i.imgur.com/n9mSHuP.png"
+  },
+  "MBC 3": {
+    "channel": "MBC3.ae",
+    "url": "https://i.imgur.com/PVt8OPN.png"
+  },
+  "MBC 4": {
+    "channel": "MBC4.ae",
+    "url": "https://i.imgur.com/BcXASJp.png"
+  },
+  "MBC 5": {
+    "channel": "MBC5.ae",
+    "url": "https://i.imgur.com/fRWaDyF.png"
+  },
+  "MBC ACTION": {
+    "channel": "MBCAction.ae",
+    "url": "https://i.imgur.com/OWZAghw.png"
+  },
+  "MBC BOLLYWOOD": {
+    "channel": "MBCBollywood.ae",
+    "url": "https://i.imgur.com/TTAGFHG.png"
+  },
+  "MBC IRAQ": {
+    "channel": "MBCIraq.iq",
+    "url": "https://i.imgur.com/D0LxiPE.png"
+  },
+  "MBC MAX": {
+    "channel": "MBCMax.sa",
+    "url": "https://i.imgur.com/A02CptP.png"
+  },
+  "MBC DRAMA": {
+    "channel": "MBCDrama.ae",
+    "url": "https://i.imgur.com/g5PWnqp.png"
+  },
+  "MBC DRAMA +": {
+    "channel": "MBCPlusDrama.sa",
+    "url": "https://i.imgur.com/lxWdjXG.png"
+  },
+  "MBC VARIETY": {
+    "channel": "MBCPlusVariety.ae",
+    "url": "https://i.imgur.com/SfA0YaR.png"
+  },
+  "MBC MASER": {
+    "channel": "MBCMasr.eg",
+    "url": "https://i.imgur.com/o2elx0u.png"
+  },
+  "MBC MASR 1": {
+    "channel": "MBCMasr.eg",
+    "url": "https://i.imgur.com/o2elx0u.png"
+  },
+  "MBC MASER 1": {
+    "channel": "MBCMasr.eg",
+    "url": "https://i.imgur.com/o2elx0u.png"
+  },
+  "MBC MASER 2": {
+    "channel": "MBCMasr2.eg",
+    "url": "https://i.imgur.com/KHo7Gtn.png"
+  },
+  "MBC MASR 2": {
+    "channel": "MBCMasr2.eg",
+    "url": "https://i.imgur.com/KHo7Gtn.png"
+  },
+  "MBC MASR DRAMA": {
+    "channel": "MBCMasrDrama.sa",
+    "url": "https://media0070.elcinema.com/tvguide/1399_1.png"
+  },
+  "SYRIA ONE": {
+    "channel": "SyriaOne.sy",
+    "url": "https://syriaone.tv/logo.png"
+  },
+  "SYRIAN EDUCATION": {
+    "channel": "SyrianEducationalTV.sy",
+    "url": "https://i.imgur.com/PrXBgQG.png"
+  },
+  "SYRIA ALIKHBARIA": {
+    "channel": "SyrianNewsChannel.sy",
+    "url": "https://i.imgur.com/G17eCq6.png"
+  },
+  "KARAMEESH": {
+    "channel": "Karameesh.jo",
+    "url": "https://i.imgur.com/Pld33CZ.png"
+  },
+  "TNT SPORTS 1": {
+    "channel": "TNTSports1.uk",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/united-kingdom/tnt-sports-1-uk.png"
+  },
+  "TNT SPORT 1": {
+    "channel": "TNTSports1.uk",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/united-kingdom/tnt-sports-1-uk.png"
+  },
+  "TNT SPORTS 2": {
+    "channel": "TNTSports2.uk",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/united-kingdom/tnt-sports-2-uk.png"
+  },
+  "TNT SPORT 2": {
+    "channel": "TNTSports2.uk",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/united-kingdom/tnt-sports-2-uk.png"
+  },
+  "TNT SPORTS 3": {
+    "channel": "TNTSports3.uk",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/united-kingdom/tnt-sports-3-uk.png"
+  },
+  "TNT SPORT 3": {
+    "channel": "TNTSports3.uk",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/united-kingdom/tnt-sports-3-uk.png"
+  },
+  "TNT SPORTS 4": {
+    "channel": "TNTSports4.uk",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/united-kingdom/tnt-sports-4-uk.png"
+  },
+  "TNT SPORT 4": {
+    "channel": "TNTSports4.uk",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/united-kingdom/tnt-sports-4-uk.png"
+  },
+  "TNT SPORTS 5": {
+    "channel": "TNTSports5.uk",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/united-kingdom/tnt-sports-5-uk.png"
+  },
+  "TNT SPORT 5": {
+    "channel": "TNTSports5.uk",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/united-kingdom/tnt-sports-5-uk.png"
+  },
+  "BEIN SPORTS 1": {
+    "channel": "beINSports1.qa",
+    "url": "https://i.imgur.com/Vtk2cGI.png"
+  },
+  "BEIN SPORT 1": {
+    "channel": "beINSports1.qa",
+    "url": "https://i.imgur.com/Vtk2cGI.png"
+  },
+  "BEIN SPORTS 2": {
+    "channel": "beINSports2.qa",
+    "url": "https://i.imgur.com/vUJZSvs.png"
+  },
+  "BEIN SPORT 2": {
+    "channel": "beINSports2.qa",
+    "url": "https://i.imgur.com/vUJZSvs.png"
+  },
+  "BEIN SPORTS 3": {
+    "channel": "beINSports3.qa",
+    "url": "https://i.imgur.com/UYSMao3.png"
+  },
+  "BEIN SPORT 3": {
+    "channel": "beINSports3.qa",
+    "url": "https://i.imgur.com/UYSMao3.png"
+  },
+  "BEIN SPORTS 4": {
+    "channel": "beINSports4.qa",
+    "url": "https://i.imgur.com/vwAgJNi.png"
+  },
+  "BEIN SPORT 4": {
+    "channel": "beINSports4.qa",
+    "url": "https://i.imgur.com/vwAgJNi.png"
+  },
+  "BEIN SPORTS 5": {
+    "channel": "beINSports5.qa",
+    "url": "https://i.imgur.com/2Rha5aY.png"
+  },
+  "BEIN SPORT 5": {
+    "channel": "beINSports5.qa",
+    "url": "https://i.imgur.com/2Rha5aY.png"
+  },
+  "BEIN SPORTS 6": {
+    "channel": "beINSports6.qa",
+    "url": "https://i.imgur.com/0wBdLYb.png"
+  },
+  "BEIN SPORT 6": {
+    "channel": "beINSports6.qa",
+    "url": "https://i.imgur.com/0wBdLYb.png"
+  },
+  "BEIN SPORTS 7": {
+    "channel": "beINSports7.qa",
+    "url": "https://i.imgur.com/iODFwZi.png"
+  },
+  "BEIN SPORT 7": {
+    "channel": "beINSports7.qa",
+    "url": "https://i.imgur.com/iODFwZi.png"
+  },
+  "BEIN SPORTS 8": {
+    "channel": "beINSports8.qa",
+    "url": "https://i.imgur.com/CaFEyVn.png"
+  },
+  "BEIN SPORT 8": {
+    "channel": "beINSports8.qa",
+    "url": "https://i.imgur.com/CaFEyVn.png"
+  },
+  "SKY SPORTS ARENA": {
+    "channel": "SkySportsArena.uk",
+    "url": "https://d2n0069hmnqmmx.cloudfront.net/epgdata/1.0/newchanlogos/512/512/skychb3839.png"
+  },
+  "SKYSPORT ARENA": {
+    "channel": "SkySportsArena.uk",
+    "url": "https://d2n0069hmnqmmx.cloudfront.net/epgdata/1.0/newchanlogos/512/512/skychb3839.png"
+  },
+  "SKY SPORTS F1": {
+    "channel": "SkySportsF1.uk",
+    "url": "https://d2n0069hmnqmmx.cloudfront.net/epgdata/1.0/newchanlogos/512/512/skychb1306.png"
+  },
+  "SKYSPORT F1": {
+    "channel": "SkySportsF1.uk",
+    "url": "https://d2n0069hmnqmmx.cloudfront.net/epgdata/1.0/newchanlogos/512/512/skychb1306.png"
+  },
+  "SKY SPORTS FOOTBALL": {
+    "channel": "SkySportsFootball.uk",
+    "url": "https://d2n0069hmnqmmx.cloudfront.net/epgdata/1.0/newchanlogos/512/512/skychb3838.png"
+  },
+  "SKYSPORT FOOTBALL": {
+    "channel": "SkySportsFootball.uk",
+    "url": "https://d2n0069hmnqmmx.cloudfront.net/epgdata/1.0/newchanlogos/512/512/skychb3838.png"
+  },
+  "SKY SPORTS GOLF": {
+    "channel": "SkySportsGolf.uk",
+    "url": "https://d2n0069hmnqmmx.cloudfront.net/epgdata/1.0/newchanlogos/512/512/skychb1322.png"
+  },
+  "SKYSPORT GOLF": {
+    "channel": "SkySportsGolf.uk",
+    "url": "https://d2n0069hmnqmmx.cloudfront.net/epgdata/1.0/newchanlogos/512/512/skychb1322.png"
+  },
+  "SKY SPORTS MAIN EVENT": {
+    "channel": "SkySportsMainEvent.uk",
+    "url": "https://d2n0069hmnqmmx.cloudfront.net/epgdata/1.0/newchanlogos/512/512/skychb1301.png"
+  },
+  "SKYSPORT MAIN EVENT": {
+    "channel": "SkySportsMainEvent.uk",
+    "url": "https://d2n0069hmnqmmx.cloudfront.net/epgdata/1.0/newchanlogos/512/512/skychb1301.png"
+  },
+  "SKY SPORTS NEWS": {
+    "channel": "SkySportsNews.uk",
+    "url": "https://d2n0069hmnqmmx.cloudfront.net/epgdata/1.0/newchanlogos/512/512/skychb1314.png"
+  },
+  "SKYSPORT NEWS": {
+    "channel": "SkySportsNews.uk",
+    "url": "https://d2n0069hmnqmmx.cloudfront.net/epgdata/1.0/newchanlogos/512/512/skychb1314.png"
+  },
+  "SKY SPORTS TENNIS": {
+    "channel": "SkySportsTennis.uk",
+    "url": "https://i.postimg.cc/nLCng5F3/Sky-Sports-Tennis.png"
+  },
+  "SKYSPORT TENNIS": {
+    "channel": "SkySportsTennis.uk",
+    "url": "https://i.postimg.cc/nLCng5F3/Sky-Sports-Tennis.png"
+  },
+  "SKY SPORTS CRICKET": {
+    "channel": "SkySportsCricket.uk",
+    "url": "https://d2n0069hmnqmmx.cloudfront.net/epgdata/1.0/newchanlogos/512/512/skychb1302.png"
+  },
+  "SKYSPORT CRICKET": {
+    "channel": "SkySportsCricket.uk",
+    "url": "https://d2n0069hmnqmmx.cloudfront.net/epgdata/1.0/newchanlogos/512/512/skychb1302.png"
+  },
+  "SKY SPORTS RACING": {
+    "channel": "SkySportsRacing.uk",
+    "url": "https://d2n0069hmnqmmx.cloudfront.net/epgdata/1.0/newchanlogos/512/512/skychb1354.png"
+  },
+  "SKYSPORT RACING": {
+    "channel": "SkySportsRacing.uk",
+    "url": "https://d2n0069hmnqmmx.cloudfront.net/epgdata/1.0/newchanlogos/512/512/skychb1354.png"
+  },
+  "SKY SPORTS PREMIER LEAGUE": {
+    "channel": "SkySportsPremierLeague.uk",
+    "url": "https://d2n0069hmnqmmx.cloudfront.net/epgdata/1.0/newchanlogos/512/512/skychb1303.png"
+  },
+  "SKYSPORT PREMIER LEAGUE": {
+    "channel": "SkySportsPremierLeague.uk",
+    "url": "https://d2n0069hmnqmmx.cloudfront.net/epgdata/1.0/newchanlogos/512/512/skychb1303.png"
+  },
+  "SKY SPORTS MIX": {
+    "channel": "SkySportsMix.uk",
+    "url": "https://d2n0069hmnqmmx.cloudfront.net/epgdata/1.0/newchanlogos/512/512/skychb4091.png"
+  },
+  "SKYSPORT MIX": {
+    "channel": "SkySportsMix.uk",
+    "url": "https://d2n0069hmnqmmx.cloudfront.net/epgdata/1.0/newchanlogos/512/512/skychb4091.png"
+  },
+  "AR:ASHARQ": {
+    "channel": "AsharqNews.sa",
+    "url": "https://i.imgur.com/bqRC3sl.png"
+  },
+  "AR:ALJAZEERA": {
+    "channel": "AlJazeera.qa",
+    "url": "https://upload.wikimedia.org/wikipedia/ms/thumb/f/f2/Aljazeera_eng.svg/500px-Aljazeera_eng.svg.png"
+  },
+  "AR:ALJAZEERA 2": {
+    "channel": "AlJazeera2.qa",
+    "url": "https://i.imgur.com/miq8O1Q.png"
+  },
+  "AR:ALARABIA": {
+    "channel": "Alarabiya.ae",
+    "url": "https://xstreamcp-assets-msp.streamready.in/assets/DISTROTV/LIVECHANNEL/6669896cbac4421ebc5336c5/images/logo_20240610_195041_59.png"
+  },
+  "AR:ALARABIYA ALHADATH": {
+    "channel": "AlHadath.sa",
+    "url": "https://i.imgur.com/De4SEWE.png"
+  },
+  "AR:AL ARABIYA BUSINESS": {
+    "channel": "AlArabiyaBusiness.ae",
+    "url": "https://shahid.mbc.net/mediaObject/73142189-aeca-4f65-8977-d769c91e2573?height=auto&width=600&croppingPoint=&version=1&type=png"
+  },
+  "AR:ALGHAD": {
+    "channel": "AlGhadTV.eg",
+    "url": "https://i.imgur.com/ga6NXb9.png"
+  },
+  "AR:DW ARABIC": {
+    "channel": "DW.de",
+    "url": "https://i.imgur.com/2CMfAlD.png"
+  },
+  "AR:FRANCE 24 ENG": {
+    "channel": "France24.fr",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/22/Estrella_TV_Logo_2020.png/500px-Estrella_TV_Logo_2020.png"
+  },
+  "AR:SKY NEWS": {
+    "channel": "SkyNewsArabia.ae",
+    "url": "https://i.imgur.com/SvjU4h6.png"
+  },
+  "AR:ALJAZEERA MUBASHER": {
+    "channel": "AlJazeeraMubasher.qa",
+    "url": "https://i.imgur.com/X80DQvF.png"
+  },
+  "AR:AL ARABIYA PROGRAMS": {
+    "channel": "AlArabiyaPrograms.ae",
+    "url": "https://i.imgur.com/Hoc3cfO.png"
+  },
+  "AR:FRANCE 24 AR": {
+    "channel": "France24.fr",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/22/Estrella_TV_Logo_2020.png/500px-Estrella_TV_Logo_2020.png"
+  },
+  "AR:CNBC ARABIYA": {
+    "channel": "CNBCArabiya.ae",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/CNBC_Arabia_2025.svg/960px-CNBC_Arabia_2025.svg.png"
+  },
+  "AR:ABU DHABI": {
+    "channel": "AbuDhabiTV.ae",
+    "url": "https://i.imgur.com/8DAriPs.png"
+  },
+  "AR:DUBAI ZAMAN": {
+    "channel": "DubaiZaman.ae",
+    "url": "https://www.dubaizaman.ae/content/dam/Common/brands1/dubai-zaman.png"
+  },
+  "AR:DUBAI ONE": {
+    "channel": "DubaiOne.ae",
+    "url": "https://www.dmi.gov.ae/content/dam/corporate/dev/2023/elogos-en/dubaione-logo.png"
+  },
+  "AR:DUBAI TV": {
+    "channel": "DubaiTV.ae",
+    "url": "https://i.imgur.com/UMmbyHv.png"
+  },
+  "AR:DUBAI SAMA": {
+    "channel": "SamaDubai.ae",
+    "url": "https://i.imgur.com/F5g3ymW.png"
+  },
+  "AR:DUBAI RACING 2": {
+    "channel": "DubaiRacing2.ae",
+    "url": "https://i.imgur.com/H2TTn7t.png"
+  },
+  "AR:DUBAI RACING 3": {
+    "channel": "DubaiRacing3.ae",
+    "url": "https://i.imgur.com/Vg4fxmc.png"
+  },
+  "AR:DUBAI SPORT 1": {
+    "channel": "DubaiSports1.ae",
+    "url": "https://i.imgur.com/Poxw8lG.png"
+  },
+  "AR:DUBAI SPORT 2": {
+    "channel": "DubaiSports2.ae",
+    "url": "https://i.imgur.com/PMJ7Zmo.png"
+  },
+  "AR:DUBAI SPORT 3": {
+    "channel": "DubaiSports3.ae",
+    "url": "https://i.imgur.com/U0A8Gex.png"
+  },
+  "AR:MTV": {
+    "channel": "MTVLebanon.lb",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/7/75/Murr_tv.png"
+  },
+  "AR:AL JADEED": {
+    "channel": "AlJadeed.lb",
+    "url": "https://i.imgur.com/CfxR8o3.png"
+  },
+  "AR:LBC INTERNATIONAL": {
+    "channel": "LBCInternational.lb",
+    "url": "https://i.imgur.com/h26xtUv.png"
+  },
+  "AR:NBN": {
+    "channel": "NBN.lb",
+    "url": "https://i.imgur.com/EefFcIk.png"
+  },
+  "AR:DMC": {
+    "channel": "DMC.eg",
+    "url": "https://i.imgur.com/iy70Xxr.png"
+  },
+  "AR:ON E": {
+    "channel": "OnE.eg",
+    "url": "https://i.imgur.com/EPln9yU.png"
+  },
+  "AR:ON E TV": {
+    "channel": "OnE.eg",
+    "url": "https://i.imgur.com/EPln9yU.png"
+  },
+  "AR:ROYA": {
+    "channel": "RoyaTV.jo",
+    "url": "https://i.imgur.com/WX80rty.png"
+  },
+  "AR:ROYA NEWS": {
+    "channel": "RoyaNews.jo",
+    "url": "https://i.imgur.com/afowXIe.png"
+  },
+  "AR:SAMARRA TV": {
+    "channel": "SamarraTV.iq",
+    "url": "https://i.imgur.com/7uQoIXi.png"
+  },
+  "AR:ROYA TV PLUS": {
+    "channel": "RoyaTV.jo",
+    "url": "https://i.imgur.com/WX80rty.png"
+  },
+  "AR:ROYA DRAMA": {
+    "channel": "RoyaDrama.jo",
+    "url": "https://i.imgur.com/V7I0MVf.png"
+  },
+  "AR:ROYA COMEDY": {
+    "channel": "RoyaComedy.jo",
+    "url": "https://i.imgur.com/oIThcM8.png"
+  },
+  "AR:ALMAMLAKA TV": {
+    "channel": "AlMamlakaTV.jo",
+    "url": "https://i.imgur.com/UeTseMV.png"
+  },
+  "AR:ROYA KITCHEN": {
+    "channel": "RoyaKitchen.jo",
+    "url": "https://i.imgur.com/lWfh8pP.png"
+  },
+  "AR:JADEED": {
+    "channel": "AlJadeed.lb",
+    "url": "https://i.imgur.com/CfxR8o3.png"
+  },
+  "AR:CBC EXTRA NEWS": {
+    "channel": "ExtraNews.eg",
+    "url": "https://i.imgur.com/9HREF7o.png"
+  },
+  "AR:CBC": {
+    "channel": "CBC.eg",
+    "url": "https://i.imgur.com/8apNaLP.png"
+  },
+  "AR:CBC SOFRA": {
+    "channel": "CBCSofra.eg",
+    "url": "https://i.imgur.com/YAdk2WR.png"
+  },
+  "AR:ON DRAMA": {
+    "channel": "OnDrama.eg",
+    "url": "https://i.imgur.com/qpaKDtL.png"
+  },
+  "AR:ROYA KIDS ORIGINALS": {
+    "channel": "RoyaKidsOriginals.jo",
+    "url": "https://i.imgur.com/acuCGF8.png"
+  },
+  "AR:ROTANA AFLAM +": {
+    "channel": "RotanaAflamPlus.sa",
+    "url": "https://i.imgur.com/DLDfFpu.png"
+  },
+  "AR:ROTANA DRAMA": {
+    "channel": "RotanaDrama.sa",
+    "url": "https://i.imgur.com/btnhPjZ.png"
+  },
+  "AR:ROTANA CLASSIC": {
+    "channel": "RotanaClassic.sa",
+    "url": "https://i.imgur.com/pMMUvkt.png"
+  },
+  "AR:ROTANA COMEDY": {
+    "channel": "RotanaComedy.sa",
+    "url": "https://i.imgur.com/IlT8U6S.png"
+  },
+  "AR:ART CINEMA": {
+    "channel": "ARTCinema.sa",
+    "url": "https://i.imgur.com/urnaqiu.png"
+  },
+  "AR:ART AFLAM 1": {
+    "channel": "ARTAflam1.sa",
+    "url": "https://i.imgur.com/aeY4ax8.png"
+  },
+  "AR:ART AFLAM 2": {
+    "channel": "ARTAflam2.sa",
+    "url": "https://i.imgur.com/icE2WOw.png"
+  },
+  "AR:ART HEKAYAT 1": {
+    "channel": "ARTHekayat.sa",
+    "url": "https://i.imgur.com/kzNnSoV.png"
+  },
+  "AR:ART HEKAYAT 2": {
+    "channel": "ARTHekayat2.sa",
+    "url": "https://i.imgur.com/EfzfrOL.png"
+  },
+  "AR:CBC DRAMA": {
+    "channel": "CBCDrama.eg",
+    "url": "https://i.imgur.com/I8YdakH.png"
+  },
+  "AR:DMC DRAMA": {
+    "channel": "DMCDrama.eg",
+    "url": "https://i.imgur.com/OOXylJI.png"
+  },
+  "AR:MAJID": {
+    "channel": "Majid.ae",
+    "url": "https://i.imgur.com/TzOKMMy.png"
+  },
+  "AR:MAJED": {
+    "channel": "Majid.ae",
+    "url": "https://i.imgur.com/TzOKMMy.png"
+  },
+  "AR:TOYOR ALJANAH": {
+    "channel": "ToyorAlJannah.jo",
+    "url": "https://i.imgur.com/5j8z6cc.png"
+  },
+  "AR:SPACETOON": {
+    "channel": "SpacetoonArabic.ae",
+    "url": "https://upload.wikimedia.org/wikipedia/en/2/2b/Spacetoon_logo.png"
+  },
+  "AR:BARAEM": {
+    "channel": "Baraem.qa",
+    "url": "https://i.imgur.com/7woV4Cz.png"
+  },
+  "AR:JEEM": {
+    "channel": "JeemTV.qa",
+    "url": "https://i.imgur.com/dvCrNQ8.png"
+  },
+  "AR:HODHOD TV": {
+    "channel": "HodHodArabicTV.ir",
+    "url": "https://i.imgur.com/UGu9xGP.png"
+  },
+  "AR:BEIN BARAEM KIDS": {
+    "channel": "Baraem.qa",
+    "url": "https://i.imgur.com/7woV4Cz.png"
+  },
+  "AR:BEIN SPORTS NBA": {
+    "channel": "beINSportsNBA.qa",
+    "url": "https://i.imgur.com/QmSc6kh.png"
+  },
+  "AR:BEIN SPORTS XTRA 1": {
+    "channel": "beINSportsXtra1.qa",
+    "url": "https://i.imgur.com/O9lTxQA.png"
+  },
+  "AR:BEIN SPORTS XTRA 2": {
+    "channel": "beINSportsXtra2.qa",
+    "url": "https://i.imgur.com/08Y2CW1.png"
+  },
+  "AR:AL KASS 1": {
+    "channel": "AlkassOne.qa",
+    "url": "https://i.imgur.com/10mmlha.png"
+  },
+  "AR:AL KASS 2": {
+    "channel": "AlkassTwo.qa",
+    "url": "https://i.imgur.com/8w61kFX.png"
+  },
+  "AR:AL KASS 3": {
+    "channel": "AlkassThree.qa",
+    "url": "https://i.imgur.com/d57BdFh.png"
+  },
+  "AR:AL KASS 4": {
+    "channel": "AlkassFour.qa",
+    "url": "https://i.imgur.com/iDL65Wu.png"
+  },
+  "AR:AL KASS 5": {
+    "channel": "AlkassFive.qa",
+    "url": "https://i.imgur.com/6RGNGsM.png"
+  },
+  "AR:BEIN SPORTS NEWS": {
+    "channel": "beINSportsNews.qa",
+    "url": "https://i.imgur.com/ZNjQzR5.png"
+  },
+  "AR:THMANYAH 1": {
+    "channel": "Thmanyah1.sa",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/Thmanyah_Logo.svg/500px-Thmanyah_Logo.svg.png"
+  },
+  "AR:THMANYAH 2": {
+    "channel": "Thmanyah2.sa",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/Thmanyah_Logo.svg/500px-Thmanyah_Logo.svg.png"
+  },
+  "AR:BEIN ALKASS 1": {
+    "channel": "AlkassOne.qa",
+    "url": "https://i.imgur.com/10mmlha.png"
+  },
+  "AR:BEIN ALKASS 2": {
+    "channel": "AlkassTwo.qa",
+    "url": "https://i.imgur.com/8w61kFX.png"
+  },
+  "AR:BEIN ALKASS 4": {
+    "channel": "AlkassFour.qa",
+    "url": "https://i.imgur.com/iDL65Wu.png"
+  },
+  "AR:AL KASS SPORTS1": {
+    "channel": "AlkassOne.qa",
+    "url": "https://i.imgur.com/10mmlha.png"
+  },
+  "AR:AL KASS 6": {
+    "channel": "AlkassSix.qa",
+    "url": "https://i.imgur.com/CrPSPSC.png"
+  },
+  "AR:BEIN ALKASS 3": {
+    "channel": "AlkassThree.qa",
+    "url": "https://i.imgur.com/d57BdFh.png"
+  },
+  "AR:BEIN ALKASS 5": {
+    "channel": "AlkassFive.qa",
+    "url": "https://i.imgur.com/6RGNGsM.png"
+  },
+  "AR:AL KASS SPORTS2": {
+    "channel": "AlkassTwo.qa",
+    "url": "https://i.imgur.com/8w61kFX.png"
+  },
+  "AR:AL KASS SPORTS3": {
+    "channel": "AlkassThree.qa",
+    "url": "https://i.imgur.com/d57BdFh.png"
+  },
+  "AR:AL KASS SPORTS4": {
+    "channel": "AlkassFour.qa",
+    "url": "https://i.imgur.com/iDL65Wu.png"
+  },
+  "AR:AL KASS SPORTS5": {
+    "channel": "AlkassFive.qa",
+    "url": "https://i.imgur.com/6RGNGsM.png"
+  },
+  "AR:AL KASS SPORTS 1": {
+    "channel": "AlkassOne.qa",
+    "url": "https://i.imgur.com/10mmlha.png"
+  },
+  "AR:AL KASS SPORTS 2": {
+    "channel": "AlkassTwo.qa",
+    "url": "https://i.imgur.com/8w61kFX.png"
+  },
+  "AR:AL KASS SPORTS 3": {
+    "channel": "AlkassThree.qa",
+    "url": "https://i.imgur.com/d57BdFh.png"
+  },
+  "AR:AL KASS SPORTS 4": {
+    "channel": "AlkassFour.qa",
+    "url": "https://i.imgur.com/iDL65Wu.png"
+  },
+  "AR:AL KASS SPORTS6 LIVE EVENTS": {
+    "channel": "AlkassSix.qa",
+    "url": "https://i.imgur.com/CrPSPSC.png"
+  },
+  "AR:AL KASS SPORTS7 LIVE EVENTS": {
+    "channel": "AlkassSeven.qa",
+    "url": "https://i.imgur.com/3eyHP3S.png"
+  },
+  "AR:ALKASS 1": {
+    "channel": "AlkassOne.qa",
+    "url": "https://i.imgur.com/10mmlha.png"
+  },
+  "AR:ALKASS 2": {
+    "channel": "AlkassTwo.qa",
+    "url": "https://i.imgur.com/8w61kFX.png"
+  },
+  "AR:ALKASS 3": {
+    "channel": "AlkassThree.qa",
+    "url": "https://i.imgur.com/d57BdFh.png"
+  },
+  "AR:ALKASS 4": {
+    "channel": "AlkassFour.qa",
+    "url": "https://i.imgur.com/iDL65Wu.png"
+  },
+  "AR:KASS 1": {
+    "channel": "AlkassOne.qa",
+    "url": "https://i.imgur.com/10mmlha.png"
+  },
+  "AR:KASS 2": {
+    "channel": "AlkassTwo.qa",
+    "url": "https://i.imgur.com/8w61kFX.png"
+  },
+  "AR:KASS 3": {
+    "channel": "AlkassThree.qa",
+    "url": "https://i.imgur.com/d57BdFh.png"
+  },
+  "AR:KASS 4": {
+    "channel": "AlkassFour.qa",
+    "url": "https://i.imgur.com/iDL65Wu.png"
+  },
+  "CA:CITY TV": {
+    "channel": "Citytv.ca",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9e/Citytv_logo.svg/960px-Citytv_logo.svg.png"
+  },
+  "CA:CTV SCI-FI": {
+    "channel": "CTVSciFiChannel.ca",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/78/CTV_Sci-Fi_Channel_2019.svg/960px-CTV_Sci-Fi_Channel_2019.svg.png"
+  },
+  "CA:CP 24 TV": {
+    "channel": "CP24.ca",
+    "url": "https://i.imgur.com/YzjZUEl.png"
+  },
+  "CA:CTV2 ATLANTIC": {
+    "channel": "CTV2Atlantic.ca",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/CTV_2_2018.svg/960px-CTV_2_2018.svg.png"
+  },
+  "CA:TVO KIDS": {
+    "channel": "TVOKids.ca",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d5/Tvokids-logo.svg/960px-Tvokids-logo.svg.png"
+  },
+  "CA:GLOBAL NEWS": {
+    "channel": "GlobalNews.ca",
+    "url": "https://i.imgur.com/xk1QOhW.png"
+  },
+  "CA:CTV NEWS": {
+    "channel": "CTVNewsChannel.ca",
+    "url": "https://i.imgur.com/pRscvrp.png"
+  },
+  "CA:CP24 TV": {
+    "channel": "CP24.ca",
+    "url": "https://i.imgur.com/YzjZUEl.png"
+  },
+  "CA:CTV COMEDY CHANNEL": {
+    "channel": "CTVComedyChannel.ca",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/CTV_Comedy_Channel_2019.svg/960px-CTV_Comedy_Channel_2019.svg.png"
+  },
+  "CA:CTV LIFE": {
+    "channel": "CTVLifeChannel.ca",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ed/CTV_Life_Channel_2019.svg/500px-CTV_Life_Channel_2019.svg.png"
+  },
+  "EN:SKY NEWS": {
+    "channel": "SkyNews.uk",
+    "url": "https://d2n0069hmnqmmx.cloudfront.net/epgdata/1.0/newchanlogos/512/512/skychb1404.png"
+  },
+  "EN:BBC NEWS": {
+    "channel": "BBCNews.uk",
+    "url": "https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_BBC_NEWS/images/LOGO_HD/image.png"
+  },
+  "EN:CNN": {
+    "channel": "CNN.us",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b1/CNN.svg/960px-CNN.svg.png"
+  },
+  "EN:CNN INTERNATIONAL": {
+    "channel": "CNNInternational.us",
+    "url": "https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_CNN_INTERNATIONAL/images/LOGO_HD/image.png"
+  },
+  "EN:CNN EN ESPANOL": {
+    "channel": "CNNenEspanol.us",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b6/Logo_de_CNN_en_Espa%C3%B1ol_%282010-2015%29.svg/960px-Logo_de_CNN_en_Espa%C3%B1ol_%282010-2015%29.svg.png"
+  },
+  "EN:BBC WORLD NEWS": {
+    "channel": "BBCNews.uk",
+    "url": "https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_BBC_NEWS/images/LOGO_HD/image.png"
+  },
+  "EN:NBC NEWS NOW": {
+    "channel": "NBCNewsNOW.us",
+    "url": "https://provider-static.plex.tv/7/epg/channels/logos/gracenote/713ea11a46bcb609bc91c386c29076e6.png"
+  },
+  "EN:BBC ONE NEWS": {
+    "channel": "BBCNews.uk",
+    "url": "https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_BBC_NEWS/images/LOGO_HD/image.png"
+  },
+  "EN:ABC NEWS": {
+    "channel": "ABCNewsLive.us",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/63/ABC_News_Live_logo_2021.svg/960px-ABC_News_Live_logo_2021.svg.png"
+  },
+  "EN:CBS NEWS": {
+    "channel": "CBSNews247.us",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b0/CBS_News_247_logo.svg/960px-CBS_News_247_logo.svg.png"
+  },
+  "EN:FOX NEWS": {
+    "channel": "FoxNewsChannel.us",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/Fox_News_Channel_logo.svg/960px-Fox_News_Channel_logo.svg.png"
+  },
+  "EN:CBSN NEWS": {
+    "channel": "CBSNews247.us",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b0/CBS_News_247_logo.svg/960px-CBS_News_247_logo.svg.png"
+  },
+  "EN:CBBC BBC 4": {
+    "channel": "CBBC.uk",
+    "url": "https://i.imgur.com/tk8G4CU.png"
+  },
+  "EN:CBBC": {
+    "channel": "CBBC.uk",
+    "url": "https://i.imgur.com/tk8G4CU.png"
+  },
+  "EN:CARTOON NETWORK": {
+    "channel": "CartoonNetwork.uk",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/80/Cartoon_Network_2010_logo.svg/960px-Cartoon_Network_2010_logo.svg.png"
+  },
+  "EN:CARTOONITO": {
+    "channel": "Cartoonito.uk",
+    "url": "https://i.imgur.com/B29D2s1.png"
+  },
+  "EN:BOOMERANG": {
+    "channel": "EN:BOOMERANG",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/united-kingdom/boomerang-uk.png"
+  },
+  "EN:CBEEBIES": {
+    "channel": "CBeebies.uk",
+    "url": "https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_CBEEBIES/images/LOGO_HD/image.png"
+  },
+  "EN:PBS KIDS": {
+    "channel": "PBSKids.us",
+    "url": "https://i.imgur.com/fg8c9WK.png"
+  },
+  "EN:NICK JR": {
+    "channel": "NickJr.us",
+    "url": "https://i.imgur.com/KT4tdQs.png"
+  },
+  "EN:NICKTOONS": {
+    "channel": "EN:NICKTOONS",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/united-kingdom/nick-toons-uk.png"
+  },
+  "EN:BBC 3 CBBC": {
+    "channel": "CBBC.uk",
+    "url": "https://i.imgur.com/tk8G4CU.png"
+  },
+  "EN:BBC 4 CBEEBIES": {
+    "channel": "CBeebies.uk",
+    "url": "https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_CBEEBIES/images/LOGO_HD/image.png"
+  },
+  "EN:BBC CBBC": {
+    "channel": "CBBC.uk",
+    "url": "https://i.imgur.com/tk8G4CU.png"
+  },
+  "EN:NICK": {
+    "channel": "Nickelodeon.uk",
+    "url": "https://i.imgur.com/E84jnP8.png"
+  },
+  "EN:DISNEY JUNIOR": {
+    "channel": "DisneyJunior.us",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/2024_Disney_Jr._Logo.svg/960px-2024_Disney_Jr._Logo.svg.png"
+  },
+  "EN:NICKELODEON": {
+    "channel": "Nickelodeon.us",
+    "url": "https://i.imgur.com/E84jnP8.png"
+  },
+  "EN:DISNEY CHANNEL": {
+    "channel": "DisneyChannel.us",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/ff/2024_Disney_Channel_text_logo.svg/960px-2024_Disney_Channel_text_logo.svg.png"
+  },
+  "EN:DISNEY XD": {
+    "channel": "DisneyXD.us",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a8/2015_Disney_XD_logo.svg/960px-2015_Disney_XD_logo.svg.png"
+  },
+  "EN:NICK (KIDS)": {
+    "channel": "Nickelodeon.us",
+    "url": "https://i.imgur.com/E84jnP8.png"
+  },
+  "EN:TEENNICK": {
+    "channel": "TeenNick.us",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/TeenNick_logo_2023_%28outline%29.svg/1280px-TeenNick_logo_2023_%28outline%29.svg.png"
+  },
+  "EN:NICK MUSIC": {
+    "channel": "NickMusic.us",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c7/NickMusic.svg/960px-NickMusic.svg.png"
+  },
+  "EN:SKY NICK JR": {
+    "channel": "EN:SKY NICK JR",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/united-kingdom/nick-jr-uk.png"
+  },
+  "EN:SKY NICKTOONS": {
+    "channel": "EN:SKY NICKTOONS",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/united-kingdom/nick-toons-uk.png"
+  },
+  "EN:SKY NICK": {
+    "channel": "Nickelodeon.uk",
+    "url": "https://i.imgur.com/E84jnP8.png"
+  },
+  "EN:SKY CINEMA PREMIER": {
+    "channel": "SkyCinemaPremiere.uk",
+    "url": "https://i.imgur.com/Di39qLn.png"
+  },
+  "EN:SKY CINEMA PREMIERE": {
+    "channel": "SkyCinemaPremiere.uk",
+    "url": "https://i.imgur.com/Di39qLn.png"
+  },
+  "EN:SKY CINEMA HITS": {
+    "channel": "SkyCinemaHits.uk",
+    "url": "https://i.imgur.com/6qYnSaA.png"
+  },
+  "EN:SKY CINEMA FAMILY": {
+    "channel": "SkyCinemaFamily.uk",
+    "url": "https://i.imgur.com/vKZSotN.png"
+  },
+  "EN:SKY CINEMA COMEDY": {
+    "channel": "SkyCinemaComedy.uk",
+    "url": "https://i.imgur.com/Gd9DuRH.png"
+  },
+  "EN:SKY CINEMA ACTION": {
+    "channel": "SkyCinemaAction.uk",
+    "url": "https://i.imgur.com/2JjZG7g.png"
+  },
+  "EN:SKY CINEMA DRAMA": {
+    "channel": "SkyCinemaDrama.uk",
+    "url": "https://i.imgur.com/bCVpVKE.png"
+  },
+  "EN:SKY CINEMA SCI-FI": {
+    "channel": "SkyCinemaSciFi.uk",
+    "url": "https://d2n0069hmnqmmx.cloudfront.net/epgdata/1.0/newchanlogos/512/512/skychb2505.png"
+  },
+  "EN:SKY CINEMA SCIFI & HORROR": {
+    "channel": "SkyCinemaSciFiHorror.uk",
+    "url": "https://upload.wikimedia.org/wikipedia/en/thumb/a/a2/Sky_Cinema_Sci-Fi_Horror_%28television_channel%29.svg/960px-Sky_Cinema_Sci-Fi_Horror_%28television_channel%29.svg.png"
+  },
+  "EN:SKY CINEMA THRILLER": {
+    "channel": "SkyCinemaThriller.uk",
+    "url": "https://i.imgur.com/4Z1oKde.png"
+  },
+  "EN:SKY CINEMA GREATS": {
+    "channel": "SkyCinemaGreats.uk",
+    "url": "https://i.imgur.com/ssalgh1.png"
+  },
+  "EN:SKY CINEMA ANIMATION": {
+    "channel": "SkyCinemaAnimation.uk",
+    "url": "https://i.imgur.com/oWQ5qan.png"
+  },
+  "EN:SKY CINEMA SELECT/OSCARS": {
+    "channel": "SkyCinemaSelect.uk",
+    "url": "https://i.imgur.com/l97n20v.png"
+  },
+  "EN:SKY COMEDY": {
+    "channel": "SkyComedy.uk",
+    "url": "https://upload.wikimedia.org/wikipedia/en/thumb/f/f0/Sky_Comedy_logo_2020.svg/960px-Sky_Comedy_logo_2020.svg.png"
+  },
+  "EN:HBO 2": {
+    "channel": "HBO2.ca",
+    "url": "https://i.imgur.com/OjisgE1.png"
+  },
+  "EN:DISCOVERY SCIENCE": {
+    "channel": "DiscoveryScience.us",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8b/Discovery_science_new_logo_2017.png/960px-Discovery_science_new_logo_2017.png"
+  },
+  "EN:AMC": {
+    "channel": "AMC.us",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/34/AMC_logo_2019.svg/960px-AMC_logo_2019.svg.png"
+  },
+  "EN:AMC PLUS": {
+    "channel": "AMCPlus.us",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/AMC%2B_logo.png/960px-AMC%2B_logo.png"
+  },
+  "EN:INVESTIGATION DISCOVERY ID": {
+    "channel": "InvestigationDiscovery.us",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/InvestigationDiscoveryLogo2020.svg/960px-InvestigationDiscoveryLogo2020.svg.png"
+  },
+  "EN:DISCOVERY FAMILY": {
+    "channel": "DiscoveryFamily.us",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/1/1c/Discovery_Family_Channel_%28DFC%29.png"
+  },
+  "EN:HBO PACIFIC": {
+    "channel": "HBO.us",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/de/HBO_logo.svg/960px-HBO_logo.svg.png"
+  },
+  "EN:SKY CINEMA SELECT": {
+    "channel": "SkyCinemaSelect.uk",
+    "url": "https://i.imgur.com/l97n20v.png"
+  },
+  "EN:CRAVE 1": {
+    "channel": "Crave1.ca",
+    "url": "https://i.imgur.com/ZkRQ0r1.png"
+  },
+  "EN:CRAVE 2": {
+    "channel": "Crave2.ca",
+    "url": "https://i.imgur.com/e1qJ5Bp.png"
+  },
+  "EN:CRAVE 3": {
+    "channel": "Crave3.ca",
+    "url": "https://i.imgur.com/kOi0Adn.png"
+  },
+  "EN:CRAVE 4": {
+    "channel": "Crave4.ca",
+    "url": "https://i.imgur.com/MyH3Q2p.png"
+  },
+  "EN:COMEDY CENTRAL": {
+    "channel": "ComedyCentral.uk",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/aa/Comedy_Central_2018.svg/960px-Comedy_Central_2018.svg.png"
+  },
+  "EN:PARAMOUNT": {
+    "channel": "EN:PARAMOUNT",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/united-kingdom/paramount-network-uk.png"
+  },
+  "EN:HBO EAST": {
+    "channel": "HBO.us",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/de/HBO_logo.svg/960px-HBO_logo.svg.png"
+  },
+  "EN:HBO 2 EAST": {
+    "channel": "HBO2.us",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/HBO_2_%282014%29.svg/960px-HBO_2_%282014%29.svg.png"
+  },
+  "EN:HBO 2 WEST": {
+    "channel": "HBO2.us",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/HBO_2_%282014%29.svg/960px-HBO_2_%282014%29.svg.png"
+  },
+  "EN:MOVIETIME": {
+    "channel": "MovieTime.ca",
+    "url": "https://upload.wikimedia.org/wikipedia/en/thumb/1/1b/Movietime.svg/960px-Movietime.svg.png"
+  },
+  "EN:HBO 1": {
+    "channel": "HBO1.ca",
+    "url": "https://i.imgur.com/2pD6eN6.png"
+  },
+  "EN:DISCOVERY CHANNEL": {
+    "channel": "EN:DISCOVERY CHANNEL",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/united-kingdom/discovery-channel-uk.png"
+  },
+  "EN:HBO": {
+    "channel": "HBO.us",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/de/HBO_logo.svg/960px-HBO_logo.svg.png"
+  },
+  "EN:PARAMOUNT NETWORK": {
+    "channel": "ParamountNetwork.us",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Paramount_Network.svg/960px-Paramount_Network.svg.png"
+  },
+  "EN:DISCOVERY LIFE": {
+    "channel": "DiscoveryLife.us",
+    "url": "https://i.imgur.com/ObPFgT8.png"
+  },
+  "EN:HBO COMEDY": {
+    "channel": "HBOComedy.us",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/34/HBO_Comedy_%282014%29.svg/960px-HBO_Comedy_%282014%29.svg.png"
+  },
+  "EN:HBO FAMILY": {
+    "channel": "HBOFamily.us",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/22/HBO_Family.svg/960px-HBO_Family.svg.png"
+  },
+  "EN:HBO LATIN": {
+    "channel": "HBOLatino.us",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e6/HBO_Latino_%282014%29.svg/960px-HBO_Latino_%282014%29.svg.png"
+  },
+  "EN:HBO SIGNATURE": {
+    "channel": "HBOSignature.us",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/HBO_Signature_%282014%29.svg/960px-HBO_Signature_%282014%29.svg.png"
+  },
+  "EN:HBO ZONE": {
+    "channel": "HBOZone.us",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6a/HBO_Zone_%282014%29.svg/960px-HBO_Zone_%282014%29.svg.png"
+  },
+  "EN:SHOWTIME SHOWCASE": {
+    "channel": "ShowtimeShowcase.us",
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4d/Showtime_Showcase.svg/960px-Showtime_Showcase.svg.png"
+  },
+  "EN:STARZ COMEDY": {
+    "channel": "StarzComedy.us",
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/32/Starz_Comedy_Logo_2022.svg/960px-Starz_Comedy_Logo_2022.svg.png"
+  },
+  "EN:DISCOVERY HISTORY": {
+    "channel": "DiscoveryHistory.uk",
+    "url": "https://d2n0069hmnqmmx.cloudfront.net/epgdata/1.0/newchanlogos/512/512/skychb2407.png"
+  },
+  "EN:DISCOVERY TURBO": {
+    "channel": "DiscoveryTurbo.uk",
+    "url": "https://d2n0069hmnqmmx.cloudfront.net/epgdata/1.0/newchanlogos/512/512/skychb2409.png"
+  },
+  "EN:DISCOVERY": {
+    "channel": "EN:DISCOVERY",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/united-kingdom/discovery-channel-uk.png"
+  },
+  "EN:SKY SHOWCASE": {
+    "channel": "SkyShowcase.uk",
+    "url": "https://d2n0069hmnqmmx.cloudfront.net/epgdata/1.0/newchanlogos/512/512/skychb1276.png"
+  },
+  "EN:TSN 1": {
+    "channel": "TSN1.ca",
+    "url": "https://i.imgur.com/eRFE0jZ.png"
+  },
+  "EN:TSN 5": {
+    "channel": "TSN5.ca",
+    "url": "https://i.imgur.com/HEzHpzz.png"
+  },
+  "EN:SKY SPORT UNO": {
+    "channel": "SkySportUno.it",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/af/Sky_Sport_Uno_-_Logo_2020.svg/960px-Sky_Sport_Uno_-_Logo_2020.svg.png"
+  },
+  "EN:SKY SPORT CALCIO": {
+    "channel": "SkySportCalcio.it",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/Sky_Sport_Calcio.svg/960px-Sky_Sport_Calcio.svg.png"
+  },
+  "EN:SKY SPORT 24": {
+    "channel": "EN:SKY SPORT 24",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/italy/sky-sport-24-it.png"
+  },
+  "EN:SKY SPORT F1": {
+    "channel": "EN:SKY SPORT F1",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/italy/sky-sport-f1-it.png"
+  },
+  "EN:SKY SPORT MOTOGP": {
+    "channel": "SkySportMotoGP.it",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/Sky_Sport_MotoGP_-_Logo_2020.svg/960px-Sky_Sport_MotoGP_-_Logo_2020.svg.png"
+  },
+  "EN:SKY SPORT MOTO GP": {
+    "channel": "SkySportMotoGP.it",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/Sky_Sport_MotoGP_-_Logo_2020.svg/960px-Sky_Sport_MotoGP_-_Logo_2020.svg.png"
+  },
+  "EN:TSN 4": {
+    "channel": "TSN4.ca",
+    "url": "https://i.imgur.com/qJyAWU8.png"
+  },
+  "EN:SKYSPORT PL": {
+    "channel": "SkySportsPremierLeague.uk",
+    "url": "https://d2n0069hmnqmmx.cloudfront.net/epgdata/1.0/newchanlogos/512/512/skychb1303.png"
+  },
+  "EN:SKYSPORT MAIN EVENTS": {
+    "channel": "SkySportsMainEvent.uk",
+    "url": "https://d2n0069hmnqmmx.cloudfront.net/epgdata/1.0/newchanlogos/512/512/skychb1301.png"
+  },
+  "EN:EUROSPORTS": {
+    "channel": "Eurosport1.fr",
+    "url": "https://i.imgur.com/olQJgm7.png"
+  },
+  "EN:SKY SPORT ARENA": {
+    "channel": "SkySportArena.it",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/68/Sky_Sport_Arena_-_Logo_2020.svg/960px-Sky_Sport_Arena_-_Logo_2020.svg.png"
+  },
+  "EN:SKY SPORT MAX": {
+    "channel": "SkySportMax.it",
+    "url": "https://i.imgur.com/WS3JZ4F.png"
+  },
+  "EN:SKY SPORT GOLF": {
+    "channel": "SkySportGolf.it",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/Sky_Sport_Golf_Logo_2022.svg/960px-Sky_Sport_Golf_Logo_2022.svg.png"
+  },
+  "EN:SKY SPORT TENNIS": {
+    "channel": "SkySportTennis.it",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Sky_Sport_Tennis.svg/960px-Sky_Sport_Tennis.svg.png"
+  },
+  "EN:FOX SPORTS RACING": {
+    "channel": "FoxSportsRacing.us",
+    "url": "https://i.imgur.com/U5al8V3.png"
+  },
+  "EN:TSN 2": {
+    "channel": "TSN2.ca",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/TSN2.svg/960px-TSN2.svg.png"
+  },
+  "EN:TSN 3": {
+    "channel": "TSN3.ca",
+    "url": "https://i.imgur.com/AYza8KO.png"
+  },
+  "EN:SPORTSNET ONE": {
+    "channel": "SportsnetOne.ca",
+    "url": "https://upload.wikimedia.org/wikipedia/en/thumb/f/fc/Sportsnetone2011.svg/960px-Sportsnetone2011.svg.png"
+  },
+  "EN:SPORTSNET 360": {
+    "channel": "Sportsnet360.ca",
+    "url": "https://upload.wikimedia.org/wikipedia/en/thumb/b/bb/SN_360_logo.svg/960px-SN_360_logo.svg.png"
+  },
+  "EN:ESPN CLASSIC": {
+    "channel": "ESPNClassic.ca",
+    "url": "https://i.imgur.com/mUaIMOI.png"
+  },
+  "EN:SPORTSNET WORLD": {
+    "channel": "SportsnetWorld.ca",
+    "url": "https://upload.wikimedia.org/wikipedia/en/thumb/3/39/SportsnetWorld.svg/960px-SportsnetWorld.svg.png"
+  },
+  "EN:SKY SPORT 251": {
+    "channel": "SkySport251.it",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c7/Sky_Sport_-_Logo_2026.svg/960px-Sky_Sport_-_Logo_2026.svg.png"
+  },
+  "AR:TRT ARABI": {
+    "channel": "TRTArabi.tr",
+    "url": "https://i.imgur.com/dEfI2M9.png"
+  },
+  "AR:BBC ARABIC": {
+    "channel": "BBCArabic.uk",
+    "url": "https://i.imgur.com/ScyTG6P.png"
+  },
+  "AR:SYRIA TV": {
+    "channel": "SyriaTV.sy",
+    "url": "https://i.imgur.com/FjuVuXF.jpeg"
+  },
+  "AR:ON TIME SPORT 1": {
+    "channel": "OnTimeSports.eg",
+    "url": "https://i.ibb.co/yBgDwhKp/On-Sport-1.png"
+  },
+  "AR:ON TIME SPORT 2": {
+    "channel": "OnTimeSports2.eg",
+    "url": "https://i.ibb.co/bMvxMxTd/on-sport-2.png"
+  },
+  "AR:MBC MASER DRAMA": {
+    "channel": "MBCMasrDrama.sa",
+    "url": "https://media0070.elcinema.com/tvguide/1399_1.png"
+  },
+  "AR:OSN NICKELODEON": {
+    "channel": "NickelodeonArabia.ae",
+    "url": "https://i.imgur.com/E84jnP8.png"
+  },
+  "AR:OSN NICK JR": {
+    "channel": "NickJrArabia.ae",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Nick_Jr._logo_2023_(outline).svg/960px-Nick_Jr._logo_2023_(outline).svg.png"
+  },
+  "AR:CARTOON NETWORK AR": {
+    "channel": "CartoonNetworkArabic.ae",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bb/Cartoon_Network_Arabic_logo.png/960px-Cartoon_Network_Arabic_logo.png"
+  },
+  "AR:NICKELODEON": {
+    "channel": "NickelodeonArabia.ae",
+    "url": "https://i.imgur.com/E84jnP8.png"
+  },
+  "AR:DUBAI RACING 1": {
+    "channel": "DubaiRacing.ae",
+    "url": "https://i.imgur.com/CJ1dagP.png"
+  },
+  "CA:GLOBAL NEWS TORONTO": {
+    "channel": "GlobalNews.ca",
+    "url": "https://i.imgur.com/xk1QOhW.png"
+  },
+  "CA:CBC CHARLOTTE": {
+    "channel": "CBCTelevision.ca",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/CBC_Logo_1992-Present.svg/960px-CBC_Logo_1992-Present.svg.png"
+  },
+  "CA:CBC EDMONTON": {
+    "channel": "CBCTelevision.ca",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/CBC_Logo_1992-Present.svg/960px-CBC_Logo_1992-Present.svg.png"
+  },
+  "CA:GLOBAL NEWS WINNIPEG": {
+    "channel": "GlobalNews.ca",
+    "url": "https://i.imgur.com/xk1QOhW.png"
+  },
+  "CA:GLOBAL NEWS VANCOUVER": {
+    "channel": "GlobalNews.ca",
+    "url": "https://i.imgur.com/xk1QOhW.png"
+  },
+  "CA:GLOBAL NEWS SASKATOON": {
+    "channel": "GlobalNews.ca",
+    "url": "https://i.imgur.com/xk1QOhW.png"
+  },
+  "CA:GLOBAL NEWS REGINA": {
+    "channel": "GlobalNews.ca",
+    "url": "https://i.imgur.com/xk1QOhW.png"
+  },
+  "CA:GLOBAL NEWS PETERBOROUGH": {
+    "channel": "GlobalNews.ca",
+    "url": "https://i.imgur.com/xk1QOhW.png"
+  },
+  "CA:GLOBAL NEWS MONTREAL": {
+    "channel": "GlobalNews.ca",
+    "url": "https://i.imgur.com/xk1QOhW.png"
+  },
+  "CA:GLOBAL NEWS KINGSTON": {
+    "channel": "GlobalNews.ca",
+    "url": "https://i.imgur.com/xk1QOhW.png"
+  },
+  "CA:GLOBAL NEWS EDMONTON": {
+    "channel": "GlobalNews.ca",
+    "url": "https://i.imgur.com/xk1QOhW.png"
+  },
+  "CA:GLOBAL NEWS CALGARY": {
+    "channel": "GlobalNews.ca",
+    "url": "https://i.imgur.com/xk1QOhW.png"
+  },
+  "CA:CTV TORONTO": {
+    "channel": "CTV.ca",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/17/CTV_logo_2018.svg/960px-CTV_logo_2018.svg.png"
+  },
+  "CA:CBC OTTAWA": {
+    "channel": "CBCTelevision.ca",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/CBC_Logo_1992-Present.svg/960px-CBC_Logo_1992-Present.svg.png"
+  },
+  "CA:CBC MONTREAL": {
+    "channel": "CBCTelevision.ca",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/CBC_Logo_1992-Present.svg/960px-CBC_Logo_1992-Present.svg.png"
+  },
+  "CA:CBC WINNIPEG": {
+    "channel": "CBCTelevision.ca",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/CBC_Logo_1992-Present.svg/960px-CBC_Logo_1992-Present.svg.png"
+  },
+  "CA:CBC WINDSOR": {
+    "channel": "CBCTelevision.ca",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/CBC_Logo_1992-Present.svg/960px-CBC_Logo_1992-Present.svg.png"
+  },
+  "CA:CBC": {
+    "channel": "CBCTelevision.ca",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/CBC_Logo_1992-Present.svg/960px-CBC_Logo_1992-Present.svg.png"
+  },
+  "CA:CBC TORONTO": {
+    "channel": "CBCTelevision.ca",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/CBC_Logo_1992-Present.svg/960px-CBC_Logo_1992-Present.svg.png"
+  },
+  "CA:CBC CALGARY": {
+    "channel": "CBCTelevision.ca",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/CBC_Logo_1992-Present.svg/960px-CBC_Logo_1992-Present.svg.png"
+  },
+  "CA:CBC REGINA": {
+    "channel": "CBCTelevision.ca",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/CBC_Logo_1992-Present.svg/960px-CBC_Logo_1992-Present.svg.png"
+  },
+  "CA:CBC VANCOUVER": {
+    "channel": "CBCTelevision.ca",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/CBC_Logo_1992-Present.svg/960px-CBC_Logo_1992-Present.svg.png"
+  },
+  "EN:EURONEWS": {
+    "channel": "EuronewsEnglish.fr",
+    "url": "https://xstreamcp-assets-msp.streamready.in/assets/DISTROTV/LIVECHANNEL/66698907bac4421ebc533647/images/logo_20231218_175557_70.png"
+  },
+  "EN:CBC NEWS": {
+    "channel": "CBCNewsNetwork.ca",
+    "url": "https://i.imgur.com/SjTdhvJ.png"
+  },
+  "EN:BLOOMBERG": {
+    "channel": "BloombergTV.us",
+    "url": "https://jiotvimages.cdn.jio.com/dare_images/images/Bloomberg_TV.png"
+  },
+  "EN:ALJAZEERA BALKANS": {
+    "channel": "AlJazeeraBalkans.ba",
+    "url": "https://i.imgur.com/vMzCr8O.png"
+  },
+  "EN:BLOOMBERG NEWS": {
+    "channel": "BloombergTV.us",
+    "url": "https://jiotvimages.cdn.jio.com/dare_images/images/Bloomberg_TV.png"
+  },
+  "EN:NAT GEO": {
+    "channel": "NationalGeographic.uk",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fc/Natgeologo.svg/960px-Natgeologo.svg.png"
+  },
+  "EN:NAT GEO WILD": {
+    "channel": "NationalGeographicWild.uk",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/27/National_Geographic_Wild_logo.svg/960px-National_Geographic_Wild_logo.svg.png"
+  },
+  "EN:FX": {
+    "channel": "FX.us",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/FX_International_logo.svg/960px-FX_International_logo.svg.png"
+  },
+  "EN:DISCOVERY VELOCITY": {
+    "channel": "DiscoveryVelocity.ca",
+    "url": "https://i.imgur.com/Q3rtPbl.png"
+  },
+  "EN:PLUTO TV COMEDY": {
+    "channel": "PlutoTVComedy.us",
+    "url": "https://images.pluto.tv/channels/62e92178946c8000079a3160/colorLogoPNG.png"
+  },
+  "EN:SPORTSNET PACIFIC": {
+    "channel": "Sportsnet.ca",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7f/Logo_Sportsnet_2011.svg/960px-Logo_Sportsnet_2011.svg.png"
+  },
+  "EN:SPORTSNET WEST": {
+    "channel": "Sportsnet.ca",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7f/Logo_Sportsnet_2011.svg/960px-Logo_Sportsnet_2011.svg.png"
+  },
+  "EN:GOLF CHANNEL": {
+    "channel": "GolfChannel.us",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fb/Golf_Channel_logo_2025.svg/960px-Golf_Channel_logo_2025.svg.png"
+  },
+  "EN:SPORTSNET ONTARIO": {
+    "channel": "Sportsnet.ca",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7f/Logo_Sportsnet_2011.svg/960px-Logo_Sportsnet_2011.svg.png"
+  },
+  "EN:SPORTSNET EAST": {
+    "channel": "Sportsnet.ca",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7f/Logo_Sportsnet_2011.svg/960px-Logo_Sportsnet_2011.svg.png"
+  },
+  "EN:EUROSPORT 1": {
+    "channel": "Eurosport1.fr",
+    "url": "https://i.imgur.com/olQJgm7.png"
+  },
+  "EN:EUROSPORT 2": {
+    "channel": "Eurosport2.fr",
+    "url": "https://i.imgur.com/f56dHgR.png"
+  },
+  "AR:BEIN SPORTS 9": {
+    "channel": "AR:BEIN SPORTS 9",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/international/beinsports/old/stacked/bein-sports-9-int.png"
+  },
+  "EN:SKY SPORT NBA": {
+    "channel": "EN:SKY SPORT NBA",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/italy/sky-sport-nba-it.png"
+  },
+  "EN:BT SPORTS ESPN": {
+    "channel": "EN:BT SPORTS ESPN",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/united-kingdom/bt-sport-espn-uk.png"
+  },
+  "EN:BT SPORTS 1": {
+    "channel": "EN:BT SPORTS 1",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/united-kingdom/bt-sport-1-uk.png"
+  },
+  "EN:BT SPORT 1": {
+    "channel": "EN:BT SPORT 1",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/united-kingdom/bt-sport-1-uk.png"
+  },
+  "EN:BT SPORTS 2": {
+    "channel": "EN:BT SPORTS 2",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/united-kingdom/bt-sport-2-uk.png"
+  },
+  "EN:BT SPORT 2": {
+    "channel": "EN:BT SPORT 2",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/united-kingdom/bt-sport-2-uk.png"
+  },
+  "EN:BT SPORTS 3": {
+    "channel": "EN:BT SPORTS 3",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/united-kingdom/bt-sport-3-uk.png"
+  },
+  "EN:BT SPORT 3": {
+    "channel": "EN:BT SPORT 3",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/united-kingdom/bt-sport-3-uk.png"
+  },
+  "EN:BT SPORTS 4": {
+    "channel": "EN:BT SPORTS 4",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/united-kingdom/bt-sport-4-uk.png"
+  },
+  "EN:BT SPORT 4": {
+    "channel": "EN:BT SPORT 4",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/united-kingdom/bt-sport-4-uk.png"
+  },
+  "EN:SKY SPORTS ACTION": {
+    "channel": "EN:SKY SPORTS ACTION",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/united-kingdom/sky-sports-action-uk.png"
+  },
+  "EN:SKYSPORT ACTION": {
+    "channel": "EN:SKYSPORT ACTION",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/united-kingdom/sky-sports-action-uk.png"
+  },
+  "AR:MBC MOOD": {
+    "channel": "MBCMood.sa",
+    "url": "https://shahid.mbc.net/mediaObject/c2b6a882-458b-446e-b0fe-f97f7992149a?height=auto&width=144&croppingPoint=&version=1&type=png"
+  },
+  "EN:CITY TV": {
+    "channel": "Citytv.ca",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9e/Citytv_logo.svg/960px-Citytv_logo.svg.png"
+  },
+  "EN:CTV2 ATLANTIC": {
+    "channel": "CTV2Atlantic.ca",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/CTV_2_2018.svg/960px-CTV_2_2018.svg.png"
+  },
+  "EN:TVO KIDS": {
+    "channel": "TVOKids.ca",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d5/Tvokids-logo.svg/960px-Tvokids-logo.svg.png"
+  },
+  "EN:GLOBAL NEWS": {
+    "channel": "GlobalNews.ca",
+    "url": "https://i.imgur.com/xk1QOhW.png"
+  },
+  "EN:CTV COMEDY CHANNEL": {
+    "channel": "CTVComedyChannel.ca",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/CTV_Comedy_Channel_2019.svg/960px-CTV_Comedy_Channel_2019.svg.png"
+  },
+  "AR:MBC ALTHAQAFEYA": {
+    "channel": "SaudiThaqafiyaTV.sa",
+    "url": "https://shahid.mbc.net/mediaObject/55f69983-5b4b-47c7-9c25-06ed5ad860a4?height=auto&width=512&croppingPoint=&version=1&type=jpeg"
+  },
+  "AR:SHARJAH SPORT": {
+    "channel": "SharjahSports.ae",
+    "url": "https://i.imgur.com/CsEElsJ.png"
+  },
+  "AR:BEIN CARTOONITO AR": {
+    "channel": "CartoonitoMENA.uk",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Cartoonito_-_Logo_2021.svg/960px-Cartoonito_-_Logo_2021.svg.png"
+  },
+  "EN:COMEDYXTRA": {
+    "channel": "ComedyCentralExtra.uk",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/united-kingdom/comedy-central-extra-uk.png"
+  },
+  "EN:AL JAZEERA": {
+    "channel": "AlJazeeraEnglish",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Aljazeera_eng.svg/500px-Aljazeera_eng.svg.png"
+  },
+  "EN:ALJAZEERA NEWS": {
+    "channel": "AlJazeeraEnglish",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Aljazeera_eng.svg/500px-Aljazeera_eng.svg.png"
+  },
+  "EN:AL JAZEERA ENGLISH": {
+    "channel": "AlJazeeraEnglish",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Aljazeera_eng.svg/500px-Aljazeera_eng.svg.png"
+  },
+  "EN:SKY SPORT 252": {
+    "channel": "SkySport.it",
+    "kind": "network-logo-fallback",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/italy/sky-sport-it.png"
+  },
+  "EN:SKY SPORT 253": {
+    "channel": "SkySport.it",
+    "kind": "network-logo-fallback",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/italy/sky-sport-it.png"
+  },
+  "EN:SKY SPORT 254": {
+    "channel": "SkySport.it",
+    "kind": "network-logo-fallback",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/italy/sky-sport-it.png"
+  },
+  "EN:SKY SPORT 255": {
+    "channel": "SkySport.it",
+    "kind": "network-logo-fallback",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/italy/sky-sport-it.png"
+  },
+  "EN:SKY SPORT 256": {
+    "channel": "SkySport.it",
+    "kind": "network-logo-fallback",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/italy/sky-sport-it.png"
+  },
+  "EN:SKY SPORT 257": {
+    "channel": "SkySport.it",
+    "kind": "network-logo-fallback",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/italy/sky-sport-it.png"
+  },
+  "EN:SKY SPORT 258": {
+    "channel": "SkySport.it",
+    "kind": "network-logo-fallback",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/italy/sky-sport-it.png"
+  },
+  "EN:SKY SPORT 259": {
+    "channel": "SkySport.it",
+    "kind": "network-logo-fallback",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/italy/sky-sport-it.png"
+  },
+  "AR:BEIN GLOBAL": {
+    "channel": "beINSports.qa",
+    "kind": "network-logo-fallback",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/international/beinsports/old/stacked/bein-sports-int.png"
+  },
+  "AR:BEIN SPORTS GLOBAL": {
+    "channel": "beINSports.qa",
+    "kind": "network-logo-fallback",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/international/beinsports/old/stacked/bein-sports-int.png"
+  },
+  "AR:BEIN اهم مبارايات اليوم": {
+    "channel": "beINSports.qa",
+    "kind": "network-logo-fallback",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/international/beinsports/old/stacked/bein-sports-int.png"
+  },
+  "AR:BEIN SPORTS XTRA 3": {
+    "channel": "beINSports.qa",
+    "kind": "network-logo-fallback",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/international/beinsports/old/stacked/bein-sports-int.png"
+  },
+  "AR:MBC ZEE ALWAN": {
+    "channel": "ZeeAlwan.ae",
+    "url": "https://i.imgur.com/OLuCox7.png"
+  },
+  "AR:SY : ALSOURIYA TV": {
+    "channel": "AlSouriyaTV.sy",
+    "url": "https://i.imgur.com/8FILgXT.jpeg"
+  }
+}

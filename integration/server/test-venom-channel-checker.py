@@ -7,6 +7,12 @@ import types
 m=runpy.run_path(str(Path(__file__).with_name('venom-channel-checker.py')))
 
 class CheckerTests(unittest.TestCase):
+    def test_hdr_transfer_from_decoded_frames_only(self):
+        frame='[Parsed_showinfo_0 @ 0x123] n: 0 pts: 42 s:3840x2160\n'
+        for transfer,hdr in [('smpte2084',True),('arib-std-b67',True),('bt709',False)]:
+            result=m['decoded_geometry'](frame+'[Parsed_showinfo_0 @ 0x123] color_trc:'+transfer)
+            self.assertEqual(result['decoded_hdr'],hdr)
+        self.assertNotIn('decoded_hdr',m['decoded_geometry'](frame+'unrelated color_trc:smpte2084'))
     def test_unseen_favourites_precede_expansion_and_retries(self):
         channels=[{'stream_id':str(i)} for i in (1,2,3,4,5)]
         latest={'1':(10,'inconclusive_playback'),'5':(20,'working')}
