@@ -7,6 +7,7 @@ assert.equal(p.channelCardName('600 24 NEWS HD','24 NEWS HD'),'24 NEWS HD');
 assert.equal(p.channelCardName('24 NEWS HD','24 NEWS HD'),'24 NEWS HD');
 assert.equal(p.channelCardName('9328 TSN 1 FHD',null),'9328 TSN 1 FHD');
 assert.equal(p.channelCardName('9328 TSN 1 FHD','TSN 2 FHD'),'9328 TSN 1 FHD');
+assert.equal(p.channelCardName('6144 TNT SPORTS  3 4K','TNT SPORTS 3 4K'),'TNT SPORTS 3 4K');
 assert.equal(p.channelDisplayName('9328 CA TSN1 FHD'),'TSN1 FHD');
 assert.equal(p.channelDisplayName('5849 VIP UK: SKY SPORTS 1 4K'),'SKY SPORTS 1 4K');
 assert.equal(p.channelDisplayName('8482 NW : ALJAZEERA  4K'),'ALJAZEERA 4K');

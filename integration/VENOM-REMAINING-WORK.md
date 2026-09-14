@@ -443,3 +443,18 @@ Live dry run found no eligible visibility actions and made zero changes.
 Checker was confirmed live (PID 778557); no interruption. Real hide/restore
 propagation and phone-specific rendering remain unverified, so the overall
 goal remains incomplete.
+
+## 2026-09-14 — missing-artwork channel labels
+
+Reproduced a remaining numeric label in the public web client: the regular
+TNT SPORTS 1 4K card footer was clean, but `.cardDefaultText` for missing
+artwork still read `6138 TNT SPORTS 1 4K`. Navigation v11 now applies the
+same same-card accessible-name validation to leaf placeholder text, without
+replacing image/action containers. Added repeated-whitespace regression.
+Verified public Habibi English sports page: clean TNT/BT placeholders, zero
+numeric-prefixed placeholders in the 50-card page, all 50 play buttons present,
+zero console errors and one warning. No playback started during this check.
+Source and tests mirrored to integration/web-navigation. Server backup:
+`backups/venom-navigation-v10.js`. No server restart or app rebuild; phone
+must reload its web shell to receive v11. Native Moonfin UI parity is not
+claimed. Channel-testing job and powered-off Ugoos were left untouched.

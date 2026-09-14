@@ -125,6 +125,13 @@
                     link.title=clean;
                     link.setAttribute('aria-label',clean);
                 }
+                // Missing artwork has a separate numbered label. Clean only
+                // leaf text in this same channel card, never its image/actions.
+                for(const fallback of card?.querySelectorAll('.cardDefaultText')||[]) {
+                    if(fallback.children.length)continue;
+                    const label=channelCardName(fallback.textContent,itemName);
+                    if(label!==fallback.textContent)fallback.textContent=label;
+                }
             }
             const cards=[...(page?.querySelectorAll('.MuiPaper-root')||[])].filter(card=>ranks.has(normalize(card.querySelector('button .MuiTypography-body1')?.textContent||'')));
             if(cards.length===state.items.length&&cards.length) {
