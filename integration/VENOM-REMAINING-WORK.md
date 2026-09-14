@@ -400,3 +400,26 @@ Broader Arctic/Home/Jellyfin integration packaged in commit c16f935. Full
 `integration/check.py` passed from a clean git archive, including clean pinned
 upstream patch application and all integration/package regressions. Ugoos
 remains intentionally powered off; no new runtime claim from this source test.
+
+## 2026-09-14 — tester coverage and published-favourite priority
+
+Read-only all-account audit now confirms 461 published native favourites visible
+and seeded on all 26 accounts, with Live TV enabled and no missing seeding.
+The automatic promoter expanded the previous 425 without manual per-title edits.
+This is not proof all retained initial channels have passed a fresh test.
+
+Added per-scope/per-group coverage to checker `--summary`. At inspection:
+388 observed (298 working, 90 inconclusive); published 461 comprised 298 fresh
+working, 25 inconclusive and 138 untested. Arabic news (30) and Canada (30)
+were all untested by this worker. Earlier manual playback tests are separate.
+No inconclusive result is treated as dead or hidden by this checker.
+
+Changed only probe queue ordering: unseen published favourites first, unseen
+expansion candidates second, previously observed channels afterward, retaining
+provider order for ties. Existing cooldowns, 22/55-second budgets, idle checks,
+single-stream limit and hide-evidence requirements remain unchanged. Browsing
+order is not affected. Eight checker regression tests pass, including retained
+numeric IDs, deduplicated/stale coverage and favourite-before-expansion order.
+Deployed without restart; the already-running batch retains its loaded code,
+and the next invocation adopts the new order. Timers remain responsible for
+continued independent work. Ugoos left off.

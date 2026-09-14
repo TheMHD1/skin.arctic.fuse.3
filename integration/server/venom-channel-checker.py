@@ -67,6 +67,25 @@ def idle(token,grace=0):
         if time.monotonic()>=deadline:return False
         time.sleep(2)
 
+def coverage(ids, latest, now):
+    counts=dict(working_fresh=0,working_stale=0,inconclusive=0,untested=0)
+    ids={str(cid) for cid in ids}
+    for cid in ids:
+        row=latest.get(cid)
+        if row is None:counts['untested']+=1
+        elif row[1]=='working':
+            counts['working_fresh' if 0<=now-row[0]<=7*86400 else 'working_stale']+=1
+        else:counts['inconclusive']+=1
+    return {'channels':len(ids),**counts}
+
+def probe_order(channels, published, latest):
+    # Give every existing favourite an initial test before more expansion or
+    # repeated long retries. Stable sort preserves provider order within ties.
+    def key(channel):
+        cid=str(channel['stream_id']);last=latest.get(cid)
+        return (last is not None,cid not in published,last[0] if last else 0)
+    return sorted(channels,key=key)
+
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--limit',type=int,default=20);parser.add_argument('--probe',action='store_true');parser.add_argument('--summary',action='store_true');parser.add_argument('--scope',choices=('curated','catalogue'),default='curated');args=parser.parse_args()
     if args.summary:
@@ -74,7 +93,15 @@ def main():
         rows=db.execute('select result,count(*) from observations where id in (select max(id) from observations group by channel_id) group by result').fetchall()
         count=sum(n for _,n in rows)
         total=len(json.loads((ROOT/'live-catalogue-redacted.json').read_text())['channels'])
-        print(json.dumps({'tested_channels':count,'catalogue_channels':total,'not_yet_tested':max(0,total-count),'latest_results':dict(rows),'visibility_changes_by_this_worker':False,'visibility_worker':'venom-hide-confirmed.py'}));return
+        latest={str(cid):(stamp,result) for cid,stamp,result in db.execute('select channel_id,time,result from observations where id in (select max(id) from observations group by channel_id)')}
+        now=time.time();scopes={}
+        for name,filename in (('published','curated-channels.json'),('candidates','curated-candidates.json')):
+            path=ROOT/filename
+            if not path.exists():continue
+            manifest=json.loads(path.read_text())
+            scopes[name]=coverage((c['stream_id'] for g in manifest['groups'] for c in g['channels']),latest,now)
+            scopes[name]['groups']={g['id']:coverage((c['stream_id'] for c in g['channels']),latest,now) for g in manifest['groups']}
+        print(json.dumps({'tested_channels':count,'catalogue_channels':total,'not_yet_tested':max(0,total-count),'latest_results':dict(rows),'coverage':scopes,'visibility_changes_by_this_worker':False,'visibility_worker':'venom-hide-confirmed.py'}));return
     lock=(ROOT/'channel-checker.lock').open('a')
     try:fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
     except BlockingIOError:return
@@ -86,6 +113,7 @@ def main():
     catalogue=json.loads((ROOT/'live-catalogue-redacted.json').read_text())
     curated=json.loads((ROOT/'curated-channels.json').read_text())
     priority={str(c['stream_id']) for g in curated['groups'] for c in g['channels']}
+    published=set(priority)
     candidate_path=ROOT/'curated-candidates.json'
     if candidate_path.exists():
         candidates=json.loads(candidate_path.read_text())
@@ -95,6 +123,8 @@ def main():
     db=sqlite3.connect(ROOT/'channel-health.sqlite3')
     db.execute('create table if not exists observations (id integer primary key,channel_id text,time real,result text,record text)')
     db.execute('create index if not exists observations_channel_time on observations(channel_id,time)')
+    latest={str(cid):(stamp,result) for cid,stamp,result in db.execute('select channel_id,time,result from observations where id in (select max(id) from observations group by channel_id)')}
+    channels=probe_order(channels,published,latest)
     attempted=0
     for channel in channels:
         cid=str(channel['stream_id'])

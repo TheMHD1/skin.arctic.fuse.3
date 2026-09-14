@@ -7,6 +7,17 @@ import types
 m=runpy.run_path(str(Path(__file__).with_name('venom-channel-checker.py')))
 
 class CheckerTests(unittest.TestCase):
+    def test_unseen_favourites_precede_expansion_and_retries(self):
+        channels=[{'stream_id':str(i)} for i in (1,2,3,4,5)]
+        latest={'1':(10,'inconclusive_playback'),'5':(20,'working')}
+        result=m['probe_order'](channels,{'1','3','4'},latest)
+        self.assertEqual([c['stream_id'] for c in result],['3','4','2','1','5'])
+    def test_coverage_deduplicates_and_keeps_unknown_visible(self):
+        now=1000000
+        rows={'1':(now,'working'),'2':(now-8*86400,'working'),'3':(now,'inconclusive_playback'),'5':(now+1,'working')}
+        self.assertEqual(m['coverage']([1,'1','2','3','4','5'],rows,now),
+                         dict(channels=5,working_fresh=1,working_stale=2,inconclusive=1,untested=1))
+        self.assertEqual(m['coverage']([],rows,now)['channels'],0)
     def test_long_retry_is_not_cut_off_by_twenty_second_read_timeout(self):
         with patch.object(m['subprocess'],'run',return_value=types.SimpleNamespace(returncode=0,stdout='frame=3\n',stderr='')) as call:
             for seconds in (22,55):
