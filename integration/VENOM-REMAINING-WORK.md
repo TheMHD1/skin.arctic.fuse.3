@@ -362,3 +362,41 @@ ChannelOverride model and effective M3U output, plus
 https://dispatcharr.github.io/Dispatcharr-Docs/channels/ . Jellyfin upstream
 M3uParser derives channel identity from stream URL, not display name; actual
 canary read-back still required, not inferred solely from upstream source.
+
+## 2026-09-14 04:23 UTC — mobile number display and category shortcut
+
+This entry supersedes older rollout/packaging status above. Reproduced the
+reported number problem on the public authenticated web UI: item Name was
+`TSN 1 FHD`, while its rendered card footer was `9328 TSN 1 FHD`. The old
+cosmetic cleanup only recognized numbers followed by country/VIP prefixes,
+so it missed this after metadata names had been cleaned.
+
+Deployed navigation helper v10: a channel card's unnumbered accessible name,
+with the same details URL, is used to strip only the extra numeric prefix.
+Regression cases preserve real numeric names such as `24 NEWS HD`; unknown
+or mismatched item names fail open. ChannelNumber, IDs, favourites and streams
+are unchanged. Added an explicit `Browse channel categories` link on modern
+Live TV views so the category entry is not buried in the selector.
+
+Public Habibi browser verification: TSN/TNT card labels clean; category page
+shows 314 groups (10 custom first, 304 provider) and 11,249 channels; shortcut
+present; zero browser errors and one warning. All-account read-only API audit
+again verified 26 accounts, 10 pinned groups, 304 provider groups and no empty
+groups. Targeted metadata rerun found zero reverted names (1,201 already clean
+in its current stored comparison snapshot). No claim of direct phone-screen
+verification or native Moonfin category-menu support. Ask the user to force
+close/reopen the mobile app; use the direct web category URL to distinguish an
+old client view from missing server data. Do not delete app data or credentials.
+
+Source/tests: `ops/venom-jellyfin-navigation.js` and matching test; maintained
+copies under fork `integration/web-navigation/`. Backups on media CT102:
+`backups/venom-navigation-before-card-numbers-20260914.js` and
+`backups/venom-index-before-v9.html`. Script query version now 10; no app build
+or server restart. Official Android integrates Jellyfin Web:
+https://github.com/jellyfin/jellyfin-android . Native clients may still show
+their separate channel-number labels; do not erase server mapping to hide them.
+
+Broader Arctic/Home/Jellyfin integration packaged in commit c16f935. Full
+`integration/check.py` passed from a clean git archive, including clean pinned
+upstream patch application and all integration/package regressions. Ugoos
+remains intentionally powered off; no new runtime claim from this source test.
