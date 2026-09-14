@@ -4,6 +4,9 @@ from pathlib import Path
 extend=runpy.run_path(str(Path(__file__).with_name('venom-special-groups.py')))['extend']
 priority=runpy.run_path(str(Path(__file__).with_name('venom-special-groups.py')))['priority']
 class Tests(unittest.TestCase):
+    def test_6k_and_spaced_8k_resolution_order(self):
+        rows=[{'name':n} for n in ['Station 4K','Station 6K','Station 8 K','Station 1440P','Station HDR HD']]
+        self.assertEqual([c['name'] for c in sorted(rows,key=priority)],['Station HDR HD','Station 8 K','Station 6K','Station 4K','Station 1440P'])
     def test_hdr_first_then_resolution_and_duplicate_variants(self):
         rows=[{'name':s} for s in ['Station HD','Station 4K','Station 8K','Station FHD','Station 4K HDR','Station 8K HDR','Station FHD HDR']]
         self.assertEqual([r['name'] for r in sorted(rows,key=priority)],['Station 8K HDR','Station 4K HDR','Station FHD HDR','Station 8K','Station 4K','Station FHD','Station HD'])

@@ -7,6 +7,13 @@ m=runpy.run_path(str(Path(__file__).with_name('venom-curate-channels.py')))
 s=runpy.run_path(str(Path(__file__).with_name('venom-seed-favourites.py')))
 
 class CurationTests(unittest.TestCase):
+    def test_high_quality_variants_not_excluded_or_capped(self):
+        names=['BEIN SPORTS 1 '+q for q in ['HD','FHD','4K','6K','8K','HDR','HLG']]+['BEIN 8K Match Today']
+        source={'categories':[dict(category_id=1,category_name='|SP| BEIN SPORTS VIP')],
+                'channels':[dict(stream_id=i,category_id=1,name=n) for i,n in enumerate(names)]}
+        group=next(g for g in m['build'](source,category_limit=1)['groups'] if g['id']=='ar-sport')
+        self.assertTrue(set(names[2:]).issubset({c['name'] for c in group['channels']}))
+        self.assertEqual(len(group['channels']),len({c['stream_id'] for c in group['channels']}))
     def test_decoded_quality_overrides_misleading_label(self):
         rows=[{'stream_id':1,'name':'TSN 4K','decoded_width':1920,'decoded_height':1080},
               {'stream_id':2,'name':'TSN HD','decoded_width':3840,'decoded_height':2160}]

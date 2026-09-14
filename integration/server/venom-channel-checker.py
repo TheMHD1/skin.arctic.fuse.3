@@ -91,7 +91,8 @@ def probe_order(channels, published, latest):
     return sorted(channels,key=key)
 
 def main():
-    parser=argparse.ArgumentParser();parser.add_argument('--limit',type=int,default=20);parser.add_argument('--probe',action='store_true');parser.add_argument('--summary',action='store_true');parser.add_argument('--scope',choices=('curated','catalogue'),default='curated');args=parser.parse_args()
+    parser=argparse.ArgumentParser();parser.add_argument('--limit',type=int,default=20);parser.add_argument('--probe',action='store_true');parser.add_argument('--summary',action='store_true');parser.add_argument('--scope',choices=('curated','catalogue'),default='curated');parser.add_argument('--channel-ids',help='Optional comma-separated gateway IDs; existing safety and cooldown rules still apply');args=parser.parse_args()
+    if args.channel_ids and not re.fullmatch(r'\d+(?:,\d+)*',args.channel_ids):parser.error('Invalid channel IDs')
     if args.summary:
         db=sqlite3.connect('file:'+str(ROOT/'channel-health.sqlite3')+'?mode=ro',uri=True)
         rows=db.execute('select result,count(*) from observations where id in (select max(id) from observations group by channel_id) group by result').fetchall()
@@ -124,6 +125,7 @@ def main():
         priority.update(str(c['stream_id']) for g in candidates['groups'] for c in g['channels'])
     channels=sorted(catalogue['channels'],key=lambda c:str(c['stream_id']) not in priority)
     if args.scope=='curated':channels=[c for c in channels if str(c['stream_id']) in priority]
+    if args.channel_ids:channels=[c for c in channels if str(c['stream_id']) in set(args.channel_ids.split(','))]
     db=sqlite3.connect(ROOT/'channel-health.sqlite3')
     db.execute('create table if not exists observations (id integer primary key,channel_id text,time real,result text,record text)')
     db.execute('create index if not exists observations_channel_time on observations(channel_id,time)')

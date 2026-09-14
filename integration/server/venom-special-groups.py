@@ -11,7 +11,10 @@ def is_hdr(channel):
 def priority(channel):
     height=channel.get('decoded_height')
     if not isinstance(height,int):
-        height=4320 if re.search(r'\b8K\b',channel['name'],re.I) else 2160 if re.search(r'\b(?:4K|UHD)\b',channel['name'],re.I) else 1080 if re.search(r'\b(?:FHD|HDF|1080P)\b',channel['name'],re.I) else 720 if re.search(r'\b(?:HD|720P)\b',channel['name'],re.I) else 0
+        name=channel['name']
+        k=re.search(r'\b([4-9])\s*K\b',name,re.I)
+        pixels=re.search(r'\b(720|1080|1440|2160|2880|4320)[PI]\b',name,re.I)
+        height=int(k[1])*540 if k else int(pixels[1]) if pixels else 2160 if re.search(r'\bUHD\b',name,re.I) else 1080 if re.search(r'\b(?:FHD|HDF)\b',name,re.I) else 720 if re.search(r'\bHD\b',name,re.I) else 0
     hdr=is_hdr(channel)
     return (0 if hdr and height>=2160 else 1 if hdr else 2, -height)
 
@@ -35,7 +38,7 @@ def extend(manifest, catalogue, working, geometry, candidates=False):
         for g in groups:
             # Pixel dimensions, not a provider's marketing label, establish quality.
             verified=[c for c in g['channels'] if geometry.get(str(c['stream_id']),{}).get('decoded_height',0)>1080]
-            hd=[c for c in g['channels'] if is_hdr(c) or (geometry[str(c['stream_id'])]['decoded_height']>=720 if str(c['stream_id']) in geometry else bool(re.search(r'(?<!\w)(?:[468]K|UHD|FHD|HDF|HD|720P|1080[PI]|1440P|2160P|4320P)(?!\w)',c['name'],re.I)))]
+            hd=[c for c in g['channels'] if is_hdr(c) or (geometry[str(c['stream_id'])]['decoded_height']>=720 if str(c['stream_id']) in geometry else -priority(c)[1]>=720)]
             for suffix,label,rows in [('above-fhd','>1080p verified · دقة مثبتة',verified),('hd-plus','HD & above · HD وأعلى',hd)]:
                 if rows:derived.append({'id':g['id']+'-'+suffix,'name':g['name']+' · '+label,'derived_quality':suffix,'channels':rows})
         # Keep each companion beside its main category in the browse menu.

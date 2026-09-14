@@ -19,7 +19,7 @@ RULES=[
  ('ar-general','عربي منوع · Arabic favourites',36,r'\|AR\|',r'\bMBC\b|ROYA|LBC|MTV|AL JADEED|JADEED|DUBAI|ABU.?DHABI|SAMA|SYRIA|AL MAMLAKA|ALMAMLAKA|NBN|DMC|\bCBC\b|\bON\b|رؤيا|الجديد|دبي|سوريا'),
  ('ar-movies','أفلام ومسلسلات عربية · Arabic movies & drama',36,r'\|AR\|',r'ROTANA.*(CINEMA|AFLAM|CLASSIC|DRAMA|COMEDY)|ART.*(AFLAM|CINEMA|HEKAYAT)|MBC.*(DRAMA|MASER|MASR)|DMC.*DRAMA|CBC.*DRAMA|روتانا|سينما|دراما'),
  ('ar-kids','أطفال عربي · Arabic kids',24,r'\|AR\|',r'SPACETOON|MAJED|MAJID|BARAEM|JEEM|TOYOR|KARAMEESH|CARTOON.*AR|MBC.*(3|TOON)|NICKELODEON|NICK JR|NICK TOONS|MARAH|HODHOD|سبيس|براعم|ماجد'),
- ('ar-sport','رياضة عربية · Arabic sports',42,r'\|SP\|',r'BEIN.*SPORT|BEIN.*(4K|GLOBAL)|KASS|THMANY|THMANYAH|ALTHMANY|SSC|ABU.?DHABI|DUBAI|SHARJAH|ثمانية|الكأس'),
+ ('ar-sport','رياضة عربية · Arabic sports',42,r'\|SP\|',r'BEIN.*SPORT|BEIN.*([468]\s*K|GLOBAL)|KASS|THMANY|THMANYAH|ALTHMANY|SSC|ABU.?DHABI|DUBAI|SHARJAH|ثمانية|الكأس'),
  ('en-canada','كندا · Canada favourites',30,r'\|CA\|',r'CBC|CTV|GLOBAL|CITY|CP.?24|TVO|CHCH|APTN'),
  ('en-news','أخبار إنجليزي · English news',24,r'\|(UK|US|CA)\|',r'BBC.*NEWS|BBC.*WORLD|CNN|SKY NEWS|AL.?JAZEERA|BLOOMBERG|CTV.*NEWS|CBC.*NEWS|CP.?24|EURONEWS|NBC.*NEWS|CBS.*NEWS|ABC.*NEWS|FOX NEWS'),
  ('en-kids','أطفال إنجليزي · English kids',24,r'\|(UK|US|CA)\|',r'CBEEBIES|CBBC|DISNEY|CARTOON|NICK|TREEHOUSE|YTV|PBS.*KIDS|BOOMERANG'),
@@ -28,6 +28,9 @@ RULES=[
 ]
 
 def normalized(value):return unicodedata.normalize('NFKC',value).upper()
+
+def high_quality_label(name):
+    return bool(re.search(r'\b(?:[4-9]\s*K|UHD|1440P|2160P|2880P|4320P|HDR(?:10\+?)?|HLG|DOLBY[ ._-]*VISION|DV)\b',normalized(name)))
 
 def quality_rank(channel):
     """Fresh decoded geometry wins; labels are only the unmeasured fallback."""
@@ -78,18 +81,16 @@ def build(catalogue,category_limit=None):
         for channel in candidates:
             name=normalized(channel['name']);group=categories.get(str(channel['category_id']),'')
             if str(channel['stream_id']) in selected or not re.search(group_pattern,group,re.I):continue
-            if key=='ar-news' and not re.search(r'\|AR\|\s*(NEWS|JAZEERA)',group,re.I):continue
+            mashhad=key=='ar-news' and bool(re.search(r'\b(?:AL\s*)?MASHHAD\b',name))
+            if key=='ar-news' and not mashhad and not re.search(r'\|AR\|\s*(NEWS|JAZEERA)',group,re.I):continue
             if key=='ar-news' and re.search(r'ENGLISH|DOCUMENT|EN\b|FR\b',name):continue
             if key=='en-kids' and re.search(r'\(FR\)|FRANCE|LA CHAINE',name+' '+group,re.I):continue
             if key=='ar-sport' and re.search(r'\b(?:ENGLISH|EN|FR|FRANSA|USA)\b',name):continue
             if key=='ar-general' and not re.search(r'\|AR\|\s*(MBC|SYRIA|LEBANON|EGYPT|SAUDI|IRAQ|JORDAN|ROYA|PALESTINE|EMARAT|QATAR|KUWIT)',group,re.I):continue
             if key=='ar-general' and 'MBC' in group.upper() and not re.search(r'\bMBC[ .:]+(?:[1245]\b|IRAQ\b|ACTION\b|MAX\b|BOLLYWOOD\b|VARIETY\b)',name):continue
             match_name=re.sub(r'\bTSN(?=\d)','TSN ',name)
-            if not re.search(name_pattern,match_name,re.I) or name.lstrip().startswith('#'):continue
+            if (not mashhad and not re.search(name_pattern,match_name,re.I)) or name.lstrip().startswith('#'):continue
             if re.search(r'\b(?:ADULT|XXX|PORN)\b',name+' '+group,re.I):continue
-            # Labels claiming 6K/8K are not verified quality; prefer conventional
-            # source alternatives rather than filling the starter list with them.
-            if re.search(r'\b[68]K\b',name):continue
             families.setdefault(family(name),[]).append(channel)
         chosen=[]
         for members in families.values():members.sort(key=quality_rank)
@@ -97,6 +98,15 @@ def build(catalogue,category_limit=None):
             for members in families.values():
                 if variant<len(members) and len(chosen)<limit:
                     channel=members[variant];chosen.append(channel);selected.add(str(channel['stream_id']))
+        # Stage every matching high-quality alternative, even beyond the starter
+        # cap or three-backup limit. Publication still requires decoded playback.
+        if category_limit is not None:
+            chosen_ids={str(c['stream_id']) for c in chosen}
+            for members in families.values():
+                for channel in members:
+                    cid=str(channel['stream_id'])
+                    if high_quality_label(channel['name']) and cid not in chosen_ids:
+                        chosen.append(channel);chosen_ids.add(cid);selected.add(cid)
         results[index]={'id':key,'name':label,'channels':order_channels(chosen)}
     groups=[results[i] for i in range(len(RULES))]
     return {'version':1,'selection_basis':'editorial mainstream starter selection; not measured popularity','groups':groups,'unique_channels':len(selected)}
