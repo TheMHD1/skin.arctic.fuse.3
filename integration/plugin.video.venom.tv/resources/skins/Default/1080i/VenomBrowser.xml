@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<window>
+ <defaultcontrol always="true">910</defaultcontrol>
+ <coordinates><system>1</system></coordinates>
+ <controls>
+  <control type="image"><left>0</left><top>0</top><width>1920</width><height>1080</height><texture colordiffuse="FF101821">special://skin/media/common/white.png</texture></control>
+  <control type="label"><left>60</left><top>20</top><width>1700</width><height>65</height><font>font_main</font><textcolor>FFFFFFFF</textcolor><label>VENOM TV  •  Categories and favourites</label></control>
+  <control type="button" id="901"><left>60</left><top>100</top><width>200</width><height>64</height><font>font_mini</font><label>Live TV</label><textcolor>FFFFFFFF</textcolor><focusedcolor>FF101821</focusedcolor><texturefocus colordiffuse="FF67D6C5">special://skin/media/common/white.png</texturefocus><texturenofocus colordiffuse="FF253543">special://skin/media/common/white.png</texturenofocus><onleft>904</onleft><onright>902</onright><ondown>910</ondown><onup>910</onup></control>
+  <control type="button" id="902"><left>275</left><top>100</top><width>200</width><height>64</height><font>font_mini</font><label>Movies</label><textcolor>FFFFFFFF</textcolor><focusedcolor>FF101821</focusedcolor><texturefocus colordiffuse="FF67D6C5">special://skin/media/common/white.png</texturefocus><texturenofocus colordiffuse="FF253543">special://skin/media/common/white.png</texturenofocus><onleft>901</onleft><onright>903</onright><ondown>910</ondown><onup>910</onup></control>
+  <control type="button" id="903"><left>490</left><top>100</top><width>200</width><height>64</height><font>font_mini</font><label>Series</label><textcolor>FFFFFFFF</textcolor><focusedcolor>FF101821</focusedcolor><texturefocus colordiffuse="FF67D6C5">special://skin/media/common/white.png</texturefocus><texturenofocus colordiffuse="FF253543">special://skin/media/common/white.png</texturenofocus><onleft>902</onleft><onright>904</onright><ondown>910</ondown><onup>910</onup></control>
+  <control type="button" id="904"><left>705</left><top>100</top><width>230</width><height>64</height><font>font_mini</font><label>Favourites</label><textcolor>FFFFFFFF</textcolor><focusedcolor>FF101821</focusedcolor><texturefocus colordiffuse="FF67D6C5">special://skin/media/common/white.png</texturefocus><texturenofocus colordiffuse="FF253543">special://skin/media/common/white.png</texturenofocus><onleft>903</onleft><onright>901</onright><ondown>910</ondown><onup>910</onup></control>
+  <control type="button" id="931"><left>560</left><top>950</top><width>250</width><height>64</height><font>font_mini</font><label>Search</label><textcolor>FFFFFFFF</textcolor><focusedcolor>FF101821</focusedcolor><texturefocus colordiffuse="FF67D6C5">special://skin/media/common/white.png</texturefocus><texturenofocus colordiffuse="FF253543">special://skin/media/common/white.png</texturenofocus><onleft>934</onleft><onright>932</onright><ondown>920</ondown><onup>920</onup></control>
+  <control type="button" id="932"><left>830</left><top>950</top><width>250</width><height>64</height><font>font_mini</font><label>Previous</label><textcolor>FFFFFFFF</textcolor><focusedcolor>FF101821</focusedcolor><texturefocus colordiffuse="FF67D6C5">special://skin/media/common/white.png</texturefocus><texturenofocus colordiffuse="FF253543">special://skin/media/common/white.png</texturenofocus><onleft>931</onleft><onright>933</onright><ondown>920</ondown><onup>920</onup></control>
+  <control type="button" id="933"><left>1100</left><top>950</top><width>250</width><height>64</height><font>font_mini</font><label>Next</label><textcolor>FFFFFFFF</textcolor><focusedcolor>FF101821</focusedcolor><texturefocus colordiffuse="FF67D6C5">special://skin/media/common/white.png</texturefocus><texturenofocus colordiffuse="FF253543">special://skin/media/common/white.png</texturenofocus><onleft>932</onleft><onright>934</onright><ondown>920</ondown><onup>920</onup></control>
+  <control type="button" id="934"><left>1370</left><top>950</top><width>380</width><height>64</height><font>font_mini</font><label>A–Z / Recent</label><textcolor>FFFFFFFF</textcolor><focusedcolor>FF101821</focusedcolor><texturefocus colordiffuse="FF67D6C5">special://skin/media/common/white.png</texturefocus><texturenofocus colordiffuse="FF253543">special://skin/media/common/white.png</texturenofocus><onleft>933</onleft><onright>931</onright><ondown>920</ondown><onup>920</onup></control>
+  <control type="label" id="941"><left>60</left><top>185</top><width>430</width><height>45</height><font>font_mini</font><textcolor>FF67D6C5</textcolor><label>Live TV</label></control>
+  <control type="label"><left>550</left><top>185</top><width>1270</width><height>45</height><font>font_mini</font><textcolor>FFCAD7E2</textcolor><label>OK: open / play   •   Menu or hold OK: favourites   •   Back: categories</label></control>
+  <control type="list" id="910">
+   <left>60</left><top>245</top><width>440</width><height>675</height><onup>901</onup><ondown>901</ondown><onleft>901</onleft><onright>920</onright><scrolltime>120</scrolltime>
+   <itemlayout width="440" height="60"><control type="label"><left>12</left><width>415</width><height>60</height><font>font_mini</font><textcolor>FFD3DDE5</textcolor><label>$INFO[ListItem.Label]</label></control></itemlayout>
+   <focusedlayout width="440" height="60"><control type="image"><width>440</width><height>58</height><texture colordiffuse="FF294D58">special://skin/media/common/white.png</texture></control><control type="label"><left>12</left><width>415</width><height>60</height><font>font_mini</font><textcolor>FFFFFFFF</textcolor><scroll>true</scroll><label>$INFO[ListItem.Label]</label></control></focusedlayout>
+  </control>
+  <control type="panel" id="920">
+   <left>550</left><top>245</top><width>1280</width><height>675</height><onleft>910</onleft><onright>910</onright><onup>902</onup><ondown>931</ondown><orientation>vertical</orientation><scrolltime>120</scrolltime><preloaditems>0</preloaditems>
+   <itemlayout width="256" height="337" condition="String.IsEqual(Window.Property(Venom.Posters),true)">
+    <control type="image"><left>4</left><top>4</top><width>246</width><height>328</height><texture colordiffuse="FF1B2A38">special://skin/media/common/white.png</texture></control>
+    <control type="image"><left>26</left><top>12</top><width>200</width><height>270</height><aspectratio>keep</aspectratio><texture background="true">$INFO[ListItem.Art(thumb)]</texture></control>
+    <control type="label"><left>12</left><top>286</top><width>230</width><height>43</height><font>font_mini</font><textcolor>FFFFFFFF</textcolor><align>center</align><label>$INFO[ListItem.Label]</label></control>
+    <control type="label"><left>210</left><top>8</top><width>34</width><height>35</height><font>font_mini</font><textcolor>FFFFD66B</textcolor><label>★</label><visible>String.IsEqual(ListItem.Property(venom.favorite),true)</visible></control>
+   </itemlayout>
+   <focusedlayout width="256" height="337" condition="String.IsEqual(Window.Property(Venom.Posters),true)">
+    <control type="image"><left>4</left><top>4</top><width>246</width><height>328</height><texture colordiffuse="FF39717D">special://skin/media/common/white.png</texture></control>
+    <control type="image"><left>26</left><top>12</top><width>200</width><height>270</height><aspectratio>keep</aspectratio><texture background="true">$INFO[ListItem.Art(thumb)]</texture></control>
+    <control type="label"><left>12</left><top>286</top><width>230</width><height>43</height><font>font_mini</font><textcolor>FFFFFFFF</textcolor><align>center</align><scroll>true</scroll><label>$INFO[ListItem.Label]</label></control>
+    <control type="label"><left>210</left><top>8</top><width>34</width><height>35</height><font>font_mini</font><textcolor>FFFFD66B</textcolor><label>★</label><visible>String.IsEqual(ListItem.Property(venom.favorite),true)</visible></control>
+   </focusedlayout>
+   <itemlayout width="320" height="225">
+    <control type="image"><left>4</left><top>4</top><width>308</width><height>216</height><texture colordiffuse="FF1B2A38">special://skin/media/common/white.png</texture></control>
+    <control type="image"><left>14</left><top>12</top><width>288</width><height>150</height><aspectratio>keep</aspectratio><texture background="true">$INFO[ListItem.Art(thumb)]</texture></control>
+    <control type="label"><left>14</left><top>166</top><width>288</width><height>48</height><font>font_mini</font><textcolor>FFFFFFFF</textcolor><align>center</align><scroll>false</scroll><label>$INFO[ListItem.Label]</label></control>
+    <control type="label"><left>264</left><top>8</top><width>34</width><height>35</height><font>font_mini</font><textcolor>FFFFD66B</textcolor><label>★</label><visible>String.IsEqual(ListItem.Property(venom.favorite),true)</visible></control>
+   </itemlayout>
+   <focusedlayout width="320" height="225">
+    <control type="image"><left>4</left><top>4</top><width>308</width><height>216</height><texture colordiffuse="FF39717D">special://skin/media/common/white.png</texture></control>
+    <control type="image"><left>14</left><top>12</top><width>288</width><height>150</height><aspectratio>keep</aspectratio><texture background="true">$INFO[ListItem.Art(thumb)]</texture></control>
+    <control type="label"><left>14</left><top>166</top><width>288</width><height>48</height><font>font_mini</font><textcolor>FFFFFFFF</textcolor><align>center</align><scroll>true</scroll><label>$INFO[ListItem.Label]</label></control>
+    <control type="label"><left>264</left><top>8</top><width>34</width><height>35</height><font>font_mini</font><textcolor>FFFFD66B</textcolor><label>★</label><visible>String.IsEqual(ListItem.Property(venom.favorite),true)</visible></control>
+   </focusedlayout>
+  </control>
+  <control type="label" id="940"><left>60</left><top>1020</top><width>1770</width><height>45</height><font>font_mini</font><textcolor>FFCAD7E2</textcolor><label>Choose a category and press OK</label></control>
+ </controls>
+</window>

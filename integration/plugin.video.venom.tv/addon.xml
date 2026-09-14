@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<addon id="plugin.video.venom.tv" name="Venom TV" version="1.3.1" provider-name="Habibi">
+  <requires><import addon="xbmc.python" version="3.0.0" /></requires>
+  <extension point="xbmc.python.pluginsource" library="default.py"><provides>video</provides></extension>
+  <extension point="xbmc.addon.metadata"><summary lang="en_GB">Private IPTV movies and series through your media-server gateway</summary><description lang="en_GB">Category grids, large posters, Arabic-aware search, cached paging and shared Jellyfin favourites. Uses existing private gateway configuration; no provider credentials in source.</description><platform>all</platform><license>MIT</license></extension>
+</addon>
