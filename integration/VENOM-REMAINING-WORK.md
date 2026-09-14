@@ -22,7 +22,7 @@ Nothing was installed on a phone.
 4. Provider categories/order for channels, movies and series; no empty categories;
    shared account favourites, grids and useful artwork on supported existing apps.
 5. Kodi sync-loop/performance and staged Venom improvements need live device
-   verification. Current 192.168.50.169 check returns No route to host.
+   verification. Ugoos is reachable again; category browsing verified below.
 6. Stock Moonfin native menus cannot consume the custom category endpoint. Use
    its supported server data/favourites; do not claim web changes affect native UI.
 7. Keep cautious background testing; no dead classification from congestion,
@@ -30,6 +30,41 @@ Nothing was installed on a phone.
 8. Package/document server integrations and regressions separately from upstream
    app files. Inventory existing patched plugin/web/Kodi dependencies; do not
    claim updates are unbreakable. Check compatibility before upgrading patches.
+9. Added by user: check AM9/CoreELEC/Kodi/Jellyfin updates after the current
+   category/naming work, preserving custom integrations.
+
+## Live-device follow-up, 2026-09-14
+
+User clarified naming is wrong in Jellyfin, not Kodi. No extra Kodi label
+cleanup was enabled. Venom browser now gets custom AND provider live categories
+from the server instead of relying solely on PVR group import. Server returned
+314 groups (ten curated, 304 provider). Custom groups are pinned, then All
+channels, then provider order. Existing native shared IDs/playback are retained.
+Visually verified custom category sidebar, Arabic News (30 channels, logos and
+favourite stars) and English Sports (36 channels). Measured category list load
+0.114s, Arabic News selection 0.206s, English Sports selection 0.425s. These
+are browsing times, NOT video startup measurements.
+Provider navigation also visually verified: Saudi Arabia opened 44 channels
+with logos in 0.271s; provider categories appear below the pinned custom groups.
+
+Also found launch could be refused while a modal dialog was active, leaving
+the browser singleton set indefinitely. Added a five-second activation timeout
+to release it and allow a later retry; does not forcibly close user dialogs.
+Device backup: /storage/upgrade-staging/venom-categories-20260914/browser.before.py.
+
+Jellyfin direct metadata-name pass is running using full-item backups and the
+normal metadata update API, preserving IDs and unrelated metadata. At 03:26 UTC,
+525 names were changed with all 11,249 IDs and channel numbers unchanged.
+The audit saw 12 favourite differences from the old baseline; do not reset user
+choices. Each direct update separately verifies its favourite stayed unchanged.
+Pass is not yet complete. Gateway overrides alone were insufficient to deliver
+mobile-visible names promptly because the full guide refresh is slow.
+
+Update inventory: installed CoreELEC 22.0-Piers nightly 20260913, bundled Kodi
+22.0-BETA2 (21.90.802), Jellyfin for Kodi 2.1.0+py3, Arctic Fuse 3.2.19,
+Jellyfin Server 12.0.0. GitHub latest-release APIs confirm the add-on, skin and
+server versions are current. CoreELEC nightly 20260914 is already downloaded in
+/storage/.update, pending reboot. No firmware reboot was performed in this pass.
 
 Confirmed at this audit: checker and presence timers enabled, 202 channels tested,
 174 working and 28 inconclusive. This is a snapshot, not a completed scan.
