@@ -26,18 +26,14 @@ def main():
     try:fcntl.flock(own,fcntl.LOCK_EX|fcntl.LOCK_NB)
     except BlockingIOError:return
     checker=runpy.run_path(str(ROOT/'venom-channel-checker.py'))
+    quality=runpy.run_path(str(ROOT/'venom-quality-probe.py'))
     priority=runpy.run_path(str(ROOT/'venom-special-groups.py'))['priority']
     manifest=json.loads((ROOT/'curated-channels.json').read_text())
     channels={str(c['stream_id']):c for g in manifest['groups'] for c in g['channels']}
-    path=ROOT/'hdr-audit-report.json'
+    path=ROOT/'channel-quality-audit.json'
     previous=json.loads(path.read_text()).get('channels',{}) if path.exists() else {}
     now=time.time()
-    records={i:r for i,r in previous.items() if i in channels and 0<=now-r.get('time',0)<7*86400}
-    with sqlite3.connect('file:'+str(ROOT/'channel-health.sqlite3')+'?mode=ro',uri=True) as db:
-        for cid,stamp,status,payload in db.execute('select channel_id,time,result,record from observations where id in (select max(id) from observations group by channel_id)'):
-            cid=str(cid);row=json.loads(payload)
-            if cid in channels and cid not in records and status=='working' and type(row.get('decoded_hdr')) is bool and 0<=now-stamp<7*86400:
-                records[cid]={'name':channels[cid]['name'],'time':stamp,'classification':classification(row),'source':'recent_decoder_check',**{k:v for k,v in row.items() if k in ('result','decoded_hdr','decoded_transfer','decoded_width','decoded_height')}}
+    records={i:r for i,r in previous.items() if i in channels and r.get('quality_schema')==3 and 0<=now-r.get('time',0)<7*86400}
     def report(state):
         counts=dict(collections.Counter(r['classification'] for r in records.values()))
         counts['pending']=len(channels)-len(records)
@@ -63,10 +59,11 @@ def main():
                 if not checker['idle'](token,12):
                     lock.close();report('waiting_playback');time.sleep(30);continue
                 url=checker['BASE']+'/live/'+urllib.parse.quote(secret['stream_user'],safe='')+'/'+urllib.parse.quote(secret['stream_password'],safe='')+'/'+cid+'.ts'
-                result=checker['probe'](url,22)
-                records[cid]={'name':c['name'],'time':time.time(),'source':'hdr_audit','classification':classification(result),**result}
+                result=quality['probe'](url,35)
+                groups=[g['id'] for g in manifest['groups'] if any(str(x['stream_id'])==cid for x in g['channels'])]
+                records[cid]={'name':c['name'],'provider_category_id':c.get('category_id'),'custom_groups':groups,'time':time.time(),'source':'quality_audit','quality_schema':3,**result}
                 attempted+=1;report('running')
-                print(json.dumps({'channel_id':cid,'name':c['name'],'classification':classification(result),'transfer':result.get('decoded_transfer'),'completed':len(records),'total':len(channels)},ensure_ascii=False),flush=True)
+                print(json.dumps({'channel_id':cid,'name':c['name'],'classification':result['classification'],'completed':len(records),'total':len(channels)},ensure_ascii=False),flush=True)
                 break
             finally:lock.close()
         time.sleep(3)
@@ -75,7 +72,7 @@ def main():
 if __name__=='__main__':
     try:main()
     except Exception as exc:
-        path=ROOT/'hdr-audit-report.json'
+        path=ROOT/'channel-quality-audit.json'
         if path.exists():
             report=json.loads(path.read_text());report.update(state='error',error_type=type(exc).__name__,updated=time.time());save(path,report)
         print(json.dumps({'event':'audit_error','type':type(exc).__name__}),flush=True)
