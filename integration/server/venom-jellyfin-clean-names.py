@@ -16,13 +16,17 @@ PROTECTED=('Id','Type','ChannelNumber','Path','ParentId','ProviderIds','Genres',
            'PremiereDate','ProductionYear','PreferredMetadataLanguage','PreferredMetadataCountryCode')
 
 def main():
-    parser=argparse.ArgumentParser();parser.add_argument('--apply',action='store_true');parser.add_argument('--limit',type=int,default=1);args=parser.parse_args()
+    parser=argparse.ArgumentParser();parser.add_argument('--apply',action='store_true');parser.add_argument('--limit',type=int,default=1);parser.add_argument('--curated',action='store_true');args=parser.parse_args()
     lock=(ROOT/'jellyfin-clean-names.lock').open('a');fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
     policy=runpy.run_path(str(ROOT/'venom-channel-names.py'))
     clean=policy['clean_name']
     api=runpy.run_path('/root/iptv-jellyfin-admin.py')['api']
     uid=next(u['Id'] for u in api('/Users') if u['Name'].casefold()=='habibi')
     before=json.loads((ROOT/'channel-names-before.json').read_text())
+    if args.curated:
+        native=json.loads((ROOT/'curated-native-channels.json').read_text())
+        ids={c['id'] for g in native['groups'] for c in g['channels']}
+        before={i:v for i,v in before.items() if i in ids}
     # A bounded list snapshot avoids thousands of individual reads on reruns.
     # Re-read the full DTO immediately before every actual metadata update.
     names={}

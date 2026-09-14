@@ -7,6 +7,11 @@ m=runpy.run_path(str(Path(__file__).with_name('venom-curate-channels.py')))
 s=runpy.run_path(str(Path(__file__).with_name('venom-seed-favourites.py')))
 
 class CurationTests(unittest.TestCase):
+    def test_expanded_provider_prefixes_preserve_station_and_quality(self):
+        clean=runpy.run_path(str(Path(__file__).with_name('venom-channel-names.py')))['clean_name']
+        for raw,want in [('1234 USA: UFC 1 HD','UFC 1 HD'),('DS: SS Rugby HD','SS Rugby HD'),('[SPO] NFL Network','NFL Network'),('OSN : WWE FHD','OSN WWE FHD'),('LB : JADEED 8K','JADEED 8K'),('PT| FOX MOVIES HD','PT| FOX MOVIES HD'),('24 NEWS','24 NEWS')]:
+            self.assertEqual(clean(raw),want)
+            self.assertEqual(clean(want),want)
     def test_high_quality_variants_not_excluded_or_capped(self):
         names=['BEIN SPORTS 1 '+q for q in ['HD','FHD','4K','6K','8K','HDR','HLG']]+['BEIN 8K Match Today']
         source={'categories':[dict(category_id=1,category_name='|SP| BEIN SPORTS VIP')],

@@ -1,0 +1,10 @@
+[Unit]
+Description=Keep newly published Venom channel names and artwork presentable
+
+[Timer]
+OnBootSec=5min
+OnUnitInactiveSec=30min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

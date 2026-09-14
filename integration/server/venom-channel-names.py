@@ -15,6 +15,12 @@ def clean_name(value):
     label = re.sub(r'^(?:(?:VIP|CA|UK|US|AR|NW)\b[\s:|.-]*)+', '', label, flags=re.I).strip()
     # Verified provider kids-category prefix, not part of the station name.
     label = re.sub(r'^(?:\d{1,6}\s+)?KD\s*:\s*', '', label, flags=re.I).strip()
+    # Explicit provider markers seen in the expanded catalogue. Delimiters are
+    # required so real station names such as US TV/ARTE remain intact.
+    label=re.sub(r'^\s*(?:\d{1,6}\s+)?\[SPO\]\s*','',label,flags=re.I)
+    label=re.sub(r'^(?:\d{1,6}\s+)?(?:(?:USA|US|UK|CA|AR|SP|DS|NW|KD|LB|SY|UAE)\s*[:|]\s*)+','',label,flags=re.I)
+    label=re.sub(r'^(MBC|OSN)\s*:\s*',r'\1 ',label,flags=re.I)
+    label=re.sub(r'\s+',' ',label).strip()
     return label or original
 
 

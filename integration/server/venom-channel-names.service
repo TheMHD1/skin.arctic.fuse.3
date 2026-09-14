@@ -5,6 +5,7 @@ Requires=docker.service
 
 [Service]
 Type=oneshot
+ExecStartPre=/usr/bin/cp /data/config/iptv-venom/curated-candidates.json /data/config/dispatcharr/venom-name-scope.json
 ExecStart=/usr/bin/docker exec -e VENOM_NAMES_APPLY=1 dispatcharr python manage.py shell -c "exec(open('/data/venom-channel-name-overrides.py').read())"
 TimeoutStartSec=5min
 Nice=15

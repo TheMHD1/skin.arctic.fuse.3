@@ -1519,4 +1519,247 @@
     "channel": "AlSouriyaTV.sy",
     "url": "https://i.imgur.com/8FILgXT.jpeg"
   }
+,
+  "AR:AD SPORT 1": {
+    "channel": "AbuDhabiSports1.ae",
+    "url": "https://i.imgur.com/6BVWk8z.png"
+  },
+  "AR:AD SPORT 1 PLUS": {
+    "channel": "AbuDhabiSports1.ae",
+    "url": "https://i.imgur.com/6BVWk8z.png"
+  },
+  "AR:AD SPORTS 1 PLUS": {
+    "channel": "AbuDhabiSports1.ae",
+    "url": "https://i.imgur.com/6BVWk8z.png"
+  },
+  "AR:AD SPORT 2": {
+    "channel": "AbuDhabiSports2.ae",
+    "url": "https://i.imgur.com/y1I2jFK.png"
+  },
+  "AR:AD SPORT 2 PLUS": {
+    "channel": "AbuDhabiSports2.ae",
+    "url": "https://i.imgur.com/y1I2jFK.png"
+  },
+  "AR:AD SPORTS 2 PLUS": {
+    "channel": "AbuDhabiSports2.ae",
+    "url": "https://i.imgur.com/y1I2jFK.png"
+  },
+  "AR:KSA SPORT 1": {
+    "channel": "KSASports1.sa",
+    "url": "https://i.imgur.com/ONKNOAp.png"
+  },
+  "AR:KSA SPORT 1 PLUS": {
+    "channel": "KSASports1.sa",
+    "url": "https://i.imgur.com/ONKNOAp.png"
+  },
+  "AR:KSA SPORT 2": {
+    "channel": "KSASports2.sa",
+    "url": "https://i.imgur.com/v8ULLqg.png"
+  },
+  "AR:KSA SPORT 2 PLUS": {
+    "channel": "KSASports2.sa",
+    "url": "https://i.imgur.com/v8ULLqg.png"
+  },
+  "AR:KSA SPORT 3": {
+    "channel": "KSASports3.sa",
+    "url": "https://i.imgur.com/BXfCvez.png"
+  },
+  "AR:KSA SPORT 3 PLUS": {
+    "channel": "KSASports3.sa",
+    "url": "https://i.imgur.com/BXfCvez.png"
+  },
+  "AR:KSA SPORT 4": {
+    "channel": "KSASports4.sa",
+    "url": "https://i.imgur.com/TNZEKP6.png"
+  },
+  "AR:KSA SPORT 4 PLUS": {
+    "channel": "KSASports4.sa",
+    "url": "https://i.imgur.com/TNZEKP6.png"
+  },
+  "AR:ALAHLY": {
+    "channel": "AlAhlyTV.eg",
+    "url": "https://i.imgur.com/EODKutw.png"
+  },
+  "AR:AL AHLY": {
+    "channel": "AlAhlyTV.eg",
+    "url": "https://i.imgur.com/EODKutw.png"
+  },
+  "AR:ZAMALEK SPORT": {
+    "channel": "ZamalekTV.eg",
+    "url": "https://i.imgur.com/yrLeg9k.png"
+  },
+  "AR:ZAMALEK": {
+    "channel": "ZamalekTV.eg",
+    "url": "https://i.imgur.com/yrLeg9k.png"
+  },
+  "EN:SKY SPORTS NFL": {
+    "channel": "SkySportsNFL.uk",
+    "url": "https://d2n0069hmnqmmx.cloudfront.net/epgdata/1.0/newchanlogos/512/512/skychb1333.png"
+  },
+  "SS RUGBY": {
+    "channel": "SuperSportRugby.za",
+    "url": "https://i.imgur.com/wwBY5Gh.png"
+  },
+  "SS CRICKET": {
+    "channel": "SuperSportCricket.za",
+    "url": "https://i.imgur.com/0c5Ox0o.png"
+  },
+  "SS GOLF": {
+    "channel": "SuperSportGolf.za",
+    "url": "https://i.imgur.com/5VeJd2T.png"
+  },
+  "SS TENNIS": {
+    "channel": "SuperSportTennis.za",
+    "url": "https://i.imgur.com/i9OI2m6.png"
+  },
+  "WWE NETWORK": {
+    "channel": "WWENetwork.us",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/88/WWE_Network_logo.svg/500px-WWE_Network_logo.svg.png"
+  },
+  "OSN WWE NETWORK": {
+    "channel": "WWENetwork.us",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/88/WWE_Network_logo.svg/500px-WWE_Network_logo.svg.png"
+  },
+  "OSN WWE": {
+    "channel": "WWENetwork.us",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/88/WWE_Network_logo.svg/500px-WWE_Network_logo.svg.png"
+  },
+  "MLB NETWORK": {
+    "channel": "MLBNetwork.us",
+    "url": "https://i.imgur.com/sA5V39D.png"
+  },
+  "MLB STRIKEZONE": {
+    "channel": "MLBStrikeZone.us",
+    "url": "https://i.imgur.com/uMI1ySO.png"
+  },
+  "NHL NETWORK": {
+    "channel": "NHLNetwork.us",
+    "url": "https://i.imgur.com/UNZ8bef.png"
+  },
+  "FIGHT NETWORK": {
+    "channel": "FightNetwork.ca",
+    "url": "https://i.imgur.com/vlKPZHR.png"
+  },
+  "GLORY KICKBOXING 1": {
+    "channel": "GloryKickboxing.us",
+    "url": "https://i.imgur.com/tS7Ub7i.png"
+  },
+  "GLORY KICKBOXING 2": {
+    "channel": "GloryKickboxing.us",
+    "url": "https://i.imgur.com/tS7Ub7i.png"
+  },
+  "CINEMAX": {
+    "channel": "Cinemax.us",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/66/Cinemax_2016.svg/960px-Cinemax_2016.svg.png"
+  },
+  "SHOWTIME": {
+    "channel": "Showtime.us",
+    "url": "https://i.imgur.com/Or0LKsu.png"
+  },
+  "STARZ": {
+    "channel": "Starz.us",
+    "url": "https://i.imgur.com/N7oSm4d.png"
+  },
+  "PT| FOX MOVIES": {
+    "channel": "FoxMovies.pt",
+    "url": "https://i.imgur.com/dcpMz2f.png"
+  },
+  "SR: FOX MOVIES": {
+    "channel": "FoxMovies.rs",
+    "url": "https://i.imgur.com/P63yktY.png"
+  },
+  "AR:ONTIME SPORTS 1": {
+    "channel": "OnTimeSports.eg",
+    "url": "https://i.ibb.co/yBgDwhKp/On-Sport-1.png"
+  },
+  "AR:ONTIMESPORTS 1": {
+    "channel": "OnTimeSports.eg",
+    "url": "https://i.ibb.co/yBgDwhKp/On-Sport-1.png"
+  },
+  "AR:ON TIME SPORTS 1": {
+    "channel": "OnTimeSports.eg",
+    "url": "https://i.ibb.co/yBgDwhKp/On-Sport-1.png"
+  },
+  "AR:ON TIME SPORTS 1 PLUS": {
+    "channel": "OnTimeSports.eg",
+    "url": "https://i.ibb.co/yBgDwhKp/On-Sport-1.png"
+  },
+  "AR:ONTIME SPORTS 2": {
+    "channel": "OnTimeSports2.eg",
+    "url": "https://i.ibb.co/bMvxMxTd/on-sport-2.png"
+  },
+  "AR:ONTIMESPORTS 2": {
+    "channel": "OnTimeSports2.eg",
+    "url": "https://i.ibb.co/bMvxMxTd/on-sport-2.png"
+  },
+  "AR:ON TIME SPORTS 2": {
+    "channel": "OnTimeSports2.eg",
+    "url": "https://i.ibb.co/bMvxMxTd/on-sport-2.png"
+  },
+  "AR:ON TIME SPORTS 2 PLUS": {
+    "channel": "OnTimeSports2.eg",
+    "url": "https://i.ibb.co/bMvxMxTd/on-sport-2.png"
+  },
+  "AR:SPORT NBA": {
+    "channel": "beINSportsNBA.qa",
+    "url": "https://i.imgur.com/QmSc6kh.png"
+  },
+  "AR:BEIN 2 أهم مبارايات اليوم": {
+    "channel": "beINSports.qa",
+    "kind": "network-logo-fallback",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/international/beinsports/old/stacked/bein-sports-int.png"
+  },
+  "AR:BEIN + اهم مبارايات اليوم": {
+    "channel": "beINSports.qa",
+    "kind": "network-logo-fallback",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/international/beinsports/old/stacked/bein-sports-int.png"
+  },
+  "AR:BEIN أهم مبارايات اليوم": {
+    "channel": "beINSports.qa",
+    "kind": "network-logo-fallback",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/international/beinsports/old/stacked/bein-sports-int.png"
+  },
+  "EN:BEIN SPORTS 1 EN": {
+    "channel": "beINSports.qa",
+    "kind": "network-logo-fallback",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/international/beinsports/old/stacked/bein-sports-int.png"
+  },
+  "EN:BEIN SPORTS 2 EN": {
+    "channel": "beINSports.qa",
+    "kind": "network-logo-fallback",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/international/beinsports/old/stacked/bein-sports-int.png"
+  },
+  "EN:BEIN ENGLISH 1": {
+    "channel": "beINSports.qa",
+    "kind": "network-logo-fallback",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/international/beinsports/old/stacked/bein-sports-int.png"
+  },
+  "EN:BEIN ENGLISH 2": {
+    "channel": "beINSports.qa",
+    "kind": "network-logo-fallback",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/international/beinsports/old/stacked/bein-sports-int.png"
+  },
+  "AR:BEIN .FRANSA.1 -": {
+    "channel": "beINSports.qa",
+    "kind": "network-logo-fallback",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/international/beinsports/old/stacked/bein-sports-int.png"
+  },
+  "AR:BEIN .FRANSA.2 -": {
+    "channel": "beINSports.qa",
+    "kind": "network-logo-fallback",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/international/beinsports/old/stacked/bein-sports-int.png"
+  },
+  "AR:BEIN FRANSA.3 -": {
+    "channel": "beINSports.qa",
+    "kind": "network-logo-fallback",
+    "url": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/international/beinsports/old/stacked/bein-sports-int.png"
+  },
+  "IT: SKY SPORT UNO": {
+    "channel": "SkySportUno.it",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/af/Sky_Sport_Uno_-_Logo_2020.svg/960px-Sky_Sport_Uno_-_Logo_2020.svg.png"
+  },
+  "IT: SKY SPORT CALCIO": {
+    "channel": "SkySportCalcio.it",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/Sky_Sport_Calcio.svg/960px-Sky_Sport_Calcio.svg.png"
+  }
 }

@@ -19,6 +19,10 @@ ledger_path = Path('/data/venom-name-overrides.json')
 ledger = json.loads(ledger_path.read_text()) if ledger_path.exists() else {}
 only = os.environ.get('VENOM_NAMES_CHANNEL')
 query = Channel.objects.filter(auto_created_by__name='Venom TV').select_related('override')
+scope_path=Path('/data/venom-name-scope.json')
+if scope_path.exists():
+    scope=json.loads(scope_path.read_text())
+    query=query.filter(pk__in={int(c['stream_id']) for g in scope['groups'] for c in g['channels']})
 if only:
     query = query.filter(pk=int(only))
 changes = []

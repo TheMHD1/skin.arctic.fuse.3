@@ -8,14 +8,16 @@ from pathlib import Path
 from urllib.parse import urlencode
 
 ROOT=Path('/data/config/iptv-venom')
+_clean_name=runpy.run_path(str(Path(__file__).with_name('venom-channel-names.py')))['clean_name']
 def key(name):
+    name=_clean_name(name)
     name=re.sub(r'^(MBC|OSN)\s*[:.]\s*',r'\1 ',name,flags=re.I)
     name=re.sub(r'\s*· BACKUP.*$','',name.upper())
     name=re.sub(r'(?<!\w)(?:[468]K|UHD|FHD|HDF|HD|SD|1080P|720P|50FPS)(?!\w)\.?\+?',' ',name)
     return re.sub(r'\s+',' ',name).strip(' /')
 
 def main():
-    p=argparse.ArgumentParser();p.add_argument('--apply',action='store_true');p.add_argument('--limit',type=int,default=250);args=p.parse_args()
+    p=argparse.ArgumentParser();p.add_argument('--apply',action='store_true');p.add_argument('--limit',type=int,default=250);p.add_argument('--missing-only',action='store_true');args=p.parse_args()
     lock=(ROOT/'reviewed-artwork.lock').open('a');fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
     helper=runpy.run_path('/root/iptv-jellyfin-admin.py');api=helper['api'];base=helper['BASE']
     token=(ROOT/'jellyfin-api-key').read_text().strip()
@@ -30,6 +32,14 @@ def main():
     scopes={}
     for g in native['groups']:
         for c in g['channels']:scopes.setdefault(c['id'],'AR' if g['id'].startswith('ar-') else 'CA' if g['id']=='en-canada' else 'EN')
+    catalogue=json.loads((ROOT/'live-catalogue-redacted.json').read_text())
+    categories={str(c['category_id']):c['category_name'] for c in catalogue['categories']}
+    source={str(c['stream_id']):c for c in catalogue['channels']}
+    language=runpy.run_path(str(ROOT/'venom-sports-entertainment.py'))['language']
+    for iid,gid in ids.items():
+        c=source.get(str(gid),{});cat=categories.get(str(c.get('category_id')),'')
+        lang=language(c.get('name',''),cat)
+        if lang and scopes[iid]!='CA':scopes[iid]='AR' if lang=='ar' else 'EN'
     uid=next(u['Id'] for u in api('/Users') if u['Name'].lower()=='habibi')
     items=[];keys=list(ids)
     for i in range(0,len(keys),80):items+=api('/Users/'+uid+'/Items?'+urlencode({'Ids':','.join(keys[i:i+80]),'Limit':80}))['Items']
@@ -40,6 +50,7 @@ def main():
         match=mapping.get(scopes[item['Id']]+':'+key(item['Name'])) or mapping.get(key(item['Name']))
         iid=item['Id']
         if item.get('ImageTags',{}).get('Primary'):
+            if args.missing_only:preserved+=1;continue
             try:
                 if len(request('/Items/'+iid+'/Images/Primary?maxWidth=64'))>100:preserved+=1;continue
             except Exception:pass
