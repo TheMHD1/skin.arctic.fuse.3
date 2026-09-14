@@ -2,6 +2,11 @@ const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/st
 const ctx={URLSearchParams};vm.createContext(ctx);
 vm.runInContext(fs.readFileSync(__dirname+'/venom-jellyfin-navigation.js','utf8'),ctx);
 const p=ctx.VenomNavigationPolicy,u='e8b8de94cf1d443687f6297395efe4ae';
+assert.equal(p.channelDisplayName('748 KD : KARAMEESH'),'KARAMEESH');
+assert.equal(p.channelCardName('748 KARAMEESH','KARAMEESH'),'KARAMEESH');
+assert.equal(p.channelDisplayName('KD : MBC 3'),'MBC 3');
+assert.equal(p.channelDisplayName('KD TV'),'KD TV');
+assert.equal(p.channelDisplayName('KD :'),'KD :');
 assert.equal(p.channelCardName('9328 TSN 1 FHD','TSN 1 FHD'),'TSN 1 FHD');
 assert.equal(p.channelCardName('600 24 NEWS HD','24 NEWS HD'),'24 NEWS HD');
 assert.equal(p.channelCardName('24 NEWS HD','24 NEWS HD'),'24 NEWS HD');

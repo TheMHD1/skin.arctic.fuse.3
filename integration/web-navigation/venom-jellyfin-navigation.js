@@ -33,6 +33,7 @@
         let label=value.replace(/\s+/g,' ').trim();
         label=label.replace(/^\d{3,6}\s+(?=(?:VIP\b|CA\b|UK\b|US\b|AR\b|NW\b))/i,'');
         label=label.replace(/^(?:(?:VIP|CA|UK|US|AR|NW)\b[\s:|.-]*)+/i,'').trim();
+        label=label.replace(/^(?:\d{1,6}\s+)?KD\s*:\s*/i,'').trim();
         return label||value;
     }
     function channelCardName(value, itemName) {
@@ -80,10 +81,32 @@
         const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
         while(walker.nextNode())if(walker.currentNode.nodeValue.trim()===from)walker.currentNode.nodeValue=to;
     }
+    function cleanChannelCards() {
+        for(const link of document.querySelectorAll('a.textActionButton[data-type="TvChannel"]')||[]) {
+            const original=link.textContent;
+            const card=link.closest('.card[data-type="TvChannel"]');
+            const itemLink=card?.querySelector('a.cardImageContainer[aria-label]');
+            const itemName=itemLink?.getAttribute('href')===link.getAttribute('href')?itemLink.getAttribute('aria-label'):null;
+            const clean=channelCardName(original,itemName);
+            if(clean!==original) {
+                link.textContent=clean;
+                link.title=clean;
+                link.setAttribute('aria-label',clean);
+            }
+            // Missing artwork has a separate numbered label. Clean only
+            // leaf text in this same channel card, never its image/actions.
+            for(const fallback of card?.querySelectorAll('.cardDefaultText')||[]) {
+                if(fallback.children.length)continue;
+                const label=channelCardName(fallback.textContent,itemName);
+                if(label!==fallback.textContent)fallback.textContent=label;
+            }
+        }
+        }
     function run() {
         scheduled=false;
         const client=window.ApiClient;
         const uid=client?.getCurrentUserId?.();
+        if(validUser(uid))cleanChannelCards();
         if(uid!==activeUser){cache.clear();activeUser=uid;document.querySelector('.venomCategoryDialog')?.remove();}
         const current=scope(location.hash,uid);
         if(!current) {
@@ -113,25 +136,6 @@
                 nav.setAttribute('aria-label','Venom Live TV browsing');
                 const categories=document.createElement('a');categories.href='#/livetv?tab=0';
                 categories.textContent='Browse channel categories';nav.append(categories);page.prepend(nav);
-            }
-            for(const link of page?.querySelectorAll('a.textActionButton[data-type="TvChannel"]')||[]) {
-                const original=link.textContent;
-                const card=link.closest('.card[data-type="TvChannel"]');
-                const itemLink=card?.querySelector('a.cardImageContainer[aria-label]');
-                const itemName=itemLink?.getAttribute('href')===link.getAttribute('href')?itemLink.getAttribute('aria-label'):null;
-                const clean=channelCardName(original,itemName);
-                if(clean!==original) {
-                    link.textContent=clean;
-                    link.title=clean;
-                    link.setAttribute('aria-label',clean);
-                }
-                // Missing artwork has a separate numbered label. Clean only
-                // leaf text in this same channel card, never its image/actions.
-                for(const fallback of card?.querySelectorAll('.cardDefaultText')||[]) {
-                    if(fallback.children.length)continue;
-                    const label=channelCardName(fallback.textContent,itemName);
-                    if(label!==fallback.textContent)fallback.textContent=label;
-                }
             }
             const cards=[...(page?.querySelectorAll('.MuiPaper-root')||[])].filter(card=>ranks.has(normalize(card.querySelector('button .MuiTypography-body1')?.textContent||'')));
             if(cards.length===state.items.length&&cards.length) {

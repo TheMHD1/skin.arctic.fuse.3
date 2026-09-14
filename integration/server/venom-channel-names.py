@@ -1,8 +1,24 @@
 """Conservative, idempotent live-channel display names; never changes identities."""
 import re
+import json
+from pathlib import Path
+
+_review_file = Path(__file__).with_name('venom-reviewed-channel-names.json')
+REVIEWED = json.loads(_review_file.read_text()) if _review_file.exists() else {}
 
 
 def clean_name(value):
+    original = str(value).strip()
+    if original in REVIEWED:
+        return REVIEWED[original]
+    label = re.sub(r'^\d{3,6}\s+(?=(?:VIP\b|CA\b|UK\b|US\b|AR\b|NW\b))', '', original, flags=re.I)
+    label = re.sub(r'^(?:(?:VIP|CA|UK|US|AR|NW)\b[\s:|.-]*)+', '', label, flags=re.I).strip()
+    # Verified provider kids-category prefix, not part of the station name.
+    label = re.sub(r'^(?:\d{1,6}\s+)?KD\s*:\s*', '', label, flags=re.I).strip()
+    return label or original
+
+
+def previous_clean_name(value):
     original = str(value).strip()
     label = re.sub(r'^\d{3,6}\s+(?=(?:VIP\b|CA\b|UK\b|US\b|AR\b|NW\b))', '', original, flags=re.I)
     label = re.sub(r'^(?:(?:VIP|CA|UK|US|AR|NW)\b[\s:|.-]*)+', '', label, flags=re.I).strip()

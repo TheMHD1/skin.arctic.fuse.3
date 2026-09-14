@@ -35,6 +35,13 @@ class CurationTests(unittest.TestCase):
         with self.assertRaises(ValueError):s['resolve'](groups,[channel,channel])
         with self.assertRaises(ValueError):s['resolve'](groups,[{**channel,'ChannelNumber':'43'}])
     def test_conservative_channel_names(self):
+        policy=runpy.run_path(str(Path(__file__).with_name('venom-channel-names.py')))
+        for source, expected in policy['REVIEWED'].items():
+            self.assertEqual(policy['clean_name'](source), expected)
+            self.assertEqual(policy['clean_name'](expected), expected)
+        for source,expected in [('KD : KARAMEESH','KARAMEESH'),('748 KD : KARAMEESH','KARAMEESH'),('KD : MBC 3','MBC 3'),('KD TV','KD TV'),('KD :','KD :')]:
+            self.assertEqual(s['clean_name'](source),expected)
+            self.assertEqual(s['clean_name'](expected),expected)
         for source,expected in [('9328 CA TSN1 FHD','TSN1 FHD'),('5849 VIP UK Sky Sports UHD','Sky Sports UHD'),('MBC 1 HD','MBC 1 HD'),('24 NEWS','24 NEWS'),('قناة العربية HD','قناة العربية HD'),('CA','CA')]:
             self.assertEqual(s['clean_name'](source),expected)
             self.assertEqual(s['clean_name'](expected),expected)

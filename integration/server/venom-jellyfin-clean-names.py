@@ -18,7 +18,8 @@ PROTECTED=('Id','Type','ChannelNumber','Path','ParentId','ProviderIds','Genres',
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--apply',action='store_true');parser.add_argument('--limit',type=int,default=1);args=parser.parse_args()
     lock=(ROOT/'jellyfin-clean-names.lock').open('a');fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
-    clean=runpy.run_path(str(ROOT/'venom-channel-names.py'))['clean_name']
+    policy=runpy.run_path(str(ROOT/'venom-channel-names.py'))
+    clean=policy['clean_name']
     api=runpy.run_path('/root/iptv-jellyfin-admin.py')['api']
     uid=next(u['Id'] for u in api('/Users') if u['Name'].casefold()=='habibi')
     before=json.loads((ROOT/'channel-names-before.json').read_text())
@@ -37,7 +38,7 @@ def main():
         if names.get(iid)==desired:skipped+=1;continue
         item=api('/Users/'+uid+'/Items/'+iid)
         if item['Name']==desired:skipped+=1;continue
-        if item['Name']!=old['name']:continue  # Do not replace a later manual edit.
+        if item['Name'] not in (old['name'], policy['previous_clean_name'](old['name'])):continue  # Preserve unrelated manual edits.
         if item['Type']!='TvChannel' or item['Id']!=iid:raise ValueError('Wrong item type/identity')
         if not args.apply:
             print(json.dumps({'id':iid,'before':item['Name'],'after':desired},ensure_ascii=False));changed+=1

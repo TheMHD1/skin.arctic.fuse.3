@@ -1,5 +1,21 @@
 # Existing-app scope — 2026-09-14
 
+## Latest: reviewed names and mobile card numbers, 10:58 UTC
+
+User supplied `748 KD :` and requested manual review across every custom
+category including sports. Reviewed 590 channels across all 10 groups and
+saved 540 explicit source-name replacements in venom-reviewed-channel-names.json.
+Deployed beside both server/gateway naming policies; 381 Jellyfin metadata
+updates passed protected-field and favourite readbacks. Final read-only audit:
+590 matched, zero mismatches. Native manifest/collections republished without
+changing favourites. Web helper v12 strips independent catalogue numbers on
+TvChannel cards across authenticated routes, including favourites; all 16
+category pages checked with no 3–6 digit catalogue prefixes. Underlying channel
+numbers and IDs stay intact. Native clients can still independently display
+numbers; physical phone confirmation remains user-side. No APK rebuilt and
+Ugoos remains intentionally off. Detailed deployment/recovery notes are in
+integration/REVIEWED-CHANNEL-NAMES-2026-09-14.md in the GitHub fork.
+
 This supersedes the custom Moonfin implementation proposal. User explicitly
 rejected APK/client development. Do not build or maintain a replacement app.
 Custom review checkout, APKs, isolated Flutter, newly installed Dart dependencies,
