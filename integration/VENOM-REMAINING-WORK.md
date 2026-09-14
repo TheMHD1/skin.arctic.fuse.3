@@ -458,3 +458,17 @@ Source and tests mirrored to integration/web-navigation. Server backup:
 `backups/venom-navigation-v10.js`. No server restart or app rebuild; phone
 must reload its web shell to receive v11. Native Moonfin UI parity is not
 claimed. Channel-testing job and powered-off Ugoos were left untouched.
+
+## 2026-09-14 — published favourites initial playback coverage complete
+
+All 466 currently published favourites now have an initial automatic decoder
+result: 431 fresh working, 35 inconclusive, zero untested. This supersedes the
+earlier incomplete-coverage counts, not the requirement for later retries.
+Canadian group: 29 working / 1 inconclusive; Arabic news: 29 / 1. No uncertain
+channel was declared permanently dead or hidden. Across published and expansion
+tests: 531 observed, 431 working, 100 inconclusive. The 660-candidate expansion
+pool still had 137 untested at this snapshot; it is not a full 11,249-channel
+test. The independent tester/publisher continues without configuration changes.
+All-account audit again reported 26 accounts, no missing visibility, no unseeded
+favourites, and no disabled Live TV access. Native phone rendering and a real
+confirmed-dead hide/restore cycle remain separate unverified requirements.
