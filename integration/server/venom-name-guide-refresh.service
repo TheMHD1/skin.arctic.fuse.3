@@ -1,0 +1,10 @@
+[Unit]
+Description=Refresh Jellyfin clean channel names after the current guide finishes
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /data/config/iptv-venom/venom-name-guide-refresh.py
+TimeoutStartSec=4min
+UMask=0077
+Nice=15

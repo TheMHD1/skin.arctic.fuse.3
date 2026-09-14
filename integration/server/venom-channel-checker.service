@@ -1,0 +1,13 @@
+[Unit]
+Description=Idle-only resumable Venom channel decoder checks
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /data/config/iptv-venom/venom-channel-checker.py --probe --limit 20
+ExecStartPost=/usr/bin/python3 /data/config/iptv-venom/venom-promote-tested.py
+TimeoutStartSec=25min
+Nice=15
+CPUQuota=100%
+MemoryMax=256M
+UMask=0077

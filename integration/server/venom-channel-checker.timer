@@ -1,0 +1,10 @@
+[Unit]
+Description=Check Venom channels when provider capacity is idle
+
+[Timer]
+OnBootSec=5min
+OnUnitInactiveSec=30s
+Persistent=true
+
+[Install]
+WantedBy=timers.target

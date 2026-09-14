@@ -1,0 +1,11 @@
+[Unit]
+Description=Maintain persistent Venom channel display names
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/docker exec -e VENOM_NAMES_APPLY=1 dispatcharr python manage.py shell -c "exec(open('/data/venom-channel-name-overrides.py').read())"
+TimeoutStartSec=5min
+Nice=15
+UMask=0077
