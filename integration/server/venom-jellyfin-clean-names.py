@@ -22,11 +22,19 @@ def main():
     api=runpy.run_path('/root/iptv-jellyfin-admin.py')['api']
     uid=next(u['Id'] for u in api('/Users') if u['Name'].casefold()=='habibi')
     before=json.loads((ROOT/'channel-names-before.json').read_text())
+    # A bounded list snapshot avoids thousands of individual reads on reruns.
+    # Re-read the full DTO immediately before every actual metadata update.
+    names={}
+    for offset in range(0,20000,500):
+        page=api('/LiveTv/Channels?UserId='+uid+'&StartIndex='+str(offset)+'&Limit=500&AddCurrentProgram=false&EnableImages=false')
+        names.update({row['Id']:row['Name'] for row in page['Items']})
+        if offset+len(page['Items'])>=page['TotalRecordCount']:break
     backups=ROOT/'backups'/'jellyfin-channel-name-items';backups.mkdir(mode=0o700,exist_ok=True)
     changed=skipped=0
     for iid,old in before.items():
         desired=clean(old['name'])
         if desired==old['name']:continue
+        if names.get(iid)==desired:skipped+=1;continue
         item=api('/Users/'+uid+'/Items/'+iid)
         if item['Name']==desired:skipped+=1;continue
         if item['Name']!=old['name']:continue  # Do not replace a later manual edit.

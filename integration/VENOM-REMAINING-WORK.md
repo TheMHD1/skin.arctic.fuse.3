@@ -59,6 +59,15 @@ The audit saw 12 favourite differences from the old baseline; do not reset user
 choices. Each direct update separately verifies its favourite stayed unchanged.
 Pass is not yet complete. Gateway overrides alone were insufficient to deliver
 mobile-visible names promptly because the full guide refresh is slow.
+Follow-up: the first pass processed all 1,242 targets, but a still-running guide
+refresh with the old catalogue reverted some names (999 remained at readback).
+Cancelled that stale guide through the supported scheduled-task DELETE API;
+confirmed Idle, then reran the idempotent name pass. Do not equate updates issued
+with final visible count. Exact TSN readback now returns TSN 1 FHD (number 9328),
+TSN 1 HD (9329), TSN 2 FHD (9330), etc. Stock clients may display the separate
+channel number beside the cleaned name. Numbers are retained for stable mapping.
+Reruns now use a paged name snapshot to skip clean items efficiently, still
+reading and verifying the complete DTO for every actual write.
 
 Update inventory: installed CoreELEC 22.0-Piers nightly 20260913, bundled Kodi
 22.0-BETA2 (21.90.802), Jellyfin for Kodi 2.1.0+py3, Arctic Fuse 3.2.19,
