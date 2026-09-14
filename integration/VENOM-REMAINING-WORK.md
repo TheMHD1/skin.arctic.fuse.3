@@ -37,6 +37,27 @@ No reliable higher distinct-stream capacity was proven by previous tests.
 
 ## Current implementation evidence
 
+### Native VOD category and list audit
+
+Read-only `venom-vod-category-check.py` verified Habibi's 78 movie provider
+categories and 41 series provider categories. Each returned a nonempty native
+title query of the correct Movie/Series type, and the title's Genres contained
+the requested category (ignoring surrounding whitespace). This avoids treating
+an ignored filter or a generic nonempty result as successful category matching.
+No empty provider categories found for this account. This is not an all-account
+VOD-permission audit or a rendered Moonfin UI test; existing library restrictions
+were not broadened. Provider Ramadan groups exist in native series filters.
+
+Live TV list requests returned 48 channels in 0.055s and 200 in 0.095s. Movie
+title page 0.339s; series title page 0.161s. Native category/filter requests in
+this sample ranged 0.27–1.47s. These are server API timings, not video startup or
+phone image-render timings. No change was needed to the tested category data.
+
+Network check: local route to 192.168.50.169 is directly through Wi-Fi wlp1s0,
+source 192.168.50.20. Neighbour resolution for .169 is FAILED and CoreELEC.local
+did not resolve. Kodi remains unreachable; do not claim deployment or device
+validation is complete.
+
 ### Full provider-category audit
 
 `venom-provider-order-check.py` verified all 26 accounts: ten pinned collections,
