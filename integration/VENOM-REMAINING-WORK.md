@@ -423,3 +423,23 @@ numeric IDs, deduplicated/stale coverage and favourite-before-expansion order.
 Deployed without restart; the already-running batch retains its loaded code,
 and the next invocation adopts the new order. Timers remain responsible for
 continued independent work. Ugoos left off.
+
+## 2026-09-14 — category extension reproducibility / visibility audit
+
+Packaged the previously untracked server category/collection source overlays,
+administrator-only genre registration controller, test dependencies patch, and
+regressions in `integration/server/live-tv-collections/`. Corrected stale README
+claims that Kodi integration was still pending. A clean archive of upstream
+commit 580a46e5d77655d6bfe4f00621524dbd808f9cc7 plus these overlays built with
+the existing .NET 10 container image: 34 tests passed, zero skipped/failed.
+No deployed DLL or web app rebuild/replacement was performed this turn.
+
+Visibility audit: collection membership intersects channels actually present in
+the tuner snapshot, then the user's visible IDs. Added a regression proving
+removed tuner membership does not survive through stale curated IDs, and that
+restoration with the same ID returns to its collection without bypassing user
+visibility. This is source-level evidence, not a production hide/restore test.
+Live dry run found no eligible visibility actions and made zero changes.
+Checker was confirmed live (PID 778557); no interruption. Real hide/restore
+propagation and phone-specific rendering remain unverified, so the overall
+goal remains incomplete.
