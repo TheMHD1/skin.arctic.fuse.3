@@ -86,6 +86,38 @@ No reliable higher distinct-stream capacity was proven by previous tests.
 
 ## Current implementation evidence
 
+### CoreELEC update and real web verification, 2026-09-14
+
+User explicitly requested update, post-update checks and clean shutdown. Checked
+the downloaded archive's SYSTEM and KERNEL against its embedded MD5 files; both
+matched. Reboot installed CoreELEC 22.0-Piers nightly 20260914, build
+d9c37aa11432bd670c66ba41e12a3e9f69feb784. Kodi remains 22.0-BETA2 (21.90.802),
+now git e332e9a8701738b5d811438eae073b6dc64000a8. Update staging directory is
+empty; Kodi active; compatibility checker says all verified fixes intact.
+Venom sidebar visually confirmed after reboot, loading categories in 0.096s.
+Issued systemctl poweroff; device subsequently unreachable over SSH. Leave it
+off until user turns it on. Server testing does not require the Ugoos.
+
+Used the real browser at 412x915 on BOTH LAN Jellyfin and the public address
+https://jellyfin.phinexuspanel.org/web/. Public Habibi sign-in via Quick Connect
+succeeded. Visually verified category-first page, 314 groups, ten custom groups
+first, Arabic News grid, and English Sports grid showing cleaned TSN names.
+Channel number remains a separate standard card prefix, e.g. 9328 TSN 1 FHD.
+Pre-login unauthenticated websocket 403 retries were present; no new websocket
+errors found in the post-login navigation log. Do not confuse those with failed
+authenticated category loading.
+
+Moonfin: the old localhost:4174 browser tab is an abandoned custom preview,
+NOT the stock installed app; it must not be used as production verification.
+Shared native IDs, cleaned server names, Live TV access and account favourites
+are verified server-side for all 26 users. Stock Moonfin's custom category-menu
+support remains unverified/unsupported as previously documented. No app/APK
+rebuild or replacement performed. Do not claim native Moonfin menu parity.
+
+Browser screenshots: output/playwright/venom-public-mobile-categories.png,
+venom-public-english-sports.png, venom-mobile-after.png, ugoos-post-update.png
+in the local workspace (not public GitHub assets).
+
 ### All-account verification and tester correction, 2026-09-14
 
 Read-only account audit verified all 26 accounts: Live TV enabled, all 397
@@ -100,6 +132,9 @@ budget, retaining the outer hard deadline. Six regression tests pass, including
 22/55-second budgets. No automatic hiding or concurrent provider probes added.
 290 channels had observations at audit: 222 recently working, 68 inconclusive;
 no channel met the evidence threshold for permanent hiding.
+Controlled retry of gateway channel 6105 (idle gate and checker lock held)
+lasted 47.74s instead of the previous ~20.3s. It still decoded no frames and
+remains inconclusive; this validates the longer opportunity, not channel health.
 
 ### Native VOD category and list audit
 
