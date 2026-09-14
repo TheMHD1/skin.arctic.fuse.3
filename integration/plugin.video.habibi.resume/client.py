@@ -14,10 +14,11 @@ def valid_id(value):
     return value
 
 class Client:
-    def __init__(self, server):
+    def __init__(self, server, scopes=None):
         self.server = server
         self.base = server['address'].rstrip('/')
         self.user = server['UserId']
+        self.scopes = scopes or {}
 
     def request(self, path, method='GET', **params):
         header = 'MediaBrowser Client="Habibi Home", Device="Kodi", DeviceId="habibi-home", Version="1.1", Token="'+self.server['AccessToken']+'"'
@@ -33,6 +34,26 @@ class Client:
                             method='POST' if enabled else 'DELETE')
 
     def listing(self, mode, series=None, start=0):
+        if self.scopes.get(mode):
+            # Merge only selected original libraries. IPTV stays in its own hub;
+            # resume/next-up/favourites deliberately remain server-wide.
+            items={}
+            for parent in self.scopes[mode]:
+                scoped=Client(self.server)
+                def get(path,_parent=valid_id(parent),**params):
+                    params['ParentId']=_parent
+                    return self.get(path,**params)
+                scoped.get=get
+                # Each parent can contribute at most start+30 of the global page.
+                for offset in range(0,max(0,int(start))+30,30):
+                    page=scoped.listing(mode,series,offset)
+                    for item in page:items[item['Id']]=item
+                    if len(page)<30:break
+            rows=sorted(items.values(),key=lambda x:(x.get('Name','').casefold(),x['Id']))
+            if mode=='toprated':rows.sort(key=lambda x:x.get('CommunityRating') or 0,reverse=True)
+            elif mode=='shows':rows.sort(key=lambda x:x.get('DateLastMediaAdded') or x.get('DateCreated') or '',reverse=True)
+            else:rows.sort(key=lambda x:x.get('DateCreated') or '',reverse=True)
+            return rows[start:start+30]
         params = dict(Limit=30, StartIndex=max(0,int(start)), Fields=FIELDS, EnableTotalRecordCount='false')
         if mode == 'shows':
             # This server ignores DateLastMediaAdded as a SortBy value. Fetch the

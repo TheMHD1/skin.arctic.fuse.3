@@ -4,11 +4,17 @@
     "plugin.video.kodiseerr": "4.5",
     "skin.arctic.fuse.3": "3.2.19",
     "plugin.video.habibi.resume": "1.1.0",
+    "plugin.video.venom.tv": "1.3.1",
     "service.upnext": "1.1.9+matrix.1"
   },
   "files": {
-    "addons/plugin.video.habibi.resume/client.py": "3fced570f994030c603f0fbf0e29857564ff0794db76b2be31161541905a02fa",
-    "addons/plugin.video.habibi.resume/default.py": "5dd2da6253fa3d31a0dc7e5a570886a2217b0300af4581a065efdfa26f6cb223",
+    "addons/skin.arctic.fuse.3/1080i/Includes_Home.xml": "a6572eb7429bd7b75c6164b7ab36c9f56cd8b0c415ae247da17cd29bdda04b9d",
+    "addons/skin.arctic.fuse.3/1080i/Includes_LiveTV.xml": "82499d1b3c5bf2a48c06b78197d380b57e3589bb2640b4a7a1de6b4eeac336c0",
+    "addons/plugin.video.venom.tv/default.py": "a607f48feff50aca83e6897a3507a0ee6f665ee805d3b31f9e684a2402ad29ae",
+    "addons/plugin.video.venom.tv/venom_state.py": "60d833c974ddf3280c80c2ef6c5b0fedc923994b3291a4320689a1657eac2cf9",
+    "addons/plugin.video.habibi.resume/client.py": "53df471451ea50451cae5371a4a97239e5ea1286ff4fc8b765ab9a2330f28f0f",
+    "addons/plugin.video.habibi.resume/default.py": "f6e0ed8daac2024bf189b7d2918b39019728371cf61ab77f70391bc124566bec",
+    "addons/plugin.video.jellyfin/jellyfin_kodi/helper/utils.py": "ce1fb23858b779db80f41d76ddd91c72c88b54a6414122f1ef815dd855cfab12",
     "addons/plugin.video.habibi.resume/integrity.py": "f5f48edfbac1ac3e35e270fce85fab2c4c3247bd2e2a96b8877f474ed59dd893",
     "addons/plugin.video.habibi.resume/service.py": "62664f772afabcd20e26e37b17d59ca41a2f4501a9be304a685066d2b606e1d9",
     "addons/plugin.video.habibi.resume/titles.py": "fcacf85f938e8e228a0bbb70442ad5fd2eb942e7d6fe5d71311cbc9243c29fd2",
@@ -31,6 +37,12 @@
     "addons/plugin.video.kodiseerr/service.py": "8681d053ff0bb5440c5ffff13f8efe0a0d05dd5789595c9723505c2cbe59f037",
     "addons/plugin.video.kodiseerr/storage.py": "6c21cb156f296212568bce2ee66a1d5d3b75649185da2a11e86f1728fdb1e34a",
     "addons/plugin.video.kodiseerr/utils.py": "49ee6c2569a1153cb12eac5f708bf4743cedd1520680f4ea52de4568f068fb3b",
-    "addons/skin.arctic.fuse.3/shortcuts/generator/data/setup/widgets_row.xml": "a2f456c5a5652575c37de61c70848942c3cc52002561424e354533d1946146c6"
+    "addons/skin.arctic.fuse.3/shortcuts/generator/data/setup/widgets_row.xml": "a2f456c5a5652575c37de61c70848942c3cc52002561424e354533d1946146c6",
+    "addons/plugin.video.venom.tv/browser.py": "3d43b90b583c4f3e2f7b424fc0ebaa72ccd7277d8737881170ac6dc96ff26598",
+    "addons/plugin.video.venom.tv/resources/skins/Default/1080i/VenomBrowser.xml": "84bdb22c7144be9c99000f8a4165dabf73ac05e28eb7745d8440e5dc339a29d3",
+    "addons/skin.arctic.fuse.3/1080i/Custom_1107_LiveTV.xml": "19adc46b3c7c994eda9d14a8f76f4b87fee8267ef860369f504540e4d71e9a84",
+    "addons/plugin.video.jellyfin/jellyfin_kodi/library.py": "982e59776785d7ae7f7e62e8c5e876958e38f258c69c38afde0e4f66673090f4",
+    "addons/plugin.video.venom.tv/shared_favorites.py": "8f73ab90c7a554807878567efcadc2e0f9a5eecfd2156ce227cbd4f4b2dec7af",
+    "addons/plugin.video.jellyfin/jellyfin_kodi/downloader.py": "e0177619f4d94a7385f1a625ded5a5ba7a8a03f90f03ab18893243b6d88f73f0"
   }
 }

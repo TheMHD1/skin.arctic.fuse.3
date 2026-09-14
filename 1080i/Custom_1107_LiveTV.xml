@@ -1,16 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <window type="window" id="1107">
+    <onload condition="Skin.String(HomeSwitcher.1107.Name,Venom TV) + System.HasAddon(plugin.video.venom.tv)">RunScript(special://home/addons/plugin.video.venom.tv/browser.py,live)</onload>
     <include content="Hub_Onload">
         <param name="window_id">1107</param>
     </include>
     <controls>
 
-        <include content="Object_Hidden_List">
+        <include content="Object_Hidden_List" condition="!Skin.String(HomeSwitcher.1107.Name,Venom TV)">
             <param name="id">509</param>
             <content>pvr://channels/tv/</content>
         </include>
 
-        <include content="Hub_Prefab_Window">
+        <include content="Hub_Prefab_Window" condition="!Skin.String(HomeSwitcher.1107.Name,Venom TV)">
             <param name="window">1107</param>
             <param name="widgets_wall">LiveTV_Wall_Widgets</param>
             <param name="widgets_combined">LiveTV_Combined_Widgets</param>
@@ -19,8 +20,11 @@
             <param name="info_wall">NextAired_Wall_Info</param>
             <param name="switcher_content">LiveTV_Switcher_Items</param>
         </include>
-
-
-
+        <control type="button" id="990">
+            <visible>Skin.String(HomeSwitcher.1107.Name,Venom TV)</visible>
+            <left>100</left><top>400</top><width>900</width><height>100</height>
+            <font>font_main</font><label>Open Venom TV — Channels, Movies, Series, Favourites</label>
+            <onclick>RunScript(special://home/addons/plugin.video.venom.tv/browser.py,live)</onclick>
+        </control>
     </controls>
 </window>

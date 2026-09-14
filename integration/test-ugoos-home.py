@@ -36,3 +36,17 @@ client.set_favorite('a'*32,True)
 client.set_favorite('a'*32,False)
 assert requests==[('Users/u/FavoriteItems/'+'a'*32,{'method':'POST'}),('Users/u/FavoriteItems/'+'a'*32,{'method':'DELETE'})]
 print('PASS: favorite add/remove endpoints and methods')
+
+scoped=Client({'address':'http://test','UserId':'u','AccessToken':'unused'},scopes={'movies':['a'*32,'b'*32]})
+calls=[]
+def scope_get(path,**params):
+    calls.append(params)
+    return {'Items':[{'Id':params['ParentId'],'Name':'title','DateCreated':'2026-09-13' if params['ParentId']=='b'*32 else '2026-01-01'}]}
+scoped.get=scope_get
+assert [x['Id'] for x in scoped.listing('movies')]==['b'*32,'a'*32]
+assert {x['ParentId'] for x in calls}=={'a'*32,'b'*32}
+calls.clear()
+scoped.get=lambda path,**params:calls.append(params) or {'Items':[]}
+scoped.listing('resume')
+assert 'ParentId' not in calls[0]
+print('PASS: Home library scopes merge dates and preserve server-wide resume')

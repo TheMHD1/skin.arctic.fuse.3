@@ -3,10 +3,10 @@ import sys
 import xbmc
 
 
-def action_for(is_arctic, is_osd, is_timeline, is_video, direction='right'):
+def action_for(is_arctic, is_osd, is_timeline, is_video, direction='right', is_live=False):
     if direction not in ('left', 'right'):
         raise ValueError('Unsupported direction')
-    if is_arctic and is_osd and is_timeline and is_video:
+    if is_arctic and is_osd and is_timeline and is_video and not is_live:
         return 'Seek(-30)' if direction == 'left' else 'Seek(30)'
     return 'Action(Left)' if direction == 'left' else 'Action(Right)'
 
@@ -18,5 +18,6 @@ if __name__ == '__main__':
         xbmc.getCondVisibility('Control.HasFocus(8200)'),
         xbmc.getCondVisibility('Player.HasVideo'),
         sys.argv[1] if len(sys.argv) > 1 else 'right',
+        is_live=xbmc.getCondVisibility('Pvr.IsPlayingTV') or xbmc.getCondVisibility('Pvr.IsPlayingRadio'),
     )
     xbmc.executebuiltin(action)

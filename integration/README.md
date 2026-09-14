@@ -16,6 +16,13 @@ is by jurialmunkey. This is not an official Jellyfin, KodiSeerr or Arctic releas
 - `patches/jellyfin-kodi.patch`: prepare next episode at startup and retain distinct
   subtitle/media-segment intervals. Up Next still owns prompts/cancel/still-watching.
 - Example Discover nodes, offline regression tests and version/hash guard.
+- Optional `plugin.video.venom.tv/` and native IPTV poster hub. See
+  [VENOM-PACKAGE.md](VENOM-PACKAGE.md) for private setup requirements and
+  reproducible package checks. Version 1.3 adds a category/sidebar grid and
+  shared Jellyfin-account favourites. See [current verified scope and limits](VENOM-REMAINING-WORK.md),
+  especially the distinction between web categories and stock Moonfin menus.
+  Apply `jellyfin-iptv-update-filter.patch`
+  after `jellyfin-kodi.patch` to cover deliberately unsynced Season updates too.
 
 ## Known-good source bases
 
@@ -40,7 +47,9 @@ redacted reference inventory, not a file to import into Kodi.
 
 Read [UPDATING.md](UPDATING.md) before deploying. Never deploy during playback,
 including paused playback. Never copy an entire Kodi userdata directory from GitHub.
-There are no accounts, API keys, databases, device IPs or personal logs in this repo.
+There are no account passwords, API keys, user databases or personal logs in this
+repo. Some server automation has deployment-specific paths and private network
+addresses; review those before adapting it to another server.
 Authenticate Jellyfin and Seerr locally; keep Seerr settings private and prefer a
 restricted user account when configuring a new installation.
 

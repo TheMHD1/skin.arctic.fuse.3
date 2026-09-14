@@ -129,9 +129,14 @@
         </include>
     </include>
 
+    <variable name="Home_Label_1107">
+        <value condition="!String.IsEmpty(Skin.String(HomeSwitcher.1107.Name))">$INFO[Skin.String(HomeSwitcher.1107.Name)]</value>
+        <value>PVR</value>
+    </variable>
+
     <include name="Home_ControlList_Item_1107">
         <include content="Home_ControlList_Item">
-            <param name="label">PVR</param>
+            <param name="label">$VAR[Home_Label_1107]</param>
             <param name="icon">$VAR[Home_Icon_1107]</param>
             <param name="action">ReplaceWindow(1107)</param>
             <param name="enabled">!String.IsEmpty(Skin.String(HomeSwitcher.1107.Toggle)) + System.HasPVRAddon + PVR.HasTVChannels</param>
@@ -379,6 +384,10 @@
                         <param name="window">1104</param>
                         <param name="id">04</param>
                     </include>
+                    <include content="Home_Object" condition="!String.IsEmpty(Skin.String(HomeSwitcher.1107.Name)) + !String.IsEmpty(Skin.String(HomeSwitcher.1107.Toggle))">
+                        <param name="window">1107</param>
+                        <param name="id">07</param>
+                    </include>
                 </control>
 
                 <include>Home_Switcher_Right_Buttons</include>
@@ -509,7 +518,7 @@
                 <param name="icon">special://skin/extras/icons/livetv.png</param>
                 <param name="window">1107</param>
                 <param name="id">3107</param>
-                <param name="visible">System.HasPVRAddon + PVR.HasTVChannels</param>
+                <param name="visible">System.HasPVRAddon + PVR.HasTVChannels + String.IsEmpty(Skin.String(HomeSwitcher.1107.Name))</param>
             </include>
             <include content="Home_Settings_Button" condition="!String.IsEmpty(Skin.String(HomeSwitcher.1108.Toggle))">
                 <param name="icon">special://skin/extras/icons/addon.png</param>

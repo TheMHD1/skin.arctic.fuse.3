@@ -1,0 +1,36 @@
+--- a/jellyfin_kodi/library.py
++++ b/jellyfin_kodi/library.py
+@@ -33,6 +33,15 @@
+ DTHREADS = int(settings("limitThreads") or 3)
+ TARGET_DB_VERSION = 1
+ 
++
++def excluded_stream_item(item, sync):
++    """Skip only explicitly excluded, unsynced paths, including Season updates."""
++    whitelist = {value.replace("Mixed:", "") for value in sync.get("Whitelist", [])}
++    path = str(item.get("Path") or "").replace("\\", "/")
++    return any(library_id not in whitelist and
++               (path == prefix.rstrip("/") or path.startswith(prefix.rstrip("/") + "/"))
++               for prefix, library_id in sync.get("ExcludedLibraryPaths", {}).items())
++
+ ##################################################################################################
+ 
+ 
+@@ -715,6 +724,7 @@
+ 
+     def run(self):
+         with self.lock, self.database as kodidb, Database("jellyfin") as jellyfindb:
++            sync_policy = get_sync()
+             default_args = (self.server, jellyfindb, kodidb, self.direct_path)
+             if kodidb.db_file == "video":
+                 movies = Movies(*default_args)
+@@ -737,6 +747,9 @@
+                     break
+ 
+                 try:
++                    if excluded_stream_item(item, sync_policy):
++                        self.queue.task_done()
++                        continue
+                     LOG.debug("{} - {}".format(item["Type"], item["Name"]))
+                     if item["Type"] == "Movie":
+                         movies.movie(item)

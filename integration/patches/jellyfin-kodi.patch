@@ -120,3 +120,20 @@
  
              self._handle_skip_segment(segment_type, start, end, skip_mode)
              break
+diff --git a/jellyfin_kodi/helper/utils.py b/jellyfin_kodi/helper/utils.py
+--- a/jellyfin_kodi/helper/utils.py
++++ b/jellyfin_kodi/helper/utils.py
+@@ -562,6 +562,13 @@ def find_library(server, item):
+ 
+     sync = get_sync()
+     whitelist = [x.replace("Mixed:", "") for x in sync["Whitelist"]]
++    # Large, deliberately unsynced stream libraries are browsed independently.
++    # Skip their updates before an expensive per-item ancestors request. A later
++    # explicit library selection overrides this optional exclusion.
++    path = str(item.get("Path") or "").replace("\\", "/")
++    for prefix, library_id in sync.get("ExcludedLibraryPaths", {}).items():
++        if library_id not in whitelist and path.startswith(prefix.rstrip("/") + "/"):
++            return {}
+     ancestors = server.jellyfin.get_ancestors(item["Id"])
+     for ancestor in ancestors:
+         if ancestor["Id"] in whitelist:

@@ -61,6 +61,17 @@ or a one-click installer. Never import the redacted settings JSON as Kodi settin
 
 ## Experience settings
 
+Optional IPTV additions are documented in [VENOM-PACKAGE.md](VENOM-PACKAGE.md).
+Install Venom 1.3.1, label/enable the native Live TV hub as Venom TV, and use the
+Default (Unicode) interface font. Configure IPTV Simple privately and authorize
+the second device's network route. Merge optional Home scopes and unsynced-library
+path exclusions using the second installation's own authenticated server/library
+selection. The gateway uses one independent upstream stream at a time; higher
+distinct-stream capacity has not been established reliably. Native channel,
+movie and series favourites use the signed-in Jellyfin account and are shared.
+Category bookmarks and pending legacy local state are device-local. Do not
+assume every direct provider-playback route reports cross-device resume state.
+
 Home uses server-backed Continue Watching, Next Up, Latest Movies, Latest Shows,
 Favorites and Top Rated. Latest Shows uses DateLastMediaAdded ordering; Top Rated
 is Jellyfin CommunityRating, not IMDb Top 250. Home opens Videos directly; Music

@@ -1,0 +1,162 @@
+--- a/jellyfin_kodi/library.py
++++ b/jellyfin_kodi/library.py
+@@ -69,6 +69,8 @@
+         self.userdata_output = self.__new_queues__()
+         self.removed_output = self.__new_queues__()
+         self.notify_output = queue.Queue()
++        self.downloads_pending = False
++        self.downloads_failed = False
+ 
+         self.jellyfin_threads = []
+         self.download_threads = []
+@@ -150,6 +152,7 @@
+         Start new "daemon threads" to process library updates.
+         (actual daemon thread is not supported in Kodi)
+         """
++        self.downloads_failed |= any(thread.is_done and thread.failed for thread in self.download_threads)
+         self.download_threads = [
+             thread for thread in self.download_threads if not thread.is_done
+         ]
+@@ -234,9 +237,15 @@
+             and not self.writer_threads["updated"]
+             and not self.writer_threads["userdata"]
+             and not self.writer_threads["removed"]
++            and not self.updated_queue.unfinished_tasks
++            and not self.userdata_queue.unfinished_tasks
++            and not self.removed_queue.unfinished_tasks
++            and not self.worker_queue_size()
+         ):
+             self.pending_refresh = False
+-            self.save_last_sync()
++            self.downloads_pending = False
++            if not self.downloads_failed:self.save_last_sync()
++            self.downloads_failed = False
+             self.total_updates = 0
+             window("jellyfin_sync", clear=True)
+ 
+@@ -261,6 +270,21 @@
+                 if xbmc.getCondVisibility("Window.IsMedia"):
+                     xbmc.executebuiltin("Container.Refresh")
+ 
++        # An excluded-only batch has no DB writer and no GUI refresh, but it
++        # still completed successfully. Advance the catch-up watermark so the
++        # next Kodi startup doesn't download the same excluded history again.
++        if (self.downloads_pending and not self.pending_refresh
++                and not self.download_threads
++                and not self.updated_queue.unfinished_tasks
++                and not self.userdata_queue.unfinished_tasks
++                and not self.removed_queue.unfinished_tasks
++                and not self.worker_queue_size()
++                and not any(self.writer_threads.values())):
++            if not self.downloads_failed:self.save_last_sync()
++            self.downloads_failed = False
++            self.downloads_pending = False
++            self.total_updates = 0
++
+     def stop_client(self):
+         self.stop_thread = True
+ 
+@@ -292,7 +316,10 @@
+         ):
+             if work_queue[0].qsize() and len(self.download_threads) < DTHREADS:
+ 
+-                new_thread = GetItemWorker(self.server, work_queue[0], work_queue[1])
++                policy = get_sync()
++                item_filter = (lambda item, policy=policy: excluded_stream_item(item, policy)) if policy.get("ExcludedLibraryPaths") else None
++                new_thread = GetItemWorker(self.server, work_queue[0], work_queue[1], item_filter, self.accepted_update)
++                self.downloads_pending = True
+                 new_thread.start()
+                 LOG.info("-->[ q:download/%s ]", id(new_thread))
+                 self.download_threads.append(new_thread)
+@@ -665,6 +692,10 @@
+ 
+         return True
+ 
++    def accepted_update(self):
++        # Count only actual local work, not the entire excluded IPTV catalogue.
++        self.total_updates += 1
++
+     def userdata(self, data):
+         """Add item_id to userdata queue."""
+         if not data:
+@@ -675,7 +706,6 @@
+         for item in split_list(items, LIMIT):
+             self.userdata_queue.put(item)
+ 
+-        self.total_updates += len(items)
+         LOG.info("---[ userdata:%s ]", len(items))
+ 
+     def updated(self, data):
+@@ -686,7 +716,6 @@
+         for item in split_list(data, LIMIT):
+             self.updated_queue.put(item)
+ 
+-        self.total_updates += len(data)
+         LOG.info("---[ updated:%s ]", len(data))
+ 
+     def removed(self, data):
+--- a/jellyfin_kodi/downloader.py
++++ b/jellyfin_kodi/downloader.py
+@@ -296,11 +296,14 @@
+ 
+     is_done = False
+ 
+-    def __init__(self, server, queue, output):
++    def __init__(self, server, queue, output, item_filter=None, accepted=None):
+ 
+         self.server = server
+         self.queue = queue
+         self.output = output
++        self.item_filter = item_filter
++        self.accepted = accepted
++        self.failed = False
+         threading.Thread.__init__(self)
+ 
+     def run(self):
+@@ -325,13 +328,31 @@
+                 }
+ 
+                 try:
++                    # IPTV catalogue scans broadcast to every permitted client.
++                    # Probe paths before requesting expensive complete metadata;
++                    # excluded items must never open a Kodi DB writer or progress UI.
++                    if self.item_filter:
++                        request["params"]["Fields"] = "Path"
++                        probe = self.server.http.request(request, s)
++                        eligible = [item["Id"] for item in probe["Items"]
++                                    if not self.item_filter(item)]
++                        LOG.info("Sync path filter: received=%s eligible=%s", len(item_ids), len(eligible))
++                        if not eligible:
++                            if window("jellyfin_should_stop.bool"):
++                                break
++                            continue
++                        request["params"]["Ids"] = ",".join(eligible)
++                        request["params"]["Fields"] = api.info()
+                     result = self.server.http.request(request, s)
+ 
+                     for item in result["Items"]:
+ 
+-                        if item["Type"] in self.output:
++                        if item["Type"] in self.output and not (self.item_filter and self.item_filter(item)):
++                            if self.accepted:
++                                self.accepted()
+                             self.output[item["Type"]].put(item)
+                 except HTTPException as error:
++                    self.failed = True
+                     LOG.error("--[ http status: %s ]", error.status)
+ 
+                     if error.status == "ServerUnreachable":
+@@ -340,9 +361,11 @@
+                         break
+ 
+                 except Exception as error:
++                    self.failed = True
+                     LOG.exception(error)
+-
+-                self.queue.task_done()
++                finally:
++                    self.queue.task_done()
+ 
+                 if window("jellyfin_should_stop.bool"):
+                     break
++        self.is_done = True

@@ -22,7 +22,11 @@ def main():
         token = server['AccessToken']
         params = dict(parse_qsl(sys.argv[2].lstrip('?')))
         mode = params.get('mode', 'resume')
-        client = Client(server)
+        scope_path=xbmcvfs.translatePath('special://profile/addon_data/plugin.video.habibi.resume/home-library-scopes.json')
+        try:
+            with open(scope_path,encoding='utf-8') as stream:scopes=json.load(stream)
+        except FileNotFoundError:scopes={}
+        client = Client(server,scopes)
         if mode == 'setfavorite':
             enabled = params.get('value') == 'true'
             client.set_favorite(valid_id(params.get('id')), enabled)
