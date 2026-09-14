@@ -1,5 +1,13 @@
 # Existing-app scope — 2026-09-14
 
+## Correction: mobile touch card numbers — 11:10 UTC
+
+User still saw numbers after cache clearing. Reproduced under actual Android
+touch emulation (not merely narrow desktop viewport). v12 required a desktop-only
+overlay CSS class; mobile uses an unclassed anchor. v13 now selects the same-card
+accessible link by identical href instead. No metadata or tuning-number changes.
+The earlier narrow-window checks must not be treated as mobile verification.
+
 ## Latest: reviewed names and mobile card numbers, 10:58 UTC
 
 User supplied `748 KD :` and requested manual review across every custom

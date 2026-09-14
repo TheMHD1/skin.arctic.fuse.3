@@ -1,5 +1,26 @@
 # Reviewed custom-category channel names
 
+## Correction: touch layout missed by v12
+
+The earlier 16-page browser check used desktop input mode at a narrow viewport,
+NOT Android/touch rendering. User correctly reported numbers still visible.
+Reproduced using Android user agent, isMobile=true and hasTouch=true:
+`9328 TSN 1 FHD` persisted because the touch overlay anchor has no
+`cardImageContainer` class. Desktop has that class. This was not a user-cache
+problem and the earlier browser result did not establish mobile correctness.
+
+Helper v13 matches the same-card non-footer accessible anchor by matching href,
+independent of its layout classes. It still requires item-name evidence before
+removing a numeric prefix. Both footer and missing-artwork labels are covered.
+Unit regressions cover desktop/touch anchors, wrong-item links and missing
+evidence. No channel metadata, numbers or playback APIs changed for this fix.
+
+Post-deployment Android-touch verification covered all 10 category landing
+pages and all 6 later pages. Four pages initially had not loaded by a fixed
+delay; these were explicitly rechecked after waiting for channel cards.
+All pages then contained cards and passed the label checks (footer and
+missing-artwork text). Example before/after: `9328 TSN 1 FHD` -> `TSN 1 FHD`.
+
 Verified outcome: 381 Jellyfin metadata updates applied with protected-field
 and favourite readbacks; final audit matched all 590/590 curated channels with
 zero mismatches. Dispatcharr persistent override service succeeded. All 16

@@ -2,6 +2,16 @@ const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/st
 const ctx={URLSearchParams};vm.createContext(ctx);
 vm.runInContext(fs.readFileSync(__dirname+'/venom-jellyfin-navigation.js','utf8'),ctx);
 const p=ctx.VenomNavigationPolicy,u='e8b8de94cf1d443687f6297395efe4ae';
+const anchor=(href,classes=[])=>({getAttribute:k=>k==='href'?href:null,classList:{contains:k=>classes.includes(k)}});
+const footer=anchor('#/details?id=one',['textActionButton']);
+for(const classes of [[],['cardImageContainer']]) {
+    const overlay=anchor('#/details?id=one',classes);
+    const wrong=anchor('#/details?id=two');
+    const card={querySelectorAll:selector=>{assert.equal(selector,'a[href][aria-label]');return [footer,wrong,overlay];}};
+    assert.equal(p.channelItemLink(card,footer),overlay);
+}
+assert.equal(p.channelItemLink(null,footer),undefined);
+assert.equal(p.channelItemLink({querySelectorAll:()=>[footer,anchor('#/details?id=two')]},footer),undefined);
 assert.equal(p.channelDisplayName('748 KD : KARAMEESH'),'KARAMEESH');
 assert.equal(p.channelCardName('748 KARAMEESH','KARAMEESH'),'KARAMEESH');
 assert.equal(p.channelDisplayName('KD : MBC 3'),'MBC 3');

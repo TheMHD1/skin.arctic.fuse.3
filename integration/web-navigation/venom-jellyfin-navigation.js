@@ -44,7 +44,10 @@
         if(name&&label.endsWith(' '+name)&&/^\d+(?:\.\d+)?$/.test(label.slice(0,-name.length).trim()))return channelDisplayName(name);
         return channelDisplayName(value);
     }
-    globalThis.VenomNavigationPolicy={scope,hiddenLabels,favouritesUrl,categoryUrl,channelDisplayName,channelCardName};
+    function channelItemLink(card,link) {
+        return [...(card?.querySelectorAll('a[href][aria-label]')||[])].find(a=>a!==link&&!a.classList.contains('textActionButton')&&a.getAttribute('href')===link.getAttribute('href'));
+    }
+    globalThis.VenomNavigationPolicy={scope,hiddenLabels,favouritesUrl,categoryUrl,channelDisplayName,channelCardName,channelItemLink};
     if(typeof document==='undefined')return;
     function pageSizePolicy(uid) {
         if(!validUser(uid))return;
@@ -85,7 +88,9 @@
         for(const link of document.querySelectorAll('a.textActionButton[data-type="TvChannel"]')||[]) {
             const original=link.textContent;
             const card=link.closest('.card[data-type="TvChannel"]');
-            const itemLink=card?.querySelector('a.cardImageContainer[aria-label]');
+            // Touch cards use an unclassed overlay anchor, unlike desktop.
+            // Match identity via href, never infer a prefix from digits alone.
+            const itemLink=channelItemLink(card,link);
             const itemName=itemLink?.getAttribute('href')===link.getAttribute('href')?itemLink.getAttribute('aria-label'):null;
             const clean=channelCardName(original,itemName);
             if(clean!==original) {
