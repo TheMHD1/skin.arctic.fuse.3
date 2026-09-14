@@ -21,8 +21,10 @@ def number(value):
     try:return str(int(float(value))) if float(value).is_integer() else str(value)
     except (ValueError,TypeError):return str(value)
 
-def resolve(groups,channels):
+def resolve(groups,channels,previous=None,unresolved=None):
     index={};clean_index={}
+    by_id={c['Id']:c for c in channels}
+    prior={str(c['gateway_id']):c['id'] for g in (previous or {}).get('groups',[]) for c in g['channels']}
     for channel in channels:
         num=number(channel.get('ChannelNumber') or channel.get('Number'))
         index.setdefault((channel['Name'].strip(),num),[]).append(channel)
@@ -34,9 +36,15 @@ def resolve(groups,channels):
             matches=index.get((source['name'].strip(),number(source['num'])),[])
             if not matches:
                 matches=clean_index.get((clean_name(source['name']),number(source['num'])),[])
-            if len(matches)!=1:raise ValueError('Channel identity missing or ambiguous: '+source['name'])
+            if not matches:
+                known=by_id.get(prior.get(str(source['stream_id'])))
+                if known and clean_name(known['Name']).casefold()==clean_name(source['name']).casefold():matches=[known]
+            if len(matches)!=1:
+                if unresolved is None:raise ValueError('Channel identity missing or ambiguous: '+source['name'])
+                unresolved.append({'gateway_id':source['stream_id'],'name':source['name'],'group':group['id'],'reason':'missing_or_ambiguous_native_identity'})
+                continue
             rows.append({'id':matches[0]['Id'],'name':matches[0]['Name'],'gateway_id':source['stream_id']})
-        result.append({'id':group['id'],'name':group['name'],'channels':rows})
+        if rows:result.append({'id':group['id'],'name':group['name'],'channels':rows})
     return result
 
 def user_items(api,uid,ids):
@@ -63,7 +71,13 @@ def main():
         channels.extend(page['Items'])
         if offset+len(page['Items'])>=page['TotalRecordCount']:break
     else:raise ValueError('Unexpected channel count')
-    groups=resolve(catalogue['groups'],channels)
+    previous_path=ROOT/'curated-native-channels.json'
+    previous=json.loads(previous_path.read_text()) if previous_path.exists() else {}
+    unresolved=[]
+    groups=resolve(catalogue['groups'],channels,previous,unresolved)
+    report=ROOT/'unresolved-native-channels.json';temporary=report.with_suffix('.tmp')
+    temporary.write_text(json.dumps({'updated':time.time(),'channels':unresolved},ensure_ascii=False,indent=2));temporary.chmod(0o600);temporary.replace(report)
+    if unresolved:print(json.dumps({'event':'unresolved_channels_skipped','unique_channels':len({str(c['gateway_id']) for c in unresolved})}),flush=True)
     ids=list(dict.fromkeys(c['id'] for g in groups for c in g['channels']))
     output={'version':1,'groups':groups,'unique_channels':len(ids)}
     target=ROOT/'curated-native-channels.json';tmp=target.with_suffix('.tmp')

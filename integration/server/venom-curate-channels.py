@@ -194,6 +194,11 @@ def main():
         result['unique_channels']=len({str(c['stream_id']) for g in result['groups'] for c in g['channels']})
         report=root/'unavailable-channel-exclusions.json';tmp=report.with_suffix('.tmp')
         tmp.write_text(json.dumps({'updated':now,'excluded':blocked,'removed_this_pass':removed},ensure_ascii=False,indent=2));tmp.chmod(0o600);tmp.replace(report)
+    if args.approve_tested:
+        rank=runpy.run_path(str(root/'venom-measured-ranking.py'))['apply']
+        result,ratings=rank(result,json.loads((root/'channel-quality-audit.json').read_text()))
+        report=root/'channel-measured-ratings.json';tmp=report.with_suffix('.tmp')
+        tmp.write_text(json.dumps({'updated':time.time(),'channels':ratings},ensure_ascii=False,indent=2));tmp.chmod(0o600);tmp.replace(report)
     target=root/('curated-candidates.json' if args.candidates else 'curated-channels.json');temporary=target.with_suffix('.tmp')
     temporary.write_text(json.dumps(result,ensure_ascii=False,indent=2));temporary.chmod(0o600);temporary.replace(target)
     print(json.dumps({'unique_channels':result['unique_channels'],'groups':[{ 'name':g['name'],'count':len(g['channels']),'sample':[c['name'] for c in g['channels'][:5]]} for g in result['groups']]},ensure_ascii=False))

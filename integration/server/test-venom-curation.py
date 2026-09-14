@@ -7,6 +7,17 @@ m=runpy.run_path(str(Path(__file__).with_name('venom-curate-channels.py')))
 s=runpy.run_path(str(Path(__file__).with_name('venom-seed-favourites.py')))
 
 class CurationTests(unittest.TestCase):
+    def test_missing_identity_is_logged_and_not_guessed(self):
+        groups=[{'id':'g','name':'Group','channels':[{'stream_id':1,'num':1,'name':'Missing'}]}]
+        errors=[]
+        self.assertEqual(s['resolve'](groups,[],unresolved=errors),[])
+        self.assertEqual(errors[0]['gateway_id'],1)
+    def test_verified_id_survives_renumbering_without_accepting_wrong_name(self):
+        source=[{'id':'g','name':'Group','channels':[{'stream_id':1,'num':1,'name':'UAE : DUBAI SAMA 4k'}]}]
+        prior={'groups':[{'channels':[{'gateway_id':1,'id':'stable'}]}]}
+        channels=[{'Id':'stable','Name':'DUBAI SAMA 4K','ChannelNumber':'266'}]
+        self.assertEqual(s['resolve'](source,channels,prior)[0]['channels'][0]['id'],'stable')
+        with self.assertRaises(ValueError):s['resolve'](source,[{'Id':'stable','Name':'Other station','ChannelNumber':'266'}],prior)
     def test_repeated_unavailable_and_recovery(self):
         failed=json.dumps({'capacity_available':True})
         rows=[('1',100,'inconclusive_playback',failed),('1',2000,'inconclusive_playback',failed)]
