@@ -1,0 +1,96 @@
+diff --git a/browser.py b/browser.py
+index c579f08..505d028 100644
+--- a/browser.py
++++ b/browser.py
+@@ -1,5 +1,6 @@
+ """Bounded, category-first IPTV browser; native PVR playback, no EPG dependency."""
+ import json
++import re
+ import os
+ import sys
+ import time
+@@ -19,6 +20,13 @@ def clean_label(value):
+     # Preserve Arabic text; omit decorative emoji unsupported by the skin font.
+     return ' '.join(''.join(c for c in str(value) if unicodedata.category(c) not in ('So','Cs') and c not in ('\ufe0f','\ufe0e')).split())
+ 
++def channel_display_name(value):
++    """Cosmetic only: raw entry labels remain available for exact PVR matching."""
++    label=clean_label(value)
++    label=re.sub(r'^\d{3,6}\s+(?=(?:VIP\b|CA\b|UK\b|US\b|AR\b|NW\b))','',label,flags=re.I)
++    label=re.sub(r'^(?:(?:VIP|CA|UK|US|AR|NW)\b[\s:|.-]*)+','',label,flags=re.I).strip()
++    return label or clean_label(value)
++
+ def rpc(method,params):
+     response=json.loads(xbmc.executeJSONRPC(json.dumps({'jsonrpc':'2.0','id':1,'method':method,'params':params})))
+     if 'error' in response:raise RuntimeError('Kodi API '+method+' failed')
+@@ -27,6 +35,14 @@ def rpc(method,params):
+ def entry(label,params,art='',folder=False,plot='',media=None,metadata=None):
+     return dict(label=label,params=params,art=art,folder=folder,plot=plot,media=media,metadata=metadata or {})
+ 
++def live_group_choices(groups,summaries):
++    ranks={clean_label(row['name']):i for i,row in enumerate(summaries)}
++    pinned=[(row['name'],'jf:'+row['id']) for row in summaries if row['id'].startswith('collection-')]
++    provider=[(row['name'],'jf:'+row['id']) for row in summaries if not row['id'].startswith('collection-')]
++    if provider:return pinned+[('All channels','alltv')]+provider
++    ordered=sorted(groups,key=lambda group:ranks.get(clean_label(group['label']),10**9))
++    return pinned+[('All channels','alltv')]+[(g['label'],g['channelgroupid']) for g in ordered if g['label']!='All channels']
++
+ class Browser(xbmcgui.WindowXML):
+     def onInit(self):
+         if getattr(self,'initialized',False):
+@@ -105,7 +121,11 @@ class Browser(xbmcgui.WindowXML):
+         self.getControl(941).setLabel({'live':'Live TV','movie':'Movies','series':'Series','favorites':'Favourites'}[self.kind])
+         if self.kind=='live':
+             groups=rpc('PVR.GetChannelGroups',{'channeltype':'tv'}).get('channelgroups',[])
+-            self.categories=[('All channels','alltv')]+[(g['label'],g['channelgroupid']) for g in sorted(groups,key=lambda g:catalogue.search_text(g['label'])) if g['label']!='All channels']
++            summaries=[]
++            if self.shared:
++                try:summaries=self.shared.request('LiveTvCategories')
++                except Exception:xbmc.log('Venom category service unavailable; keeping native PVR groups',xbmc.LOGINFO)
++            self.categories=live_group_choices(groups,summaries)
+         elif self.kind=='favorites':
+             self.categories=[('All shared favourites','all'),('Live channels','live'),('Movies','movie'),('Series','series'),('Local bookmarks / pending sync','local')]
+         else:
+@@ -174,6 +194,16 @@ class Browser(xbmcgui.WindowXML):
+             favorites=self.shared.entries()
+             return [v for v in favorites if self.category=='all' or v['params'].get('kind')==self.category]
+         if self.kind=='live':
++            if str(self.category).startswith('jf:'):
++                if not self.shared:raise RuntimeError('Jellyfin sign-in required')
++                result=[]
++                for offset in range(0,15000,250):
++                    page=self.shared.request('LiveTvCategories/'+self.category[3:]+'/Channels',startIndex=offset,limit=250,addCurrentProgram='false')
++                    for row in page['Items']:
++                        art=self.shared.base+'/Items/'+row['Id']+'/Images/Primary?maxWidth=320&quality=85' if row.get('ImageTags',{}).get('Primary') else ''
++                        result.append(entry(row['Name'],{'mode':'shared','kind':'live','id':row['Id'],'type':'TvChannel'},art=art,metadata={'channelnumber':row.get('ChannelNumber') or row.get('Number')}))
++                    if len(result)>=page['TotalRecordCount']:return result
++                raise RuntimeError('Channel category exceeds safe size')
+             key=('live',str(self.category))
+             cached=self.cache.get(key)
+             if not cached or time.monotonic()-cached[0]>300:
+@@ -319,16 +349,25 @@ class Browser(xbmcgui.WindowXML):
+         elif action.getId() in (117,101):self.enqueue(self.favorite_menu)
+ 
+ if __name__=='__main__':
++    xbmc.log('Venom browser: launch requested',xbmc.LOGINFO)
+     home=xbmcgui.Window(10000)
+     if not home.getProperty('Venom.Browser.Open'):
+         home.setProperty('Venom.Browser.Open','true')
+         try:
+             catalogue.BASE,catalogue.AUTH=catalogue.auth()
++            xbmc.log('Venom browser: credentials loaded',xbmc.LOGINFO)
+             window=Browser('VenomBrowser.xml',os.path.dirname(__file__),'Default','1080i')
+             window.show()
++            xbmc.log('Venom browser: window shown',xbmc.LOGINFO)
+             monitor=xbmc.Monitor()
++            launch_deadline=time.monotonic()+5
+             while not getattr(window,'closed',False) and not monitor.waitForAbort(0.05):
+                 if getattr(window,'initialized',False):window.process()
++                elif time.monotonic()>launch_deadline:
++                    # Kodi can refuse a window while a modal dialog is open.
++                    # Release the singleton so the next menu click can retry.
++                    xbmc.log('Venom browser: window activation blocked; allowing retry',xbmc.LOGWARNING)
++                    break
+             window.close();del window
+         finally:
+             home.clearProperty('Venom.Browser.Open')
