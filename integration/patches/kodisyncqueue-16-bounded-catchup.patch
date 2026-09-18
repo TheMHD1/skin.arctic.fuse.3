@@ -1,0 +1,319 @@
+diff --git a/Jellyfin.Plugin.KodiSyncQueue.Tests/Jellyfin.Plugin.KodiSyncQueue.Tests.csproj b/Jellyfin.Plugin.KodiSyncQueue.Tests/Jellyfin.Plugin.KodiSyncQueue.Tests.csproj
+new file mode 100644
+index 0000000..b6430d6
+--- /dev/null
++++ b/Jellyfin.Plugin.KodiSyncQueue.Tests/Jellyfin.Plugin.KodiSyncQueue.Tests.csproj
+@@ -0,0 +1,9 @@
++<Project Sdk="Microsoft.NET.Sdk">
++  <PropertyGroup><TargetFramework>net10.0</TargetFramework><IsTestProject>true</IsTestProject><IsPackable>false</IsPackable><ImplicitUsings>enable</ImplicitUsings></PropertyGroup>
++  <ItemGroup>
++    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
++    <PackageReference Include="xunit" Version="2.9.3" />
++    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
++    <ProjectReference Include="../Jellyfin.Plugin.KodiSyncQueue/Jellyfin.Plugin.KodiSyncQueue.csproj" />
++  </ItemGroup>
++</Project>
+diff --git a/Jellyfin.Plugin.KodiSyncQueue.Tests/SyncItemSelectorTests.cs b/Jellyfin.Plugin.KodiSyncQueue.Tests/SyncItemSelectorTests.cs
+new file mode 100644
+index 0000000..52f8768
+--- /dev/null
++++ b/Jellyfin.Plugin.KodiSyncQueue.Tests/SyncItemSelectorTests.cs
+@@ -0,0 +1,82 @@
++using Jellyfin.Plugin.KodiSyncQueue.Utils;
++using MediaBrowser.Controller.Entities;
++using Xunit;
++
++public class SyncItemSelectorTests
++{
++    private static BaseItem Item(string path) => new Folder { Id = Guid.NewGuid(), Path = path };
++
++    [Fact]
++    public void BatchesAreBoundedAndKeepRequestedOrder()
++    {
++        var items = Enumerable.Range(0, 501).Select(i => Item("/media/" + i)).ToArray();
++        var sizes = new List<int>();
++        var result = SyncItemSelector.Select(items.Select(i => i.Id).Concat(new[] { items[0].Id }), batch =>
++        {
++            sizes.Add(batch.Length);
++            return items.Where(i => batch.Contains(i.Id)).Reverse().ToArray();
++        }, i => new[] { i }, Array.Empty<string>(), default);
++        Assert.Equal(new[] { 250, 250, 1 }, sizes);
++        Assert.Equal(items.Select(i => i.Id.ToString("N")), result);
++    }
++
++    [Fact]
++    public void ExclusionsUsePathBoundariesBeforeVisibility()
++    {
++        var items = new[] { Item("/iptv/movies/1"), Item("/iptv/movies"), Item("/iptv/movies-backup/1"), Item(null), Item("/normal/movie") };
++        var checkedIds = new List<Guid>();
++        var result = SyncItemSelector.Select(items.Select(i => i.Id), _ => items, i =>
++        {
++            checkedIds.Add(i.Id);
++            return new[] { i };
++        }, new[] { "/iptv/movies" }, default);
++        Assert.Equal(items.Skip(2).Select(i => i.Id), checkedIds);
++        Assert.Equal(3, result.Count);
++    }
++
++    [Fact]
++    public void MissingAndInvisibleItemsAreNotReturned()
++    {
++        var item = Item("/movie");
++        Assert.Empty(SyncItemSelector.Select(new[] { Guid.Empty, Guid.NewGuid(), item.Id }, _ => new[] { item }, _ => Array.Empty<BaseItem>(), Array.Empty<string>(), default));
++    }
++
++    [Fact]
++    public void CancellationStopsBeforeLookup()
++    {
++        using var source = new CancellationTokenSource();
++        source.Cancel();
++        Assert.Throws<OperationCanceledException>(() => SyncItemSelector.Select(new[] { Guid.NewGuid() }, _ => throw new Exception("must not load"), i => new[] { i }, Array.Empty<string>(), source.Token));
++    }
++
++    [Fact]
++    public void CancellationStopsBetweenItems()
++    {
++        using var source = new CancellationTokenSource();
++        var items = new[] { Item("/a"), Item("/b") };
++        var translated = 0;
++        Assert.Throws<OperationCanceledException>(() => SyncItemSelector.Select(items.Select(i => i.Id), _ => items, i =>
++        {
++            translated++;
++            source.Cancel();
++            return new[] { i };
++        }, Array.Empty<string>(), source.Token));
++        Assert.Equal(1, translated);
++    }
++
++    [Theory]
++    [InlineData("null")]
++    [InlineData("invalid")]
++    [InlineData("[\"/\"]")]
++    [InlineData("[null]")]
++    [InlineData("[\"relative\"]")]
++    public void InvalidPathFiltersFailClosed(string value) => Assert.Throws<ArgumentException>(() => SyncItemSelector.ParseExcludedPaths(value));
++
++    [Fact]
++    public void PathFiltersAreOptionalNormalizedAndBounded()
++    {
++        Assert.Empty(SyncItemSelector.ParseExcludedPaths(null));
++        Assert.Equal(new[] { "/iptv/movies" }, SyncItemSelector.ParseExcludedPaths("[\"/iptv/movies/\",\"/iptv/movies\"]"));
++        Assert.Throws<ArgumentException>(() => SyncItemSelector.ParseExcludedPaths(System.Text.Json.JsonSerializer.Serialize(Enumerable.Repeat("/a", 17))));
++    }
++}
+diff --git a/Jellyfin.Plugin.KodiSyncQueue/API/KodiSyncQueueController.cs b/Jellyfin.Plugin.KodiSyncQueue/API/KodiSyncQueueController.cs
+index e93a2c3..8db7f71 100644
+--- a/Jellyfin.Plugin.KodiSyncQueue/API/KodiSyncQueueController.cs
++++ b/Jellyfin.Plugin.KodiSyncQueue/API/KodiSyncQueueController.cs
+@@ -7,11 +7,14 @@
+ using System.Linq;
+ using System.Net.Mime;
+ using System.Text.Json;
++using System.Threading;
+ using Jellyfin.Database.Implementations.Entities;
+ using Jellyfin.Extensions;
+ using Jellyfin.Extensions.Json;
+ using Jellyfin.Plugin.KodiSyncQueue.Entities;
+ using Jellyfin.Plugin.KodiSyncQueue.Utils;
++using MediaBrowser.Controller.Dto;
++using MediaBrowser.Controller.Entities;
+ using MediaBrowser.Controller.Library;
+ using MediaBrowser.Controller.Net;
+ using MediaBrowser.Model.Dto;
+@@ -45,15 +48,27 @@ public KodiSyncQueueController(ILogger<KodiSyncQueueController> logger, IUserMan
+         /// <param name="userId">The user id.</param>
+         /// <param name="lastUpdateDt">UTC DateTime of Last Update, Format yyyy-MM-ddTHH:mm:ssZ.</param>
+         /// <param name="filter">Comma separated list of Collection Types to filter (movies,tvshows,music,musicvideos,boxsets. The filter query must be lowercase in both the name and the items.</param>
++        /// <param name="excludePathPrefixes">Optional JSON array of explicitly unsynced path roots. Only removes results.</param>
+         /// <returns>The <see cref="SyncUpdateInfo"/>.</returns>
+         [HttpGet("Jellyfin.Plugin.KodiSyncQueue/{userId}/GetItems")]
+         public ActionResult<SyncUpdateInfo> GetLibraryItemsQuery(
+             [FromRoute] Guid userId,
+             [FromQuery] string? lastUpdateDt,
+-            [FromQuery] string? filter)
++            [FromQuery] string? filter,
++            [FromQuery] string? excludePathPrefixes = null)
+         {
+             userId = GetUserId(User, userId);
+ 
++            string[] excludedPaths;
++            try
++            {
++                excludedPaths = SyncItemSelector.ParseExcludedPaths(excludePathPrefixes);
++            }
++            catch (ArgumentException)
++            {
++                return BadRequest("Invalid excluded path roots");
++            }
++
+             _logger.LogInformation("Sync Requested for UserID: '{UserId}' with LastUpdateDT: '{LastUpdateDT}'", userId, lastUpdateDt);
+             if (string.IsNullOrEmpty(lastUpdateDt))
+             {
+@@ -69,7 +84,9 @@ public KodiSyncQueueController(ILogger<KodiSyncQueueController> logger, IUserMan
+             return PopulateLibraryInfo(
+                 userId,
+                 lastUpdateDt,
+-                filters ?? Array.Empty<MediaType>());
++                filters ?? Array.Empty<MediaType>(),
++                excludedPaths,
++                HttpContext.RequestAborted);
+         }
+ 
+         /// <summary>
+@@ -224,26 +241,27 @@ public ActionResult<PluginSettings> GetKodiPluginSettings()
+             [FromQuery] string? name)
+             => GetStrmFile(type, id, kodiId, handler, name);
+ 
+-        private List<string> GetAddedOrUpdatedItems(User user, IEnumerable<Guid> ids)
++        private List<string> GetAddedOrUpdatedItems(User user, IEnumerable<Guid> ids, string[] excludedPaths, CancellationToken cancellationToken)
+         {
+-            var items = ids
+-                .Select(id => _libraryManager.GetItemById(id))
+-                .Where(item => item != null)
+-                .ToList();
+-
+-            var result = items.SelectMany(i => ApiUserCheck.TranslatePhysicalItemToUserLibrary(i, user, _libraryManager))
+-                .Where(i => i is not null)
+-                .Select(i => i!.Id.ToString("N", CultureInfo.InvariantCulture))
+-                .Distinct()
+-                .ToList();
+-
+-            return result;
++            return SyncItemSelector.Select(
++                ids,
++                batch => _libraryManager.GetItemList(new InternalItemsQuery
++                {
++                    ItemIds = batch,
++                    EnableTotalRecordCount = false,
++                    DtoOptions = new DtoOptions(false)
++                }),
++                item => ApiUserCheck.TranslatePhysicalItemToUserLibrary(item, user, _libraryManager),
++                excludedPaths,
++                cancellationToken);
+         }
+ 
+         private SyncUpdateInfo PopulateLibraryInfo(
+             Guid userId,
+             string lastRequestedDt,
+-            IReadOnlyCollection<MediaType> filters)
++            IReadOnlyCollection<MediaType> filters,
++            string[] excludedPaths,
++            CancellationToken cancellationToken)
+         {
+             var startTime = DateTime.UtcNow;
+ 
+@@ -262,10 +280,17 @@ private List<string> GetAddedOrUpdatedItems(User user, IEnumerable<Guid> ids)
+             var itemsUpdated = KodiSyncQueuePlugin.Instance.DbRepo.GetItems(dtl, ItemStatus.Updated, filters);
+             var userDataChanged = KodiSyncQueuePlugin.Instance.DbRepo.GetUserInfos(dtl, userId, filters);
+ 
++            cancellationToken.ThrowIfCancellationRequested();
++            if (excludedPaths.Length > 0)
++            {
++                var eligibleUserData = GetAddedOrUpdatedItems(user, userDataChanged.Select(i => i.Id), excludedPaths, cancellationToken).ToHashSet(StringComparer.Ordinal);
++                userDataChanged = userDataChanged.Where(i => eligibleUserData.Contains(i.Id.ToString("N", CultureInfo.InvariantCulture))).ToList();
++            }
++
+             var info = new SyncUpdateInfo(
+-                GetAddedOrUpdatedItems(user, itemsAdded),
++                GetAddedOrUpdatedItems(user, itemsAdded, excludedPaths, cancellationToken),
+                 itemsRemoved.Select(id => id.ToString("N", CultureInfo.InvariantCulture)).ToList(),
+-                GetAddedOrUpdatedItems(user, itemsUpdated),
++                GetAddedOrUpdatedItems(user, itemsUpdated, excludedPaths, cancellationToken),
+                 userDataChanged.Select(i => JsonSerializer.Deserialize<UserItemDataDto>(i.JsonData, _jsonSerializerOptions)).ToList());
+ 
+             _logger.LogInformation(
+diff --git a/Jellyfin.Plugin.KodiSyncQueue/Utils/ApiUserCheck.cs b/Jellyfin.Plugin.KodiSyncQueue/Utils/ApiUserCheck.cs
+index be85a47..552ded6 100644
+--- a/Jellyfin.Plugin.KodiSyncQueue/Utils/ApiUserCheck.cs
++++ b/Jellyfin.Plugin.KodiSyncQueue/Utils/ApiUserCheck.cs
+@@ -18,7 +18,7 @@ public static IEnumerable<T> TranslatePhysicalItemToUserLibrary<T>(T item, User
+             }
+ 
+             // Return it only if it's in the user's library
+-            if (includeIfNotFound || libraryManager.GetItemById(item.Id).IsVisibleStandalone(user))
++            if (includeIfNotFound || item.IsVisibleStandalone(user))
+             {
+                 return new[] { item };
+             }
+diff --git a/Jellyfin.Plugin.KodiSyncQueue/Utils/SyncItemSelector.cs b/Jellyfin.Plugin.KodiSyncQueue/Utils/SyncItemSelector.cs
+new file mode 100644
+index 0000000..20ee397
+--- /dev/null
++++ b/Jellyfin.Plugin.KodiSyncQueue/Utils/SyncItemSelector.cs
+@@ -0,0 +1,76 @@
++using System;
++using System.Collections.Generic;
++using System.Globalization;
++using System.Linq;
++using System.Text.Json;
++using System.Threading;
++using MediaBrowser.Controller.Entities;
++
++namespace Jellyfin.Plugin.KodiSyncQueue.Utils
++{
++    /// <summary>Bounded lookups and opt-in path exclusions before expensive visibility checks.</summary>
++    public static class SyncItemSelector
++    {
++        public static string[] ParseExcludedPaths(string json)
++        {
++            if (string.IsNullOrEmpty(json))
++            {
++                return Array.Empty<string>();
++            }
++
++            try
++            {
++                var paths = JsonSerializer.Deserialize<string[]>(json);
++                if (paths is null || paths.Length > 16 || paths.Any(p => string.IsNullOrWhiteSpace(p) || p.Length > 1024 || !p.StartsWith('/') || p.Trim('/').Length == 0))
++                {
++                    throw new ArgumentException("Invalid excluded path roots");
++                }
++
++                return paths.Select(p => p.Replace('\\', '/').TrimEnd('/')).Distinct(StringComparer.Ordinal).ToArray();
++            }
++            catch (JsonException exception)
++            {
++                throw new ArgumentException("Invalid excluded path roots", exception);
++            }
++        }
++
++        public static List<string> Select(
++            IEnumerable<Guid> ids,
++            Func<Guid[], IReadOnlyList<BaseItem>> load,
++            Func<BaseItem, IEnumerable<BaseItem>> translate,
++            IReadOnlyList<string> excludedPaths,
++            CancellationToken cancellationToken)
++        {
++            var result = new HashSet<string>(StringComparer.Ordinal);
++            foreach (var batch in ids.Where(id => id != Guid.Empty).Distinct().Chunk(250))
++            {
++                cancellationToken.ThrowIfCancellationRequested();
++                var byId = load(batch).ToDictionary(item => item.Id);
++                foreach (var id in batch)
++                {
++                    cancellationToken.ThrowIfCancellationRequested();
++                    if (!byId.TryGetValue(id, out var item))
++                    {
++                        continue;
++                    }
++
++                    var path = (item.Path ?? string.Empty).Replace('\\', '/');
++                    if (excludedPaths.Any(prefix => path.Equals(prefix, StringComparison.Ordinal) || path.StartsWith(prefix + "/", StringComparison.Ordinal)))
++                    {
++                        continue;
++                    }
++
++                    foreach (var visible in translate(item))
++                    {
++                        if (visible is not null)
++                        {
++                            result.Add(visible.Id.ToString("N", CultureInfo.InvariantCulture));
++                        }
++                    }
++                }
++            }
++
++            return result.ToList();
++        }
++    }
++}

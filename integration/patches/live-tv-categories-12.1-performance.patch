@@ -1,0 +1,157 @@
+diff --git a/Jellyfin.Plugin.LiveTvCategories.Tests/PluginWebClientStartupFilterTests.cs b/Jellyfin.Plugin.LiveTvCategories.Tests/PluginWebClientStartupFilterTests.cs
+index 9678270..c066618 100644
+--- a/Jellyfin.Plugin.LiveTvCategories.Tests/PluginWebClientStartupFilterTests.cs
++++ b/Jellyfin.Plugin.LiveTvCategories.Tests/PluginWebClientStartupFilterTests.cs
+@@ -6,7 +6,8 @@ namespace Jellyfin.Plugin.LiveTvCategories.Tests;
+ public sealed class PluginWebClientStartupFilterTests
+ {
+     [Theory]
+-    [InlineData("12.0.0.0", true)]
++    [InlineData("12.1.0.0", true)]
++    [InlineData("12.0.0.0", false)]
+     [InlineData("11.0.0.0", false)]
+     [InlineData("12.0.1.0", false)]
+     [InlineData("13.0.0.0", false)]
+diff --git a/Jellyfin.Plugin.LiveTvCategories/Controllers/LiveTvCategoriesController.cs b/Jellyfin.Plugin.LiveTvCategories/Controllers/LiveTvCategoriesController.cs
+index 08099f3..d6aaa13 100644
+--- a/Jellyfin.Plugin.LiveTvCategories/Controllers/LiveTvCategoriesController.cs
++++ b/Jellyfin.Plugin.LiveTvCategories/Controllers/LiveTvCategoriesController.cs
+@@ -114,10 +114,22 @@ public sealed class LiveTvCategoriesController : ControllerBase
+             return NotFound();
+         }
+ 
++        cancellationToken.ThrowIfCancellationRequested();
++        // One bounded lookup per page, not one EF query per channel. Keep the
++        // collection's measured-quality order and recheck current visibility.
++        var channelsById = page.Items.Count == 0
++            ? new Dictionary<Guid, LiveTvChannel>()
++            : _libraryManager.GetItemList(new InternalItemsQuery
++            {
++                ItemIds = page.Items.ToArray(),
++                EnableTotalRecordCount = false,
++                DtoOptions = new DtoOptions(false)
++            }).OfType<LiveTvChannel>().ToDictionary(channel => channel.Id);
+         var channelItems = new List<BaseItem>(page.Items.Count);
+         foreach (var channelId in page.Items)
+         {
+-            if (_libraryManager.GetItemById(channelId) is LiveTvChannel channel && channel.IsVisible(user))
++            cancellationToken.ThrowIfCancellationRequested();
++            if (channelsById.TryGetValue(channelId, out var channel) && channel.IsVisible(user))
+             {
+                 channelItems.Add(channel);
+             }
+diff --git a/Jellyfin.Plugin.LiveTvCategories/WebClient/PluginWebClientStartupFilter.cs b/Jellyfin.Plugin.LiveTvCategories/WebClient/PluginWebClientStartupFilter.cs
+index d7772a9..bacca75 100644
+--- a/Jellyfin.Plugin.LiveTvCategories/WebClient/PluginWebClientStartupFilter.cs
++++ b/Jellyfin.Plugin.LiveTvCategories/WebClient/PluginWebClientStartupFilter.cs
+@@ -18,7 +18,7 @@ namespace Jellyfin.Plugin.LiveTvCategories.WebClient;
+ public sealed class PluginWebClientStartupFilter : IStartupFilter
+ {
+     private const string DefaultWebRequestPath = "/web";
+-    private static readonly Version BundledWebServerVersion = new(12, 0, 0, 0);
++    private static readonly Version BundledWebServerVersion = new(12, 1, 0, 0);
+     private readonly IApplicationHost _applicationHost;
+     private readonly ILogger<PluginWebClientStartupFilter> _logger;
+     private readonly IServerConfigurationManager _serverConfigurationManager;
+diff --git a/scripts/prepare-jellyfin-web.sh b/scripts/prepare-jellyfin-web.sh
+index 60cac62..62e2783 100644
+--- a/scripts/prepare-jellyfin-web.sh
++++ b/scripts/prepare-jellyfin-web.sh
+@@ -2,13 +2,15 @@
+ set -euo pipefail
+ 
+ project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+-target_version="12.0.0"
+-target_tag="v12.0"
+-target_commit="0e83c6a724b31f3e9b5a499244331a288c060a4a"
+-release_line="12.0"
++target_version="12.1.0"
++target_tag="v12.1"
++target_commit="fae41f33eb7cd636a9ef68984adb82bb247a6e1b"
++release_line="12.1"
+ work_dir="${JELLYFIN_WEB_WORK_DIR:-${project_root}/build/jellyfin-web-${release_line}}"
+ source_dir="${JELLYFIN_WEB_SOURCE:-$work_dir}"
+-overlay_dir="${project_root}/web/patches/jellyfin-web-${release_line}"
++# All three replaced upstream files have identical hashes in 12.0 and 12.1.
++# Reuse the reviewed overlay, but compile the complete 12.1 source/dependencies.
++overlay_dir="${project_root}/web/patches/jellyfin-web-12.0"
+ 
+ python_command="${PYTHON:-python3}"
+ 
+diff --git a/scripts/test/plugin-source.test.mjs b/scripts/test/plugin-source.test.mjs
+index 718a108..c8bc2e7 100644
+--- a/scripts/test/plugin-source.test.mjs
++++ b/scripts/test/plugin-source.test.mjs
+@@ -35,7 +35,13 @@ test('plugin is ABI-pinned and keeps category browsing out of the playback path'
+     assert.match(index, /GetChannels\(true, cancellationToken\)/);
+     assert.doesNotMatch(controller, /MediaSource|HttpClient|FFmpeg|Transcod/i);
+     assert.match(controller, /skipVisibilityCheck: true/);
+-    assert.doesNotMatch(index, /\.Path\b|HttpClient|FFmpeg|Transcod/i);
++    // Local collection configuration legitimately uses System.IO.Path; stream
++    // paths and playback/transcoding clients must still stay out of the index.
++    assert.doesNotMatch(index, /(?:channel|persisted|tunerChannel)\.Path\b|HttpClient|FFmpeg|Transcod/i);
++    assert.match(controller, /GetItemList\(new InternalItemsQuery/);
++    assert.doesNotMatch(controller, /GetItemById\(channelId\)/);
++    assert.match(controller, /channelsById\.TryGetValue\(channelId/);
++    assert.match(controller, /cancellationToken\.ThrowIfCancellationRequested/);
+     assert.match(webClient, /UseStaticFiles/);
+     assert.match(webClient, /Path\.Combine\(pluginDirectory, "web"\)/);
+     assert.match(webClient, /X-Live-TV-Categories-Web/);
+diff --git a/web/patches/jellyfin-web-12.0/src/apps/legacy/controllers/livetv/livetvsuggested.js b/web/patches/jellyfin-web-12.0/src/apps/legacy/controllers/livetv/livetvsuggested.js
+index 7e4c773..1f676db 100644
+--- a/web/patches/jellyfin-web-12.0/src/apps/legacy/controllers/livetv/livetvsuggested.js
++++ b/web/patches/jellyfin-web-12.0/src/apps/legacy/controllers/livetv/livetvsuggested.js
+@@ -157,10 +157,7 @@ function normalizeCategories(payload) {
+ 
+         ids.add(category.id);
+         return true;
+-    }).sort((left, right) => left.name.localeCompare(right.name, undefined, {
+-        numeric: true,
+-        sensitivity: 'base'
+-    }));
++    }); // Preserve the server's curated-collection/provider priority.
+ }
+ 
+ function categoryPageSize() {
+diff --git a/web/patches/jellyfin-web-12.0/src/apps/modern/features/libraries/utils/liveTvCategories.test.ts b/web/patches/jellyfin-web-12.0/src/apps/modern/features/libraries/utils/liveTvCategories.test.ts
+index 6bb80b6..c992b34 100644
+--- a/web/patches/jellyfin-web-12.0/src/apps/modern/features/libraries/utils/liveTvCategories.test.ts
++++ b/web/patches/jellyfin-web-12.0/src/apps/modern/features/libraries/utils/liveTvCategories.test.ts
+@@ -7,7 +7,7 @@ import {
+ } from './liveTvCategories';
+ 
+ describe('Live TV categories', () => {
+-    it('normalizes, deduplicates and naturally sorts category summaries', () => {
++    it('normalizes and deduplicates without overriding server priority', () => {
+         const result = normalizeLiveTvCategories({
+             Items: [
+                 { id: 'news-10', name: 'News 10', channelCount: 3 },
+@@ -19,8 +19,8 @@ describe('Live TV categories', () => {
+         });
+ 
+         expect(result).toEqual([
+-            { id: 'news-2', name: 'News 2', channelCount: 4 },
+-            { id: 'news-10', name: 'News 10', channelCount: 3 }
++            { id: 'news-10', name: 'News 10', channelCount: 3 },
++            { id: 'news-2', name: 'News 2', channelCount: 4 }
+         ]);
+     });
+ 
+diff --git a/web/patches/jellyfin-web-12.0/src/apps/modern/features/libraries/utils/liveTvCategories.ts b/web/patches/jellyfin-web-12.0/src/apps/modern/features/libraries/utils/liveTvCategories.ts
+index 6e164eb..2160d3f 100644
+--- a/web/patches/jellyfin-web-12.0/src/apps/modern/features/libraries/utils/liveTvCategories.ts
++++ b/web/patches/jellyfin-web-12.0/src/apps/modern/features/libraries/utils/liveTvCategories.ts
+@@ -49,11 +49,8 @@ export const normalizeLiveTvCategories = (
+         categories.push({ id, name, channelCount });
+     }
+ 
+-    return categories.sort((left, right) => left.name.localeCompare(
+-        right.name,
+-        undefined,
+-        { numeric: true, sensitivity: 'base' }
+-    ));
++    // Server order pins curated collections first and preserves provider order.
++    return categories;
+ };
+ 
+ export const getCategoryPageSize = (configuredPageSize: number) => {

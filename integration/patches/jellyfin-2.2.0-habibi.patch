@@ -1,5 +1,5 @@
 diff --git a/jellyfin_kodi/downloader.py b/jellyfin_kodi/downloader.py
-index c8eebd5..6eea21a 100644
+index c8eebd5e..6eea21ae 100644
 --- a/jellyfin_kodi/downloader.py
 +++ b/jellyfin_kodi/downloader.py
 @@ -295,11 +295,14 @@ class GetItemWorker(threading.Thread):
@@ -66,7 +66,7 @@ index c8eebd5..6eea21a 100644
                      break
 +        self.is_done = True
 diff --git a/jellyfin_kodi/helper/utils.py b/jellyfin_kodi/helper/utils.py
-index ed897e1..314cc31 100644
+index ed897e15..314cc311 100644
 --- a/jellyfin_kodi/helper/utils.py
 +++ b/jellyfin_kodi/helper/utils.py
 @@ -558,6 +558,11 @@ def find_library(server, item):
@@ -81,8 +81,28 @@ index ed897e1..314cc31 100644
      ancestors = server.jellyfin.get_ancestors(item["Id"])
      for ancestor in ancestors:
          if ancestor["Id"] in whitelist:
+diff --git a/jellyfin_kodi/jellyfin/api.py b/jellyfin_kodi/jellyfin/api.py
+index 2954bbd9..4f3aa9e5 100644
+--- a/jellyfin_kodi/jellyfin/api.py
++++ b/jellyfin_kodi/jellyfin/api.py
+@@ -362,10 +362,13 @@ class API(object):
+     def item_played(self, item_id, watched):
+         return self.users("/PlayedItems/%s" % item_id, "POST" if watched else "DELETE")
+ 
+-    def get_sync_queue(self, date, filters=None):
++    def get_sync_queue(self, date, filters=None, excluded_paths=None):
++        params = {"LastUpdateDT": date, "filter": filters or "None"}
++        if excluded_paths:
++            params["excludePathPrefixes"] = json.dumps(excluded_paths)
+         return self._get(
+             "Jellyfin.Plugin.KodiSyncQueue/{UserId}/GetItems",
+-            params={"LastUpdateDT": date, "filter": filters or "None"},
++            params=params,
+         )
+ 
+     def get_server_time(self):
 diff --git a/jellyfin_kodi/library.py b/jellyfin_kodi/library.py
-index fe4d577..b515255 100644
+index fe4d5775..16c75e1a 100644
 --- a/jellyfin_kodi/library.py
 +++ b/jellyfin_kodi/library.py
 @@ -32,6 +32,15 @@ LIMIT = int(settings("limitIndex") or 15)
@@ -169,7 +189,18 @@ index fe4d577..b515255 100644
                  new_thread.start()
                  LOG.info("-->[ q:download/%s ]", id(new_thread))
                  self.download_threads.append(new_thread)
-@@ -655,6 +691,10 @@ class Library(threading.Thread):
+@@ -487,7 +523,9 @@ class Library(threading.Thread):
+         try:
+             # Get list of updates from server for synced library types and populate work queues
+             result = self.server.jellyfin.get_sync_queue(
+-                last_sync, ",".join([x for x in query_filter])
++                last_sync, ",".join([x for x in query_filter]),
++                excluded_paths=[prefix for prefix, library_id in sync.get("ExcludedLibraryPaths", {}).items()
++                                if library_id not in whitelist],
+             )
+ 
+             if result is None:
+@@ -655,6 +693,10 @@ class Library(threading.Thread):
  
          return True
  
@@ -180,7 +211,7 @@ index fe4d577..b515255 100644
      def userdata(self, data):
          """Add item_id to userdata queue."""
          if not data:
-@@ -665,7 +705,6 @@ class Library(threading.Thread):
+@@ -665,7 +707,6 @@ class Library(threading.Thread):
          for item in split_list(items, LIMIT):
              self.userdata_queue.put(item)
  
@@ -188,7 +219,7 @@ index fe4d577..b515255 100644
          LOG.info("---[ userdata:%s ]", len(items))
  
      def updated(self, data):
-@@ -676,7 +715,6 @@ class Library(threading.Thread):
+@@ -676,7 +717,6 @@ class Library(threading.Thread):
          for item in split_list(data, LIMIT):
              self.updated_queue.put(item)
  
@@ -196,7 +227,7 @@ index fe4d577..b515255 100644
          LOG.info("---[ updated:%s ]", len(data))
  
      def removed(self, data):
-@@ -714,6 +752,7 @@ class UpdateWorker(threading.Thread):
+@@ -714,6 +754,7 @@ class UpdateWorker(threading.Thread):
  
      def run(self):
          with self.lock, self.database as kodidb, Database("jellyfin") as jellyfindb:
@@ -204,7 +235,7 @@ index fe4d577..b515255 100644
              default_args = (self.server, jellyfindb, kodidb, self.direct_path)
              if kodidb.db_file == "video":
                  movies = Movies(*default_args)
-@@ -736,6 +775,9 @@ class UpdateWorker(threading.Thread):
+@@ -736,6 +777,9 @@ class UpdateWorker(threading.Thread):
                      break
  
                  try:
@@ -215,7 +246,7 @@ index fe4d577..b515255 100644
                      if item["Type"] == "Movie":
                          movies.movie(item)
 diff --git a/jellyfin_kodi/player.py b/jellyfin_kodi/player.py
-index c3c1e6d..c549ffe 100644
+index c3c1e6d1..c549ffe2 100644
 --- a/jellyfin_kodi/player.py
 +++ b/jellyfin_kodi/player.py
 @@ -127,6 +127,13 @@ class Player(xbmc.Player):

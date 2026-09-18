@@ -1,5 +1,11 @@
 # Local category/collection extension
 
+**September 18 follow-up:** production now uses the official 12.1 web build and
+the reviewed `../../patches/live-tv-categories-12.1-performance.patch` on top of
+these collection overlays. See [recovery and upgrade notes](../../VENOM-RECOVERY-2026-09-18.md)
+for exact source pins, batching/order fixes, tests and rollback. The 12.0 text
+below describes the original overlay baseline, not the current web version.
+
 These files overlay upstream JeKaQM/jellyfin-live-tv-category-browser version 0.3.0.0 for Jellyfin 12.0.0. They are not a new upstream version.
 
 Copy CategorySnapshots.cs, ChannelCollectionFile.cs and LiveTvCategoryIndex.cs into Jellyfin.Plugin.LiveTvCategories/Services/. Copy ChannelCollectionTests.cs into the matching test project. Also retain the earlier administrator maintenance controller in ../VenomCategoryMaintenanceController.cs under Controllers/.

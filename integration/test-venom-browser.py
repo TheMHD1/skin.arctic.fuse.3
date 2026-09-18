@@ -30,6 +30,16 @@ class Window:
     def getFocusId(self):return self.focus
 
 class Tests(unittest.TestCase):
+    def test_exact_pvr_match_uses_native_player(self):
+        choose=self.load()['channel_playback_item']
+        self.assertEqual({'channelid':7},choose({'Id':'a'*32,'Name':'MBC 3','ChannelNumber':'100'},[{'channelid':7,'label':'MBC 3','channelnumber':100}]))
+    def test_missing_renamed_renumbered_or_ambiguous_pvr_uses_exact_server_id(self):
+        choose=self.load()['channel_playback_item'];target={'Id':'a'*32,'Name':'MBC 3','ChannelNumber':'100'}
+        row={'channelid':7,'label':'MBC 3','channelnumber':100}
+        for channels in [[],[{**row,'label':'MBC 3 FHD'}],[{**row,'channelnumber':101}],[row,{**row,'channelid':8}]]:
+            self.assertEqual({'file':'plugin://plugin.video.jellyfin/?mode=play&id='+'a'*32},choose(target,channels))
+    def test_channel_fallback_rejects_invalid_server_id(self):
+        with self.assertRaises(RuntimeError):self.load()['channel_playback_item']({'Id':'../bad','Name':'MBC 3'},[])
     def test_category_retry_is_bounded_and_never_replaces_open_grid(self):
         import queue
         mod=self.load();b=mod['Browser']();b.category=None;b.closed=False;b.busy=False;b.jobs=queue.Queue()

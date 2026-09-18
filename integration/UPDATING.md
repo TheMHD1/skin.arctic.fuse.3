@@ -1,5 +1,11 @@
 # Controlled update workflow
 
+See [the September 18 Venom recovery](VENOM-RECOVERY-2026-09-18.md) for the
+general channel-ID playback fallback, paired KodiSyncQueue/client catch-up fix,
+12.1 web build, category batching/order, verification and rollback locations.
+Run `python3 integration/check-catchup.py` for the maintained 2.2 catch-up patch;
+the older checker is not a complete 2.2 compatibility test.
+
 The [September 18 fleet record](FLEET-MAINTENANCE-2026-09-18.md) records the
 Jellyfin 12.1 / Enhanced 12.7 source patches, Dispatcharr 0.31 HLS compatibility
 fix, verified rollback state and Kodi category-outage recovery. Rebase those

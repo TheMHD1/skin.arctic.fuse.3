@@ -35,6 +35,18 @@ def rpc(method,params):
 def entry(label,params,art='',folder=False,plot='',media=None,metadata=None):
     return dict(label=label,params=params,art=art,folder=folder,plot=plot,media=media,metadata=metadata or {})
 
+def channel_playback_item(target,channels):
+    """Use exact PVR identity when present; otherwise play the actual server ID.
+
+    PVR numbering/names can lag server guide refreshes. Never guess a similar
+    channel or change a favourite just because its native PVR match is absent.
+    """
+    matches=[r for r in channels if shared_favorites.number(r['channelnumber'])==shared_favorites.number(target.get('ChannelNumber') or target.get('Number')) and r['label'].strip()==target['Name'].strip()]
+    if len(matches)==1:return {'channelid':matches[0]['channelid']}
+    ident=target.get('Id','')
+    if not re.fullmatch('[0-9a-fA-F]{32}',ident):raise RuntimeError('Invalid Jellyfin channel identity')
+    return {'file':'plugin://plugin.video.jellyfin/?mode=play&id='+ident}
+
 def live_group_choices(groups,summaries):
     ranks={clean_label(row['name']):i for i,row in enumerate(summaries)}
     pinned=[(row['name'],'jf:'+row['id']) for row in summaries if row['id'].startswith('collection-')]
@@ -124,7 +136,7 @@ class Browser(xbmcgui.WindowXML):
             xbmc.log('Venom browser: '+type(exc).__name__,xbmc.LOGERROR)
             if self.closed:return
             self.getControl(940).setLabel('Unable to load. Press OK to retry, or choose another category.')
-            message='No exact Jellyfin match yet. Favourite unchanged.' if isinstance(exc,LookupError) else 'Could not reach the catalogue or Jellyfin. Try again.'
+            message='Could not match this item for the requested action. Nothing was changed.' if isinstance(exc,LookupError) else 'Could not load or play this item. Try again.'
             xbmcgui.Dialog().notification('Venom TV',message,xbmcgui.NOTIFICATION_ERROR)
         finally:xbmc.log('Venom browser: '+call.__name__+' %.3fs'%(time.monotonic()-started),xbmc.LOGINFO)
 
@@ -287,9 +299,9 @@ class Browser(xbmcgui.WindowXML):
             if p.get('type')=='TvChannel':
                 target=self.shared.resolve(e)
                 channels=rpc('PVR.GetChannels',{'channelgroupid':'alltv','properties':['channelnumber']}).get('channels',[])
-                matches=[r for r in channels if shared_favorites.number(r['channelnumber'])==shared_favorites.number(target.get('ChannelNumber') or target.get('Number')) and r['label'].strip()==target['Name'].strip()]
-                if len(matches)!=1:raise LookupError('Shared channel is not uniquely available in Kodi PVR')
-                rpc('Player.Open',{'item':{'channelid':matches[0]['channelid']}});xbmc.executebuiltin('ActivateWindow(fullscreenvideo)')
+                playback=channel_playback_item(target,channels)
+                if 'file' in playback:xbmc.log('Venom playback: native PVR identity unavailable; delegating exact Jellyfin channel ID',xbmc.LOGINFO)
+                rpc('Player.Open',{'item':playback});xbmc.executebuiltin('ActivateWindow(fullscreenvideo)')
             elif p.get('type')=='Series':
                 self.stack.append((self.kind,self.scope,self.page,self.query,self.category_name,pos))
                 self.kind='series';self.scope={'jf_series':p['id']};self.page=0;self.query='';self.category_name=e['label'];self.load_entries()
