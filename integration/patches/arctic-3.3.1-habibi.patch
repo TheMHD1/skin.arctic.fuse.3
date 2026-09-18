@@ -1,0 +1,171 @@
+--- a/1080i/Includes_Home.xml
++++ b/1080i/Includes_Home.xml
+@@ -129,9 +129,14 @@
+         </include>
+     </include>
+ 
++    <variable name="Home_Label_1107">
++        <value condition="!String.IsEmpty(Skin.String(HomeSwitcher.1107.Name))">$INFO[Skin.String(HomeSwitcher.1107.Name)]</value>
++        <value>PVR</value>
++    </variable>
++
+     <include name="Home_ControlList_Item_1107">
+         <include content="Home_ControlList_Item">
+-            <param name="label">PVR</param>
++            <param name="label">$VAR[Home_Label_1107]</param>
+             <param name="icon">$VAR[Home_Icon_1107]</param>
+             <param name="action">ReplaceWindow(1107)</param>
+             <param name="enabled">!String.IsEmpty(Skin.String(HomeSwitcher.1107.Toggle)) + System.HasPVRAddon + PVR.HasTVChannels</param>
+@@ -379,6 +384,10 @@
+                         <param name="window">1104</param>
+                         <param name="id">04</param>
+                     </include>
++                    <include content="Home_Object" condition="!String.IsEmpty(Skin.String(HomeSwitcher.1107.Name)) + !String.IsEmpty(Skin.String(HomeSwitcher.1107.Toggle))">
++                        <param name="window">1107</param>
++                        <param name="id">07</param>
++                    </include>
+                 </control>
+ 
+                 <include>Home_Switcher_Right_Buttons</include>
+@@ -509,7 +518,7 @@
+                 <param name="icon">special://skin/extras/icons/livetv.png</param>
+                 <param name="window">1107</param>
+                 <param name="id">3107</param>
+-                <param name="visible">System.HasPVRAddon + PVR.HasTVChannels</param>
++                <param name="visible">System.HasPVRAddon + PVR.HasTVChannels + String.IsEmpty(Skin.String(HomeSwitcher.1107.Name))</param>
+             </include>
+             <include content="Home_Settings_Button" condition="!String.IsEmpty(Skin.String(HomeSwitcher.1108.Toggle))">
+                 <param name="icon">special://skin/extras/icons/addon.png</param>
+--- a/1080i/Includes_LiveTV.xml
++++ b/1080i/Includes_LiveTV.xml
+@@ -8,8 +8,8 @@
+ 
+     <include name="LiveTV_Switcher_Items">
+         <item>
+-            <label>$LOCALIZE[137]</label>
+-            <onclick>ActivateWindow(tvsearch,pvr://search/,return)</onclick>
++            <label>Recent channels</label>
++            <onclick>ActivateWindow(tvchannels,pvr://channels/tv/*?view=lastplayed,return)</onclick>
+             <visible>!Integer.IsEqual(Container(501).NumItems,0) | Container(501).IsUpdating</visible>
+             <property name="widget_id">$NUMBER[501]</property>
+             <property name="guid">pvr-501</property>
+@@ -43,11 +43,63 @@
+             <include content="Hub_Widget_Overlay"><param name="window_id">1107</param></include>
+             <visible>!Skin.HasSetting(Hub.1107.DisableRecordings)</visible>
+         </item>
++        <item>
++            <label>Movies</label>
++            <onclick>ActivateWindow(Videos,plugin://plugin.video.venom.tv/?mode=categories&amp;kind=movie,return)</onclick>
++            <visible>Skin.String(HomeSwitcher.1107.Name,Venom TV) + System.HasAddon(plugin.video.venom.tv)</visible>
++            <property name="widget_id">505</property>
++            <property name="guid">venom-movies</property>
++            <include content="Hub_Widget_Overlay"><param name="window_id">1107</param></include>
++        </item>
++        <item>
++            <label>Series</label>
++            <onclick>ActivateWindow(Videos,plugin://plugin.video.venom.tv/?mode=categories&amp;kind=series,return)</onclick>
++            <visible>Skin.String(HomeSwitcher.1107.Name,Venom TV) + System.HasAddon(plugin.video.venom.tv)</visible>
++            <property name="widget_id">506</property>
++            <property name="guid">venom-series</property>
++            <include content="Hub_Widget_Overlay"><param name="window_id">1107</param></include>
++        </item>
++        <item>
++            <label>My favourites</label>
++            <onclick>ActivateWindow(Videos,plugin://plugin.video.venom.tv/?mode=favorites,return)</onclick>
++            <visible>Skin.String(HomeSwitcher.1107.Name,Venom TV) + System.HasAddon(plugin.video.venom.tv)</visible>
++        </item>
++        <item>
++            <label>Search channels</label>
++            <onclick>ActivateWindow(tvsearch,pvr://search/,return)</onclick>
++            <visible>Skin.String(HomeSwitcher.1107.Name,Venom TV)</visible>
++        </item>
++        <item>
++            <label>TV Guide</label>
++            <onclick>ActivateWindow(tvguide)</onclick>
++            <visible>Skin.String(HomeSwitcher.1107.Name,Venom TV)</visible>
++        </item>
++        <item>
++            <label>Browse Venom TV</label>
++            <onclick>ActivateWindow(Videos,plugin://plugin.video.venom.tv/,return)</onclick>
++            <visible>Skin.String(HomeSwitcher.1107.Name,Venom TV) + System.HasAddon(plugin.video.venom.tv)</visible>
++        </item>
+     </include>
+ 
+     <include name="LiveTV_Wall_Widgets">
+         <param name="include">Hub_Wall_Widget</param>
+         <definition>
++            <include content="$PARAM[include]" condition="Skin.String(HomeSwitcher.1107.Name,Venom TV) + System.HasAddon(plugin.video.venom.tv)">
++                <param name="id">505</param>
++                <param name="target">videos</param>
++                <param name="content">plugin://plugin.video.venom.tv/?mode=featured&amp;kind=movie</param>
++                <param name="include">List_Poster_Row</param>
++                <param name="visible">String.IsEqual(Container(601).ListItem.Property(guid),venom-movies)</param>
++                <param name="home_switcher">false</param>
++            </include>
++            <include content="$PARAM[include]" condition="Skin.String(HomeSwitcher.1107.Name,Venom TV) + System.HasAddon(plugin.video.venom.tv)">
++                <param name="id">506</param>
++                <param name="target">videos</param>
++                <param name="content">plugin://plugin.video.venom.tv/?mode=featured&amp;kind=series</param>
++                <param name="include">List_Poster_Row</param>
++                <param name="visible">String.IsEqual(Container(601).ListItem.Property(guid),venom-series)</param>
++                <param name="home_switcher">false</param>
++            </include>
+             <include content="$PARAM[include]" condition="!Skin.HasSetting(Hub.1107.DisableSearch)">
+                 <param name="id">501</param>
+                 <param name="target">tvsearch</param>
+--- a/1080i/Custom_1107_LiveTV.xml
++++ b/1080i/Custom_1107_LiveTV.xml
+@@ -1,16 +1,17 @@
+ <?xml version="1.0" encoding="UTF-8"?>
+ <window type="window" id="1107">
++    <onload condition="Skin.String(HomeSwitcher.1107.Name,Venom TV) + System.HasAddon(plugin.video.venom.tv)">RunScript(special://home/addons/plugin.video.venom.tv/browser.py,live)</onload>
+     <include content="Hub_Onload">
+         <param name="window_id">1107</param>
+     </include>
+     <controls>
+ 
+-        <include content="Object_Hidden_List">
++        <include content="Object_Hidden_List" condition="!Skin.String(HomeSwitcher.1107.Name,Venom TV)">
+             <param name="id">509</param>
+             <content>pvr://channels/tv/</content>
+         </include>
+ 
+-        <include content="Hub_Prefab_Window">
++        <include content="Hub_Prefab_Window" condition="!Skin.String(HomeSwitcher.1107.Name,Venom TV)">
+             <param name="window">1107</param>
+             <param name="widgets_wall">LiveTV_Wall_Widgets</param>
+             <param name="widgets_combined">LiveTV_Combined_Widgets</param>
+@@ -19,8 +20,11 @@
+             <param name="info_wall">NextAired_Wall_Info</param>
+             <param name="switcher_content">LiveTV_Switcher_Items</param>
+         </include>
+-
+-
+-
++        <control type="button" id="990">
++            <visible>Skin.String(HomeSwitcher.1107.Name,Venom TV)</visible>
++            <left>100</left><top>400</top><width>900</width><height>100</height>
++            <font>font_main</font><label>Open Venom TV — Channels, Movies, Series, Favourites</label>
++            <onclick>RunScript(special://home/addons/plugin.video.venom.tv/browser.py,live)</onclick>
++        </control>
+     </controls>
+-</window>
+\ No newline at end of file
++</window>
+--- a/shortcuts/generator/data/setup/widgets_row.xml
++++ b/shortcuts/generator/data/setup/widgets_row.xml
+@@ -179,6 +179,14 @@
+     </rules>
+     <rules name="widget_custom_onclick">
+         <rule>
++            <condition>{item_path}&lt;&lt;plugin://plugin.video.kodiseerr/</condition>
++            <value><![CDATA[
++                <onclick condition="String.Contains(ListItem.FolderPath,mode=request) | String.Contains(ListItem.FolderPath,mode=show_details)">RunPlugin($INFO[ListItem.FolderPath])</onclick>
++                <onclick condition="!String.Contains(ListItem.FolderPath,mode=request) + !String.Contains(ListItem.FolderPath,mode=show_details) + ListItem.IsFolder">ActivateWindow(videos,$INFO[ListItem.FolderPath],return)</onclick>
++                <onclick condition="!String.Contains(ListItem.FolderPath,mode=request) + !String.Contains(ListItem.FolderPath,mode=show_details) + !ListItem.IsFolder">PlayMedia($INFO[ListItem.FolderPath])</onclick>
++            ]]></value>
++        </rule>
++        <rule>
+             <condition>{item_path}==Custom_Submenu</condition>
+             <value><![CDATA[
+                 <onclick condition="String.IsEmpty(ListItem.Property(target))">$INFO[ListItem.FolderPath]</onclick>
