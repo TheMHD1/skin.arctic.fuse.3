@@ -1,0 +1,98 @@
+diff --git a/Jellyfin.Plugin.JellyfinEnhanced/js/arr/requests/requests-custom-tab.js b/Jellyfin.Plugin.JellyfinEnhanced/js/arr/requests/requests-custom-tab.js
+index f05ede0..aaf1bb9 100644
+--- a/Jellyfin.Plugin.JellyfinEnhanced/js/arr/requests/requests-custom-tab.js
++++ b/Jellyfin.Plugin.JellyfinEnhanced/js/arr/requests/requests-custom-tab.js
+@@ -77,8 +77,8 @@
+    *
+    * Tries three anchors in order so the mount works regardless of how the
+    * host plugin (Custom Tabs, Plugin Pages, etc.) wraps the content:
+-   *  1. Nearest `.page` ancestor that doesn't have `.hide`  (standard Jellyfin)
+-   *  2. Nearest `.tabContent` ancestor that has `.is-active`  (Custom Tabs fallback)
++   *  1. Reject inactive `.tabContent` before considering its enclosing page.
++   *  2. Nearest `.page` ancestor that doesn't have `.hide` (dedicated page).
+    *  3. Element is itself visible (offsetParent !== null)     (last resort)
+    *
+    * @returns {HTMLElement|null}
+@@ -87,12 +87,15 @@
+     var all = document.querySelectorAll('.jellyfinenhanced.requests');
+     for (var i = all.length - 1; i >= 0; i--) {
+       var el = all[i];
+-      // 1. Standard Jellyfin page structure
+       var page = el.closest('.page');
+-      if (page && !page.classList.contains('hide')) return el;
+-      // 2. Custom Tabs wraps content in .tabContent.is-active (no .page ancestor)
++      if (page && page.classList.contains('hide')) continue;
++      // A hidden tab still lives inside the visible Home page.
+       var tabContent = el.closest('.tabContent');
+-      if (tabContent && tabContent.classList.contains('is-active')) return el;
++      if (tabContent) {
++        if (tabContent.classList.contains('is-active')) return el;
++        continue;
++      }
++      if (page) return el;
+       // 3. Last resort: element is simply visible in the document
+       if (!page && !tabContent && el.offsetParent !== null) return el;
+     }
+@@ -127,9 +130,22 @@
+   function watchForContainer(JE) {
+     /** Whether we were on the home page on the last check. */
+     var wasOnHomePage = false;
++    var observedPanels = [];
++    var panelObserver = new MutationObserver(function () { tryMount(); });
++
++    function observePanels(onHome) {
++      var panels = onHome ? Array.from(document.querySelectorAll('#indexPage .tabContent')) : [];
++      if (panels.length === observedPanels.length && panels.every(function (p, i) { return p === observedPanels[i]; })) return;
++      panelObserver.disconnect();
++      observedPanels = panels;
++      panels.forEach(function (panel) {
++        panelObserver.observe(panel, { attributes: true, attributeFilter: ['class'] });
++      });
++    }
+ 
+     function tryMount() {
+       var onHome = isOnHomePage();
++      observePanels(onHome);
+ 
+       // Navigated away — stop polling and clear custom tab mode so the
+       // timer's own visibility guard doesn't keep it alive.
+diff --git a/Jellyfin.Plugin.JellyfinEnhanced/js/enhanced/native-tabs.js b/Jellyfin.Plugin.JellyfinEnhanced/js/enhanced/native-tabs.js
+index 505f600..550822a 100644
+--- a/Jellyfin.Plugin.JellyfinEnhanced/js/enhanced/native-tabs.js
++++ b/Jellyfin.Plugin.JellyfinEnhanced/js/enhanced/native-tabs.js
+@@ -201,9 +201,13 @@
+     /** If the URL asks for one of our tab indices (Jellyfin's own `?tab=N` convention) but it isn't active yet, activate it. */
+     function syncDeepLink() {
+         var match = /[?&]tab=(\d+)/.exec(window.location.hash);
+-        if (!match) return;
+-        var wantedIndex = parseInt(match[1], 10);
++        var wantedIndex = match ? parseInt(match[1], 10) : 0;
+         var entry = entries.find(function (e) { return e.index === wantedIndex; });
++        entries.forEach(function (registered) {
++            if (registered !== entry) {
++                document.getElementById('je-native-tab-panel-' + registered.id)?.classList.remove('is-active');
++            }
++        });
+         if (!entry) return;
+ 
+         var btn = document.getElementById('je-native-tab-btn-' + entry.id);
+@@ -211,6 +215,19 @@
+         if (btn && tabsElem?.selectedIndex && tabsElem.selectedIndex() !== wantedIndex) {
+             tabsElem.selectedIndex(wantedIndex);
+         }
++        // On a fresh ?tab=2 load JF12 has already selected the index before
++        // this plugin panel exists. Its native controller only knows tabs 0/1,
++        // so no is-active class is ever applied to the late-mounted panel.
++        // Reconcile our panel explicitly, including when the index is unchanged.
++        var panel = document.getElementById('je-native-tab-panel-' + entry.id);
++        if (panel) {
++            Array.from(panel.parentElement.children).forEach(function (sibling) {
++                if (sibling.classList.contains('tabContent')
++                    && sibling.classList.contains('is-active') !== (sibling === panel)) {
++                    sibling.classList.toggle('is-active', sibling === panel);
++                }
++            });
++        }
+     }
+ 
+     function scheduleInject() {

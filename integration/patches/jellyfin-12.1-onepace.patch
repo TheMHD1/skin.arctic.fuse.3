@@ -1,0 +1,99 @@
+diff --git a/Emby.Naming/Common/NamingOptions.cs b/Emby.Naming/Common/NamingOptions.cs
+index 9ecefb4..222d440 100644
+--- a/Emby.Naming/Common/NamingOptions.cs
++++ b/Emby.Naming/Common/NamingOptions.cs
+@@ -16,6 +16,13 @@ namespace Emby.Naming.Common
+     /// </summary>
+     public class NamingOptions
+     {
++        /// <summary>
++        /// Gets or sets exact ancestor directories excluded from episode version grouping.
++        /// </summary>
++        public string[] EpisodeMultiVersionExcludedDirectories { get; set; } =
++            (Environment.GetEnvironmentVariable("HABIBI_JF_EPISODE_VERSION_EXCLUDED_DIRECTORIES") ?? string.Empty)
++                .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
++
+         /// <summary>
+         /// Initializes a new instance of the <see cref="NamingOptions"/> class.
+         /// </summary>
+diff --git a/Emby.Naming/Video/VideoListResolver.cs b/Emby.Naming/Video/VideoListResolver.cs
+index e165627..d0b3ea9 100644
+--- a/Emby.Naming/Video/VideoListResolver.cs
++++ b/Emby.Naming/Video/VideoListResolver.cs
+@@ -250,6 +250,16 @@ namespace Emby.Naming.Video
+ 
+         private string? GetEpisodeVersionKey(string path)
+         {
++            // Keep the explicit local opt-out while retaining upstream's new
++            // confidence checks for every other library.
++            var directories = Path.GetDirectoryName(path)?.Split(
++                new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries) ?? [];
++            if (directories.Any(directory => _namingOptions.EpisodeMultiVersionExcludedDirectories
++                .Contains(directory, StringComparer.Ordinal)))
++            {
++                return null;
++            }
++
+             // Optimistic expressions are guesses, so they are not consulted here: merging is destructive,
+             // a file collapsed into the alternate versions of another one is no longer an episode of its own.
+             var episodeResult = _episodePathParser.Parse(path, false, isOptimistic: false, fillExtendedInfo: false);
+diff --git a/tests/Jellyfin.Naming.Tests/Video/EpisodeVersionExclusionTests.cs b/tests/Jellyfin.Naming.Tests/Video/EpisodeVersionExclusionTests.cs
+new file mode 100644
+index 0000000..d721e1b
+--- /dev/null
++++ b/tests/Jellyfin.Naming.Tests/Video/EpisodeVersionExclusionTests.cs
+@@ -0,0 +1,54 @@
++using System.Linq;
++using Emby.Naming.Common;
++using Emby.Naming.Video;
++using Jellyfin.Data.Enums;
++using Xunit;
++
++namespace Jellyfin.Naming.Tests.Video;
++
++public class EpisodeVersionExclusionTests
++{
++    [Theory]
++    // 12.1's confidence check now protects these chapter-number filenames upstream.
++    [InlineData("One Pace", false, 2)]
++    [InlineData("One Pace", true, 2)]
++    [InlineData("One Pace Extra", true, 2)]
++    [InlineData("Other Show", true, 2)]
++    public void ExactDirectoryOptOutPreservesSeparateEpisodes(string directory, bool enabled, int expected)
++    {
++        var options = new NamingOptions
++        {
++            EpisodeMultiVersionExcludedDirectories = enabled ? ["One Pace"] : [],
++        };
++        var paths = new[]
++        {
++            $"/data/media/shows/{directory}/Season 08/[One Pace][96-97] Loguetown 01 [480p][4200CE0D].mkv",
++            $"/data/media/shows/{directory}/Season 08/[One Pace][97] Loguetown 02 [480p][8E970FD4].mkv",
++        };
++        var files = paths.Select(path => VideoResolver.Resolve(path, false, options)).ToArray();
++        var results = new VideoListResolver(options).Resolve(files!, collectionType: CollectionType.tvshows);
++        Assert.Equal(expected, results.Count);
++        if (expected == 2)
++        {
++            Assert.All(results, item => Assert.Empty(item.AlternateVersions));
++        }
++    }
++
++    [Theory]
++    [InlineData("One Pace", true, 2)]
++    [InlineData("One Pace", false, 1)]
++    [InlineData("One Pace Extra", true, 1)]
++    [InlineData("Other Show", true, 1)]
++    public void ExplicitEpisodeVersionsStillRespectExactOptOut(string directory, bool enabled, int expected)
++    {
++        var options = new NamingOptions { EpisodeMultiVersionExcludedDirectories = enabled ? ["One Pace"] : [] };
++        var paths = new[]
++        {
++            $"/data/media/shows/{directory}/Season 01/Show.S01E01.1080p.mkv",
++            $"/data/media/shows/{directory}/Season 01/Show.S01E01.2160p.mkv",
++        };
++        var files = paths.Select(path => VideoResolver.Resolve(path, false, options)).ToArray();
++        var results = new VideoListResolver(options).Resolve(files!, collectionType: CollectionType.tvshows);
++        Assert.Equal(expected, results.Count);
++    }
++}

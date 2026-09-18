@@ -1,0 +1,7 @@
+#!/bin/sh
+# Preserve existing Intel VAAPI preview acceleration.
+if [ -e /dev/dri/renderD128 ]; then
+    exec /usr/bin/ffmpeg -hwaccel vaapi -vaapi_device /dev/dri/renderD128 "$@"
+else
+    exec /usr/bin/ffmpeg "$@"
+fi

@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# Container Running and nginx -t do not prove its master process exists yet.
+# Retry startup races and only report success after the real reload succeeds.
+for ((attempt=0; attempt<90; attempt++)); do
+    if docker inspect -f '{{.State.Running}}' npm 2>/dev/null | grep -qx true \
+       && docker exec npm sh -c 'test -s /run/nginx/nginx.pid && kill -0 "$(cat /run/nginx/nginx.pid)"' 2>/dev/null \
+       && docker exec npm nginx -t >/dev/null 2>&1; then
+        if docker exec npm nginx -s reload; then
+            echo 'NPM master ready; configuration reload succeeded'
+            exit 0
+        fi
+    fi
+    sleep 2
+done
+echo 'NPM did not become reload-ready within 180 seconds' >&2
+exit 1

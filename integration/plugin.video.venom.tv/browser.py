@@ -61,6 +61,7 @@ class Browser(xbmcgui.WindowXML):
         self.kind=sys.argv[1] if len(sys.argv)>1 and sys.argv[1] in ('live','movie','series','favorites') else 'live'
         self.page=0;self.query='';self.recent=False;self.stack=[];self.entries=[];self.categories=[]
         self.cache={};self.source_cache=OrderedDict();self.scope=None
+        self.category_retry_at=0
         try:self.shared=shared_favorites.from_kodi()
         except Exception:self.shared=None
         self.shared_keys=set();self.shared_error=False
@@ -81,6 +82,7 @@ class Browser(xbmcgui.WindowXML):
             try:self.safe(call)
             finally:self.busy=False;self.jobs.task_done()
         if self.closed:return
+        self.retry_categories_if_ready()
         if self.favorite_result is not None:
             keys,error=self.favorite_result;self.favorite_result=None
             changed=keys is not None and keys!=self.shared_keys
@@ -98,6 +100,18 @@ class Browser(xbmcgui.WindowXML):
                 except Exception:result=(None,True)
                 if generation==self.favorite_generation:self.favorite_result=result
             self.favorite_refresh=threading.Thread(target=refresh,daemon=True);self.favorite_refresh.start()
+
+    def retry_categories_if_ready(self):
+        # A temporary server outage must not leave this window stuck on PVR
+        # groups. Retry only at the category chooser, never over an open grid.
+        deadline=getattr(self,'category_retry_at',0)
+        if (deadline and time.monotonic()>=deadline and self.kind=='live'
+                and self.category is None and not self.closed
+                and not self.busy and self.jobs.empty()):
+            self.category_retry_at=0
+            self.enqueue(self.load_categories)
+            return True
+        return False
 
     def close(self):
         self.closed=True
@@ -123,8 +137,12 @@ class Browser(xbmcgui.WindowXML):
             groups=rpc('PVR.GetChannelGroups',{'channeltype':'tv'}).get('channelgroups',[])
             summaries=[]
             if self.shared:
-                try:summaries=self.shared.request('LiveTvCategories')
-                except Exception:xbmc.log('Venom category service unavailable; keeping native PVR groups',xbmc.LOGINFO)
+                try:
+                    summaries=self.shared.request('LiveTvCategories')
+                    self.category_retry_at=0
+                except Exception:
+                    self.category_retry_at=time.monotonic()+15
+                    xbmc.log('Venom category service unavailable; keeping native PVR groups and retrying at chooser',xbmc.LOGINFO)
             self.categories=live_group_choices(groups,summaries)
         elif self.kind=='favorites':
             self.categories=[('All shared favourites','all'),('Live channels','live'),('Movies','movie'),('Series','series'),('Local bookmarks / pending sync','local')]

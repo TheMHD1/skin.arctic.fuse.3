@@ -1,0 +1,4 @@
+FROM nextcloud:35.0.0-apache@sha256:3e9f6eaa5dc8e26df3a7b78cd564ec14408f52cdc89d607e5b4341b85ab83f0e
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg imagemagick ghostscript intel-media-va-driver libva-drm2 libva2 vainfo && rm -rf /var/lib/apt/lists/*
+COPY ffmpeg-hw /usr/bin/ffmpeg-hw
+RUN chmod +x /usr/bin/ffmpeg-hw

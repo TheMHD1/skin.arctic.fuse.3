@@ -1,0 +1,8 @@
+FROM lscr.io/linuxserver/jellyfin:12.1ubu2604-ls50@sha256:51252e7a416e703cdc3cd91e8a54673a2430cc80409be8a38abe511411577b95
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends intel-opencl-icd ocl-icd-libopencl1 clinfo \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
+COPY Emby.Naming.dll /usr/lib/jellyfin/bin/Emby.Naming.dll
+ENV HABIBI_JF_EPISODE_VERSION_EXCLUDED_DIRECTORIES="One Pace"
+LABEL org.habibi.jellyfin.naming-patch="v12.1-exact-directory-optout-20260918"

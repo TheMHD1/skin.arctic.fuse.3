@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+set -euo pipefail
+. /etc/default/habibi-controlplane-firewall
+
+valid_ipv4() {
+    /usr/bin/python3 -c 'import ipaddress,sys; ipaddress.IPv4Address(sys.argv[1])' "$1" 2>/dev/null
+}
+
+apply_family() {
+    local tool=$1 family=$2
+    "$tool" -S DOCKER-USER >/dev/null 2>&1 || return 0
+    local chain=HABIBI_CONTROLPLANE
+    "$tool" -N "$chain" 2>/dev/null || true
+    "$tool" -C DOCKER-USER -j "$chain" 2>/dev/null || "$tool" -I DOCKER-USER 1 -j "$chain"
+    "$tool" -F "$chain"
+    "$tool" -A "$chain" -m conntrack --ctstate ESTABLISHED,RELATED -j RETURN
+    if [ "$family" = ipv4 ]; then
+        local seerr_ip jellyfin_ip
+        seerr_ip=$(/usr/bin/docker inspect -f \
+            '{{(index .NetworkSettings.Networks "media-stack_seerr_jellyfin").IPAddress}}' \
+            jellyseerr 2>/dev/null || true)
+        jellyfin_ip=$(/usr/bin/docker inspect -f \
+            '{{(index .NetworkSettings.Networks "media-stack_seerr_jellyfin").IPAddress}}' \
+            jellyfin 2>/dev/null || true)
+        if valid_ipv4 "$seerr_ip" && valid_ipv4 "$jellyfin_ip"; then
+            "$tool" -A "$chain" -s "$seerr_ip" -d "$jellyfin_ip" \
+                -p tcp --dport 8096 -j RETURN
+            "$tool" -A "$chain" -s "$seerr_ip" -d "$jellyfin_ip" -j DROP
+            # Jellyfin Enhanced needs the Seerr API for Requests, discovery,
+            # and per-user request state. Allow only that private service edge.
+            "$tool" -A "$chain" -s "$jellyfin_ip" -d "$seerr_ip" \
+                -p tcp --dport 5055 -j RETURN
+            "$tool" -A "$chain" -s "$jellyfin_ip" -d "$seerr_ip" -j DROP
+        fi
+        for source in $CONTROL_SOURCES; do
+            for port in $CONTROL_PORTS; do
+                "$tool" -A "$chain" -s "$source" -p tcp -m conntrack --ctorigdstport "$port" -j RETURN
+            done
+        done
+        for source in $USER_SOURCES; do
+            for port in $USER_PORTS; do
+                "$tool" -A "$chain" -s "$source" -p tcp -m conntrack --ctorigdstport "$port" -j RETURN
+            done
+        done
+    fi
+    for port in $CONTROL_PORTS; do
+        "$tool" -A "$chain" -p tcp -m conntrack --ctorigdstport "$port" -j DROP
+    done
+    for port in $USER_PORTS; do
+        "$tool" -A "$chain" -p tcp -m conntrack --ctorigdstport "$port" -j DROP
+    done
+    "$tool" -A "$chain" -j RETURN
+}
+
+apply_family /usr/sbin/iptables ipv4
+apply_family /usr/sbin/ip6tables ipv6

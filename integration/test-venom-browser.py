@@ -30,6 +30,19 @@ class Window:
     def getFocusId(self):return self.focus
 
 class Tests(unittest.TestCase):
+    def test_category_retry_is_bounded_and_never_replaces_open_grid(self):
+        import queue
+        mod=self.load();b=mod['Browser']();b.category=None;b.closed=False;b.busy=False;b.jobs=queue.Queue()
+        b.category_retry_at=20
+        with patch('time.monotonic',return_value=19):
+            self.assertFalse(b.retry_categories_if_ready())
+        with patch('time.monotonic',return_value=21):
+            b.category='alltv';self.assertFalse(b.retry_categories_if_ready())
+            b.category=None;b.busy=True;self.assertFalse(b.retry_categories_if_ready())
+            b.busy=False;self.assertTrue(b.retry_categories_if_ready())
+            self.assertEqual(b.jobs.qsize(),1)
+            self.assertFalse(b.retry_categories_if_ready())
+            self.assertEqual(b.jobs.qsize(),1)
     def test_channel_display_cleanup_preserves_identity_and_other_titles(self):
         mod=self.load();clean=mod['channel_display_name']
         self.assertEqual(clean('9328 CA TSN1 FHD'),'TSN1 FHD')
@@ -101,7 +114,14 @@ class Tests(unittest.TestCase):
         b.shared=types.SimpleNamespace(user='u',request=request)
         self.assertEqual(len(b.fetch_entries()),501);self.assertEqual(offsets,[0,500])
     def test_exclusion_boundaries_and_whitelist(self):
-        source=ast.parse((ROOT/'venom-jellyfin-library.py').read_text())
+        # Test the shipped patch itself; no private working-tree fixture needed.
+        lines=(ROOT/'patches/jellyfin-2.2.0-habibi.patch').read_text().splitlines()
+        start=next(i for i,line in enumerate(lines) if line.startswith('+def excluded_stream_item('))
+        added=[]
+        for line in lines[start:]:
+            if not line.startswith('+'):break
+            added.append(line[1:])
+        source=ast.parse('\n'.join(added))
         function=next(n for n in source.body if isinstance(n,ast.FunctionDef) and n.name=='excluded_stream_item')
         namespace={};exec(compile(ast.Module(body=[function],type_ignores=[]),'test','exec'),namespace)
         excluded=namespace['excluded_stream_item'];policy={'Whitelist':[],'ExcludedLibraryPaths':{'/config/venom/series':'iptv'}}

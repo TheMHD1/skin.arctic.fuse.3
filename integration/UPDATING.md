@@ -1,5 +1,26 @@
 # Controlled update workflow
 
+The [September 18 fleet record](FLEET-MAINTENANCE-2026-09-18.md) records the
+Jellyfin 12.1 / Enhanced 12.7 source patches, Dispatcharr 0.31 HLS compatibility
+fix, verified rollback state and Kodi category-outage recovery. Rebase those
+version-specific patches when updating their upstream components.
+
+## AM9 hybrid boot prerequisite (September 18 repair)
+
+The AM9 boots its kernel from SD while `/flash` and `/storage` may resolve to
+SSD. **Do not use unattended CoreELEC updates on this arrangement.** Before
+rebooting into an update, stage its matching kernel/SYSTEM/AM9 Pro DTB on SD
+and let the normal updater update SSD. Afterward synchronize updater-generated
+DTB/dtb.xml, device trees and boot support files, verify both kernel/SYSTEM
+hashes, and confirm the live kernel build matches `/etc/os-release`. Preserve
+hybrid config.ini and storage UUIDs. Verify Wi-Fi, Jellyfin and Kodi after boot.
+
+Arctic 3.3.1 / Jellyfin for Kodi 2.2.0 ports are recorded in
+[the repair record](UGOOS-HYBRID-RECOVERY-2026-09-18.md) and version-specific
+patches. Do not stack the 2.2.0 consolidated patch with older 2.1.0 patches.
+Custom add-ons use manual updates so stock packages cannot silently erase the
+ports. Ordinary unmodified add-ons retain their normal update policy.
+
 1. Confirm the last private backup succeeded. Keep the currently working addon
    sources, settings and a SQLite-consistent DB backup. Verify rollback artifacts.
 2. Fetch `upstream` (jurialmunkey/skin.arctic.fuse.3). Create a new candidate branch

@@ -1,0 +1,130 @@
+diff --git a/apps/m3u/credentials.py b/apps/m3u/credentials.py
+index a89479e..0955e2a 100644
+--- a/apps/m3u/credentials.py
++++ b/apps/m3u/credentials.py
+@@ -83,7 +83,7 @@ def get_transformed_credentials(account, profile=None) -> TransformedCredentials
+     clean_server_url = base_url.rstrip("/")
+     # Synthetic XC live URL used only to apply search/replace and extract login.
+     complete_url = f"{clean_server_url}/live/{base_username}/{base_password}/1234.ts"
+-    logger.debug("Built complete URL for credential transform: %s", complete_url)
++    logger.debug("Built synthetic URL for credential transform")
+ 
+     has_patterns = bool(
+         profile and profile.search_pattern and profile.replace_pattern
+@@ -123,20 +123,17 @@ def get_transformed_credentials(account, profile=None) -> TransformedCredentials
+         )
+         return None, None, None
+ 
+-    logger.info(
+-        "Transformed complete URL: %s -> %s",
+-        complete_url,
+-        transformed_complete_url,
+-    )
++    logger.info("Applied credential transform for profile '%s'", profile_label)
+ 
+     parsed_url = urllib.parse.urlparse(transformed_complete_url)
+     path_parts = [part for part in parsed_url.path.split("/") if part]
+ 
+-    if len(path_parts) < 4 or path_parts[-1] != "1234.ts":
++    # A transport-only rewrite (.ts -> .m3u8) leaves the synthetic identity
++    # and credentials intact. Do not reject it for VOD/catch-up credential use.
++    if len(path_parts) < 4 or path_parts[-1] not in ("1234.ts", "1234.m3u8"):
+         logger.warning(
+-            "Could not extract credentials from transformed URL for profile '%s': %s",
++            "Could not extract credentials from transformed URL for profile '%s'",
+             profile_label,
+-            transformed_complete_url,
+         )
+         return None, None, None
+ 
+diff --git a/apps/m3u/tests/test_credential_transform.py b/apps/m3u/tests/test_credential_transform.py
+index 82cbd06..b1c2a95 100644
+--- a/apps/m3u/tests/test_credential_transform.py
++++ b/apps/m3u/tests/test_credential_transform.py
+@@ -45,6 +45,12 @@ class BuildXcPlaybackUrlTests(SimpleTestCase):
+ 
+ 
+ class GetTransformedCredentialsFailClosedTests(TestCase):
++    def test_hls_transport_rewrite_preserves_credential_identity(self):
++        self.default.search_pattern=r'\.ts$'
++        self.default.replace_pattern='.m3u8'
++        self.assertEqual(get_transformed_credentials(self.account,self.default),
++            ('http://provider.example','baseuser','basepass'))
++
+     def setUp(self):
+         self.account = M3UAccount.objects.create(
+             name="cred-fail-closed",
+@@ -111,6 +117,12 @@ class GetTransformedCredentialsFailClosedTests(TestCase):
+ 
+ 
+ class ResolveLiveStreamUrlFailClosedTests(TestCase):
++    def test_hls_transport_uses_current_login_and_real_stream_id(self):
++        profile=M3UAccountProfile(search_pattern=r'\.ts$',replace_pattern='.m3u8')
++        self.stream.url='http://old.example/live/old/old/441305.ts'
++        self.assertEqual(_resolve_live_stream_url(self.stream,self.account,profile),
++            'http://provider.example/live/baseuser/basepass/441305.m3u8')
++
+     def setUp(self):
+         self.account = M3UAccount.objects.create(
+             name="live-resolve",
+diff --git a/apps/proxy/live_proxy/server.py b/apps/proxy/live_proxy/server.py
+index 9283c91..6598ff4 100644
+--- a/apps/proxy/live_proxy/server.py
++++ b/apps/proxy/live_proxy/server.py
+@@ -454,7 +454,7 @@ class ProxyServer:
+     def try_acquire_ownership(self, channel_id, ttl=30):
+         """Try to become the owner of this channel using proper locking"""
+         if not self.redis_client:
+-            return True  # If no Redis, always become owner
++            return False  # Shared provider capacity requires a working lock.
+ 
+         try:
+             # Create a lock key with proper namespace
+@@ -465,9 +465,9 @@ class ProxyServer:
+                 lambda: self.redis_client.set(lock_key, self.worker_id, nx=True, ex=ttl)
+             )
+ 
+-            if acquired is None:  # Redis command failed
+-                logger.warning(f"Redis command failed during ownership acquisition - assuming ownership")
+-                return True
++            # Redis SET NX returns None when another worker already owns the
++            # lock. This is normal contention, not permission to assume ownership.
++            # Fall through to verify the owner; an unavailable Redis fails closed.
+ 
+             if acquired:
+                 logger.info(f"Worker {self.worker_id} acquired ownership of channel {channel_id}")
+diff --git a/apps/proxy/live_proxy/url_utils.py b/apps/proxy/live_proxy/url_utils.py
+index b779a3f..49fc04c 100644
+--- a/apps/proxy/live_proxy/url_utils.py
++++ b/apps/proxy/live_proxy/url_utils.py
+@@ -35,15 +35,14 @@ def _resolve_live_stream_url(stream, m3u_account, m3u_profile):
+     ):
+         from apps.m3u.credentials import (
+             build_xc_playback_url,
+-            get_transformed_credentials,
+         )
++        from core.xtream_codes import normalize_server_url
+ 
+-        server_url, username, password = get_transformed_credentials(
+-            m3u_account, m3u_profile
+-        )
++        server_url = normalize_server_url(m3u_account.server_url)
++        username, password = m3u_account.username, m3u_account.password
+         if not (server_url and username and password):
+             return None
+-        return build_xc_playback_url(
++        current_url = build_xc_playback_url(
+             server_url,
+             username,
+             password,
+@@ -51,6 +50,10 @@ def _resolve_live_stream_url(stream, m3u_account, m3u_profile):
+             stream_id=str(stream.stream_id),
+             extension="ts",
+         )
++        # Transform once against fresh account credentials and the real ID.
++        # This preserves transport/path rewrites, without falling back to stale
++        # stored stream URLs or accepting a failed credential transform.
++        return transform_url(current_url, m3u_profile.search_pattern, m3u_profile.replace_pattern)
+ 
+     return transform_url(
+         stream.url or "",
