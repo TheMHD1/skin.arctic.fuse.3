@@ -11,3 +11,30 @@ Thumbs.db
 __pycache__/
 *.pyc
 .env
+
+# Local runtime state and evidence (never release from a working device)
+*.log
+*.sqlite
+*.sqlite3
+*.sqlite-wal
+*.sqlite-shm
+*.db
+*.db-wal
+*.db-shm
+*.bak
+*.backup
+backups/
+userdata/
+credentials.json
+secrets.json
+api-key
+*.api-key
+*-api-key
+integration/release/**/profile.*.json
+!integration/release/**/profile.example.json
+
+# Generated release archives are built from reviewed source, not committed
+*.tar
+*.tar.gz
+*.tgz
+*.zip

@@ -1,0 +1,44 @@
+--- a/browser.py
++++ b/browser.py
+@@ -27,6 +27,12 @@
+ def entry(label,params,art='',folder=False,plot='',media=None,metadata=None):
+     return dict(label=label,params=params,art=art,folder=folder,plot=plot,media=media,metadata=metadata or {})
+ 
++def live_group_choices(groups,summaries):
++    ranks={clean_label(row['name']):i for i,row in enumerate(summaries)}
++    pinned=[(row['name'],'jf:'+row['id']) for row in summaries if row['id'].startswith('collection-')]
++    ordered=sorted(groups,key=lambda group:ranks.get(clean_label(group['label']),10**9))
++    return pinned+[('All channels','alltv')]+[(g['label'],g['channelgroupid']) for g in ordered if g['label']!='All channels']
++
+ class Browser(xbmcgui.WindowXML):
+     def onInit(self):
+         if getattr(self,'initialized',False):
+@@ -105,7 +111,11 @@
+         self.getControl(941).setLabel({'live':'Live TV','movie':'Movies','series':'Series','favorites':'Favourites'}[self.kind])
+         if self.kind=='live':
+             groups=rpc('PVR.GetChannelGroups',{'channeltype':'tv'}).get('channelgroups',[])
+-            self.categories=[('All channels','alltv')]+[(g['label'],g['channelgroupid']) for g in sorted(groups,key=lambda g:catalogue.search_text(g['label'])) if g['label']!='All channels']
++            summaries=[]
++            if self.shared:
++                try:summaries=self.shared.request('LiveTvCategories')
++                except Exception:xbmc.log('Venom category service unavailable; keeping native PVR groups',xbmc.LOGINFO)
++            self.categories=live_group_choices(groups,summaries)
+         elif self.kind=='favorites':
+             self.categories=[('All shared favourites','all'),('Live channels','live'),('Movies','movie'),('Series','series'),('Local bookmarks / pending sync','local')]
+         else:
+@@ -174,6 +184,15 @@
+             favorites=self.shared.entries()
+             return [v for v in favorites if self.category=='all' or v['params'].get('kind')==self.category]
+         if self.kind=='live':
++            if str(self.category).startswith('jf:collection-'):
++                if not self.shared:raise RuntimeError('Jellyfin sign-in required')
++                result=[]
++                for offset in range(0,1000,250):
++                    page=self.shared.request('LiveTvCategories/'+self.category[3:]+'/Channels',startIndex=offset,limit=250,addCurrentProgram='false')
++                    for row in page['Items']:
++                        result.append(entry(row['Name'],{'mode':'shared','kind':'live','id':row['Id'],'type':'TvChannel'},metadata={'channelnumber':row.get('ChannelNumber') or row.get('Number')}))
++                    if len(result)>=page['TotalRecordCount']:return result
++                raise RuntimeError('Curated collection exceeds safe size')
+             key=('live',str(self.category))
+             cached=self.cache.get(key)
+             if not cached or time.monotonic()-cached[0]>300:

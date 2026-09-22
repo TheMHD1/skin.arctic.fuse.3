@@ -1,0 +1,13 @@
+[Unit]
+Description=Bounded Jellyfin SQLite WAL storage safeguard
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/data/config/iptv-venom/storage-guard-venv/bin/python /data/config/iptv-venom/venom-storage-guard.py
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+TimeoutStartSec=20
+MemoryMax=256M
+CPUQuota=50%

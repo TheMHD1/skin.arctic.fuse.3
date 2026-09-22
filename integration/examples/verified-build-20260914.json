@@ -1,4 +1,5 @@
 {
+  "_status": "Historical example only; never install as a current integrity baseline.",
   "versions": {
     "plugin.video.jellyfin": "2.1.0+py3",
     "plugin.video.kodiseerr": "4.5",

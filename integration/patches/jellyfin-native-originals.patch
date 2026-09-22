@@ -1,0 +1,62 @@
+diff --git a/jellyfin_kodi/helper/api.py b/jellyfin_kodi/helper/api.py
+--- a/jellyfin_kodi/helper/api.py
++++ b/jellyfin_kodi/helper/api.py
+@@ -7,6 +7,7 @@ import xbmcvfs
+ ##################################################################################################
+ 
+ from . import settings, LazyLogger
++from .native_originals import map_native_path
+ 
+ ##################################################################################################
+ 
+@@ -22,6 +23,7 @@ class API(object):
+         """
+         self.item = item
+         self.server = server
++        self.path_data = {}
+ 
+         addon_data = xbmcvfs.translatePath(
+             "special://profile/addon_data/plugin.video.jellyfin/data.json"
+@@ -214,6 +216,11 @@ class API(object):
+ 
+         return mpaa
+ 
++    def get_native_file_path(self, path):
++        """Exact trusted NFS mapping for the Native-original playback policy."""
++        return map_native_path(path, self.path_data)
++
++
+     def get_file_path(self, path=None):
+ 
+         if path is None:
+diff --git a/jellyfin_kodi/helper/playutils.py b/jellyfin_kodi/helper/playutils.py
+--- a/jellyfin_kodi/helper/playutils.py
++++ b/jellyfin_kodi/helper/playutils.py
+@@ -13,5 +13,6 @@ from .. import client
+ 
+ from . import translate, settings, window, dialog, api, LazyLogger
++from .native_originals import eligible, available_native_path
+ 
+ #################################################################################################
+ 
+@@ -198,7 +199,19 @@ class PlayUtils(object):
+             source["SupportsDirectPlay"] = False
+             source["SupportsDirectStream"] = False
+ 
+-        if (
++        native_path = None
++        if eligible(self.item, source, settings("useDirectPaths"), self.info["ForceTranscode"]):
++            candidate = api.API(self.item, self.info["ServerAddress"]).get_native_file_path(
++                source.get("Path")
++            )
++            native_path = available_native_path(candidate, xbmcvfs.exists)
++
++        if native_path:
++            LOG.info("--[ mapped native original ]")
++            self.info["Method"] = "DirectPlay"
++            self.info["Path"] = native_path
++
++        elif (
+             source.get("Protocol") == "Http"
+             or source["SupportsDirectPlay"]
+             and (not settings("playFromStream.bool") and self.is_file_exists(source))

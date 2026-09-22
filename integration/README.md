@@ -3,6 +3,17 @@
 Personal non-commercial integration branch maintained by TheMHD1. Arctic Fuse 3
 is by jurialmunkey. This is not an official Jellyfin, KodiSeerr or Arctic release.
 
+The durable feature/version/status inventory is
+[CUSTOMIZATIONS.md](CUSTOMIZATIONS.md). The portable builder and guarded update
+source start at `release/README.md`. They intentionally exclude credentials,
+userdata, private device profiles, generated payloads and rollback archives.
+
+Current acceptance boundary: the local/LAN AM9 cohort has accepted revision r6
+client changes; the separately tested remote-house cohort is staged but not
+deployed. A CoreELEC update remains held and is not authorized by these addon
+instructions. Historical records describing both devices as offline or r5 as
+current are retained only as history.
+
 ## Layout
 
 - The skin change is deliberately small: KodiSeerr widget request/detail actions
@@ -15,6 +26,10 @@ is by jurialmunkey. This is not an official Jellyfin, KodiSeerr or Arctic releas
   fresh request guards, safe success reporting, bounded caching and quieter probes.
 - `patches/jellyfin-kodi.patch`: prepare next episode at startup and retain distinct
   subtitle/media-segment intervals. Up Next still owns prompts/cancel/still-watching.
+- `patches/jellyfin-tls-secure-default.patch` and
+  `patches/jellyfin-native-originals.patch`: the reviewed 2.2 TLS default and
+  narrow native-library original-path policy. The native helper is required;
+  this is not a global HTTP/STRM/PVR switch.
 - Example Discover nodes, offline regression tests and version/hash guard.
 - Optional `plugin.video.venom.tv/` and native IPTV poster hub. See
   [VENOM-PACKAGE.md](VENOM-PACKAGE.md) for private setup requirements and
@@ -23,27 +38,45 @@ is by jurialmunkey. This is not an official Jellyfin, KodiSeerr or Arctic releas
   especially the distinction between web categories and stock Moonfin menus.
   Apply `jellyfin-iptv-update-filter.patch`
   after `jellyfin-kodi.patch` to cover deliberately unsynced Season updates too.
+- `patches/venom-remote-performance.patch` and `remote-venom/`: the distinct
+  Jellyfin/HTTPS-only remote cohort. Never replace it with the local PVR build.
+- `patches/dispatcharr-live-admission.patch`,
+  `patches/dispatcharr-disconnected-keepalive.patch` and
+  `server/dispatcharr-nginx.conf`: version-specific Dispatcharr 0.31 transport
+  source. Server deployment remains a separately guarded operation.
+- `server/jellyfin-custom/` and `server/dovi/`: portable server patch/test source.
+  Production databases, media, queues, Compose files and credentials are not
+  public release inputs.
 
-## Known-good source bases
+## Current reviewed cohort
 
 | Component | Version | Source |
 | --- | --- | --- |
-| Arctic Fuse 3 | 3.2.19 | `c656db95c9b119f8de7fef73346e0a31f1e280d3` |
-| Jellyfin for Kodi | 2.1.0+py3 | `00c33dba4658ceeaefb37ed7f1d1037e5c98feb1` |
+| Arctic Fuse 3 | 3.3.1 on accepted devices | Reviewed upstream 3.3.1 source plus `patches/arctic-3.3.1-habibi.patch`; the repository root remains a legacy 3.2.19 baseline |
+| Jellyfin for Kodi | 2.2.0+py3 | Exact upstream commit pinned by the release builder |
+| Home companion | 1.1.0 | `plugin.video.habibi.resume/` |
+| Venom TV | 1.3.1 | Local and remote cohorts are separately hash-checked |
 | KodiSeerr | 4.5 | `8d23b6c14473f747080719884cd998fa98a17fc6` |
 | Up Next | 1.1.9+matrix.1 | Unmodified; configured separately |
 
-Tested on CoreELEC with Kodi22 beta/Piers. Other platforms/versions require live
-verification. This branch retains Arctic's upstream addon ID/version to minimize
-skin setting migration: it is a **source integration branch**, not a separate
-automatic-update repository. Do not install both variants under the same ID.
+The repository-root skin tree and its `addon.xml` deliberately remain the legacy
+3.2.19 integration baseline. **Do not package or install that root tree as the
+current 3.3.1 skin, and do not change its addon version alone.** Current devices
+use reviewed upstream 3.3.1 source plus `patches/arctic-3.3.1-habibi.patch`, then
+the r6 search/template overlay. The release installer assumes a reviewed 3.3.1
+cohort already exists; it does not perform this base migration. Jellyfin 2.1.0
+patches are likewise historical and must not be stacked with the current 2.2
+cohort. Tested on CoreELEC with Kodi 22/Piers; other platforms require live
+verification. The maintained skin retains Arctic's upstream addon ID to minimize
+setting migration; do not install both variants under the same ID.
 
 ## Install / update
 
-For another device, start with [SECOND-UGOOS.md](SECOND-UGOOS.md). It documents
-the setup, private/public backup boundary, audio/UI preferences and the complete
-request-to-Jellyfin-to-Kodi notification path. `settings-reference.json` is a
-redacted reference inventory, not a file to import into Kodi.
+For another device, start with [SECOND-UGOOS.md](SECOND-UGOOS.md). A new device
+must first be commissioned with its own OS, identities, accounts, settings and
+base addons. The exact-cohort release installer is an update overlay and should
+reject a blank or unknown installation. `settings-reference.json` is a redacted
+reference inventory, not a file to import into Kodi.
 
 Read [UPDATING.md](UPDATING.md) before deploying. Never deploy during playback,
 including paused playback. Never copy an entire Kodi userdata directory from GitHub.
@@ -53,13 +86,13 @@ addresses; review those before adapting it to another server.
 Authenticate Jellyfin and Seerr locally; keep Seerr settings private and prefer a
 restricted user account when configuring a new installation.
 
-Run `python integration/check.py`. It uses temporary upstream checkouts, verifies
-patch application, then runs tests. It does not connect to Kodi or submit requests.
-Copy the companion directory to Kodi's addons folder; apply the third-party patches
-only to the matching sources after `git apply --check` succeeds. Preserve addon
-licenses. Enable the companion, Jellyfin for Kodi, KodiSeerr and Up Next in Kodi.
-Add the example Discover widget/submenu nodes through Arctic's shortcut manager,
-or merge them into existing user nodes; do not overwrite unrelated shortcuts.
+Run `python3 integration/check.py` for the complete source integration. Use
+`integration/release/README.md` to build a hash-pinned payload and guarded staging
+envelope from clean inputs. Generated payloads and real private profiles are not
+committed. Run `python3 integration/release/verify-preservation.py` before release
+handoff. For manual development, apply third-party patches only to their exact
+matching source after `git apply --check`; preserve licenses and never overwrite
+unrelated shortcuts or userdata.
 
 Configure Up Next for automatic playback, include watched episodes for rewatches,
 120-second prompt, three-episode still-watching check. Preserve personal settings

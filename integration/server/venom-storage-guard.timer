@@ -1,0 +1,11 @@
+[Unit]
+Description=Reclaim eligible Jellyfin WAL growth every two minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitInactiveSec=2min
+RandomizedDelaySec=10s
+Unit=venom-storage-guard.service
+
+[Install]
+WantedBy=timers.target

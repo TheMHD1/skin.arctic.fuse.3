@@ -1,0 +1,99 @@
+--- a/process-queue.sh
++++ b/process-queue.sh
+@@ -22,7 +22,9 @@
+ #     clean full-stream timestamp probe, duration parity, and decoder smoke tests.
+ #     Atomic rename => no partial file ever seen; source master remains untouched.
+ #   * after success, atomically trigger the same-path Jellyfin view reconciler
+-# MODE=dryrun -> detect+log only.
++# MODE=dryrun skips conversion but still mutates queue/log/scratch state.
++# This sanitized source is a preservation reference, not a commissioning tool.
++# Never execute it against real host paths for a test; use bash -n only.
+ set -uo pipefail
+ export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin   # include /usr/local/bin for dovi_tool
+ # Keep deterministic tool output while preserving Unicode media and track names.
+@@ -41,7 +43,7 @@
+ MARGIN_PCT=110                   # generic free-space margin
+ SCRATCH_PCT=160                  # NVMe scratch needs ~1.5x source (two HEVC essences)
+ JF="http://192.168.2.172:8096"
+-JK=[REDACTED: runtime Jellyfin API token]
++JK="[REDACTED: runtime Jellyfin API token]"
+ NTFY_URL="http://100.79.178.109:8090"; NTFY_TOPIC="habibi-alerts"
+ LOG_MAX=5242880                  # trim log when it exceeds ~5MB
+ mkdir -p "$DIR" "$HDD_SCRATCH" "$COMPAT_ROOT/movies" "$COMPAT_ROOT/shows"
+@@ -50,6 +52,19 @@
+
+ exec 9>/run/dovi-process-queue.lock; flock -n 9 || exit 0   # lock on LOCAL fs — mergerfs/FUSE does not serialize flock reliably
+
++# Reconciler appends and worker queue-drains share this short critical section.
++# The conversion flock protects WQ processing; this separate local lock makes
++# Q -> WQ snapshotting and every later requeue atomic against a reconciler run.
++QUEUE_LOCK="/run/dovi-compat-queue.lock"
++queue_append(){
++  local queued_path="$1"
++  exec 8>"$QUEUE_LOCK"
++  flock 8
++  printf '%s\n' "$queued_path" >> "$Q"
++  flock -u 8
++  exec 8>&-
++}
++
+ # keep the log bounded
+ if [ -f "$LOG" ] && [ "$(stat -c%s "$LOG" 2>/dev/null || echo 0)" -gt "$LOG_MAX" ]; then
+   tail -n 2000 "$LOG" > "$LOG.trim" 2>/dev/null && mv -f "$LOG.trim" "$LOG"
+@@ -77,8 +92,12 @@
+ }
+
+ # --- Build/refresh the reboot-safe work snapshot -------------------------------------
++exec 8>"$QUEUE_LOCK"
++flock 8
+ touch "$WQ"
+ if [ -s "$Q" ]; then cat "$Q" >> "$WQ" 2>/dev/null; : > "$Q"; fi
++flock -u 8
++exec 8>&-
+ sort -u "$WQ" -o "$WQ" 2>/dev/null
+ [ -s "$WQ" ] || { rm -f "$WQ"; exit 0; }
+
+@@ -123,14 +142,14 @@
+   rc=$?
+   if [ "$rc" = 76 ]; then
+     log "source changed during failed attempt; requeue replacement: $FILE"
+-    printf '%s\n' "$FILE" >> "$Q"
++    queue_append "$FILE"
+     return 0
+   fi
+   [ "$rc" = 0 ] || { log "ERROR cannot persist conversion failure; retaining snapshot"; exit 1; }
+   python3 "$RETRY_HELPER" check "$FILE"
+   rc=$?
+   case "$rc" in
+-    0) printf '%s\n' "$FILE" >> "$Q"; log "requeued for one retry: $FILE";;
++    0) queue_append "$FILE"; log "requeued for one retry: $FILE";;
+     75) log "conversion deferred for 24h after two failures: $FILE";;
+     *) log "ERROR cannot read conversion cooldown; retaining snapshot"; exit 1;;
+   esac
+@@ -186,7 +205,7 @@
+   FREE=$(df -P --block-size=1 "$SCR" | awk 'NR==2{print $4}')
+   if [ "$FREE" -lt $(( SZI * MARGIN_PCT / 100 )) ]; then
+     log "SKIP low disk before packet scan on scratch $SCR (free=$((FREE/1024/1024))MB), requeue: $FILE"
+-    pop_done "$FILE"; printf '%s\n' "$FILE" >> "$Q"
++    pop_done "$FILE"; queue_append "$FILE"
+     continue
+   fi
+
+@@ -195,7 +214,7 @@
+   OUTFREE=$(df -P --block-size=1 "$DESTDIR" | awk 'NR==2{print $4}')
+   if [ "$OUTFREE" -lt $(( SZI * MARGIN_PCT / 100 )) ]; then
+     log "SKIP low destination space (free=$((OUTFREE/1024/1024))MB), requeue: $FILE"
+-    pop_done "$FILE"; printf '%s\n' "$FILE" >> "$Q"
++    pop_done "$FILE"; queue_append "$FILE"
+     continue
+   fi
+
+@@ -204,7 +223,7 @@
+   case "$RETRY_STATUS" in
+     0) ;;
+     75) log "SKIP conversion cooldown (unchanged source): $FILE"; pop_done "$FILE"; continue;;
+-    76) log "source changed during admission; requeue: $FILE"; printf '%s\n' "$FILE" >> "$Q"; pop_done "$FILE"; continue;;
++    76) log "source changed during admission; requeue: $FILE"; queue_append "$FILE"; pop_done "$FILE"; continue;;
+     *) log "ERROR cooldown unavailable; retaining snapshot: $FILE"; exit 1;;
+   esac
+   FAIL_BEFORE=$failed

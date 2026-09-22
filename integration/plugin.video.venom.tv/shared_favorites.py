@@ -39,35 +39,47 @@ class SharedFavorites:
         self.server=server;self.base=server['address'].rstrip('/');self.user=server['UserId']
         self.cached=[];self.stamp=0;self.matches={};self.retry_after=0
 
-    def request(self,path,method='GET',**query):
+    def request(self,path,method='GET',cancelled=None,**query):
+        cancelled=cancelled or (lambda:False)
         if time.monotonic()<self.retry_after:raise ConnectionError('Jellyfin temporarily unavailable; retry shortly')
         header='MediaBrowser Client="Venom TV", Device="Kodi", DeviceId="venom-favorites", Version="1.3", Token="'+self.server['AccessToken']+'"'
         req=Request(self.base+'/'+path+'?'+urlencode(query),headers={'Authorization':header},method=method)
         try:
+            deadline=time.monotonic()+10
             with urlopen(req,timeout=8) as response:
-                raw=response.read(8*1024*1024+1)
+                chunks=[];size=0;read=getattr(response,'read1',response.read)
+                while True:
+                    if cancelled():raise RuntimeError('Jellyfin request cancelled')
+                    if time.monotonic()>deadline:raise TimeoutError('Jellyfin response deadline exceeded')
+                    chunk=read(min(64*1024,8*1024*1024+1-size))
+                    if not chunk:break
+                    chunks.append(chunk);size+=len(chunk)
+                    if size>8*1024*1024:raise ValueError('Favourite response too large')
+                raw=b''.join(chunks)
         except OSError:
             self.retry_after=time.monotonic()+15
             raise
         if len(raw)>8*1024*1024:raise ValueError('Favourite response too large')
         return json.loads(raw) if raw else None
 
-    def favorites(self,force=False):
+    def favorites(self,force=False,cancelled=None):
+        cancelled=cancelled or (lambda:False)
         if not force and time.monotonic()-self.stamp<15:return self.cached
         items=[]
         for endpoint,params in [
             ('Users/'+self.user+'/Items',dict(Recursive='true',IncludeItemTypes='Movie,Series,Episode,TvChannel',Filters='IsFavorite',Fields='Path,ChannelInfo',SortBy='SortName'))]:
             offset=0
             while True:
-                page=self.request(endpoint,StartIndex=offset,Limit=500,**params).get('Items',[])
+                if cancelled():raise RuntimeError('Jellyfin request cancelled')
+                page=self.request(endpoint,cancelled=cancelled,StartIndex=offset,Limit=500,**params).get('Items',[])
                 items.extend(page);offset+=len(page)
                 if len(page)<500:break
                 if offset>=10000:raise RuntimeError('Favourite list exceeds safe browser limit')
         self.cached=items;self.stamp=time.monotonic()
         return items
 
-    def keys(self):
-        items=self.favorites()
+    def keys(self,cancelled=None):
+        items=self.favorites(cancelled=cancelled)
         return {key for item in items for key in (item_identity(item),'jf:'+item['Id'])}
 
     def resolve(self,e):
@@ -106,13 +118,14 @@ class SharedFavorites:
         self.stamp=0
         return enabled
 
-    def entries(self):
+    def entries(self,cancelled=None):
         result=[]
-        for item in self.favorites(force=True):
+        for item in self.favorites(force=True,cancelled=cancelled):
             kind={'Movie':'movie','Episode':'series','Series':'series','TvChannel':'live'}.get(item.get('Type'))
             if not kind:continue
             art=self.base+'/Items/'+item['Id']+'/Images/Primary?maxWidth=320&quality=85' if item.get('ImageTags',{}).get('Primary') else ''
-            result.append({'label':item['Name'],'params':{'mode':'shared','kind':kind,'id':item['Id'],'type':item['Type']},'folder':item['Type']=='Series','art':art,'plot':item.get('Overview',''),'media':None,'metadata':{}})
+            metadata={'channelnumber':item.get('ChannelNumber') or item.get('Number')} if item.get('Type')=='TvChannel' else {}
+            result.append({'label':item['Name'],'params':{'mode':'shared','kind':kind,'id':item['Id'],'type':item['Type']},'folder':item['Type']=='Series','art':art,'plot':item.get('Overview',''),'media':None,'metadata':metadata})
         return result
 
 def from_kodi():

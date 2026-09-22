@@ -51,7 +51,9 @@ class Tests(unittest.TestCase):
             queries.append((path,params))
             return {'Items':[{'Id':'a'*32,'Name':'BBC','Type':'TvChannel','Number':'8'}, {'Id':'b'*32,'Name':'Movie','Type':'Movie','Path':'/config/venom-catalogue/movies/Movie 7/movie.strm'}]}
         client.request=request
-        self.assertEqual(len(client.entries()),2)
+        entries=client.entries();self.assertEqual(len(entries),2)
+        self.assertEqual(entries[0]['metadata'],{'channelnumber':'8'})
+        self.assertEqual(entries[1]['metadata'],{})
         self.assertIn('channel:8:BBC',client.keys());self.assertIn('movie:7',client.keys())
         self.assertEqual(queries[0][0],'Users/user-a/Items')
         self.assertEqual(queries[0][1]['Filters'],'IsFavorite')

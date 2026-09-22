@@ -1,13 +1,23 @@
 # Reproducing this Kodi / Arctic setup
 
-Captured 2026-09-13. This is a source/configuration reference, not a firmware image
-or a one-click installer. Never import the redacted settings JSON as Kodi settings.
+Originally captured 2026-09-13 and updated after the September 22 r6 acceptance.
+This is a commissioning reference, not a firmware image or a one-click installer.
+Never import the redacted settings JSON as Kodi settings. See
+[CUSTOMIZATIONS.md](CUSTOMIZATIONS.md) for the current feature/status inventory.
+
+The accepted local/LAN device and the remote-house device are intentionally
+different cohorts. The local r6 cohort has physical search, native-original and
+IPTV handoff acceptance. The remote r6 overlay is source-tested but not installed;
+it remains Jellyfin/HTTPS-only with Native mode disabled. Do not infer that the
+held CoreELEC update or remote P7 routing is included in either addon cohort.
 
 ## What is preserved, and where
 
 - This public fork: custom skin source, Jellyfin Home companion, pinned Jellyfin
   and KodiSeerr patches, regression tests, widget examples, timeline seek script
   and keymap, safe settings inventory, installation/update/rollback instructions.
+- `release/`: portable, hash-pinned payload builders and guarded exact-cohort
+  update source. It does not contain a real device profile or generated payload.
 - `settings-reference.json`: installed addon IDs/versions and explicit saved Kodi
   and selected addon settings. Numeric values retain Kodi's enum representation;
   arbitrary strings, identities and credentials are redacted. Installed does not
@@ -23,15 +33,22 @@ or a one-click installer. Never import the redacted settings JSON as Kodi settin
 
 1. Confirm the second Ugoos model and hardware revision. If not the same model,
    use its supported CoreELEC image/device tree and validate HDR/audio separately.
-   The reference is an AM9 Pro running CoreELEC 22 nightly 20260911 / Kodi 22 beta2.
+   The reviewed cohort is AM9 Pro on CoreELEC 22 / Kodi 22. The exact OS build is
+   a private deployment choice; a later CoreELEC nightly remains deliberately held.
    Do not flash Android or copy the first box's boot media merely for a skin setup.
 2. Give the second device a unique hostname, network address and remote-access
    identity. Install CoreELEC onto the intended media using its normal procedure.
    Do not blindly clone the first box's hybrid SSD/SD mounts or identifiers.
 3. Install matching addon dependencies. Use the inventory as reference; native
    binaries such as InputStream Adaptive must match the platform and Kodi major.
-4. Follow [UPDATING.md](UPDATING.md) to apply the pinned patches and install the
-   Home companion. Run `python3 integration/check.py` before deployment.
+4. Install the reviewed base cohort first: Arctic 3.3.1, Jellyfin for Kodi
+   2.2.0+py3, Home companion 1.1.0 and, when wanted, Venom TV 1.3.1. Follow
+   [UPDATING.md](UPDATING.md), run `python3 integration/check.py`, then use
+   `release/README.md` to build a payload. The guarded installer is for a known
+   cohort; it is not a substitute for these blank-device steps. Build Arctic
+   from reviewed upstream 3.3.1 source plus
+   `patches/arctic-3.3.1-habibi.patch`. The repository-root skin is a legacy
+   3.2.19 baseline: do not install it as 3.3.1 or edit only its addon version.
 5. Sign in to Jellyfin for Kodi with the desired account. Using the same account
    shares resume positions, watched status and Jellyfin Favorites between boxes.
    Let each installation create its own client/device identity and library DB.
@@ -51,8 +68,11 @@ or a one-click installer. Never import the redacted settings JSON as Kodi settin
    `zz-habibi-osd-seek.xml` to Kodi userdata/keymaps. It changes left/right to
    -/+30 seconds only on Arctic's focused video timeline (control 8200); ordinary
    navigation is unchanged. Re-check the control ID after major skin upgrades.
-10. Rebuild templates with no_reload=true, then restart only while idle (paused
-    playback also counts as active). Never force a live skin reload during video.
+10. Create a private deployment profile from the redacted release example. Review
+    the no-write plan and exact version/source/manifest checks; do not bypass a
+    refusal on a new or drifted installation. Apply while idle, retain its backup,
+    rebuild templates with `no_reload=true`, then restart/reload only while idle
+    (paused playback also counts as active).
 11. Validate playback, resume across phone/boxes, subtitles, HDR, audio sync,
     next-episode prompt/autoplay, requests, Favorites, and both IMDb and YouTube
     trailer paths. Generate a reviewed per-device integrity baseline afterward.
@@ -77,8 +97,11 @@ Favorites and Top Rated. Latest Shows uses DateLastMediaAdded ordering; Top Rate
 is Jellyfin CommunityRating, not IMDb Top 250. Home opens Videos directly; Music
 and Pictures are removed from the Home submenu. Discover is separate.
 
-Arctic 3.2.19; Jellyfin for Kodi 2.1.0+py3; KodiSeerr 4.5; Home companion 1.1.0;
-Up Next 1.1.9+matrix.1. See inventory for the remaining installed addons.
+Arctic 3.3.1 (reviewed upstream source plus the maintained patch, not the legacy
+repository-root tree); Jellyfin for Kodi 2.2.0+py3; KodiSeerr 4.5; Home companion
+1.1.0; Venom TV 1.3.1 when enabled; Up Next 1.1.9+matrix.1. See the inventory for
+the remaining installed addons. Older 3.2.19/2.1.0 patches are historical and
+must not be stacked onto this source cohort.
 
 Up Next: enabled, automatic mode 0, stopAfterClose=false, includeWatched=true,
 playedInARow=3, customAutoPlayTime=false, autoPlaySeasonTime=120. Preserve the
@@ -143,8 +166,21 @@ five-minute Seerr scan and five-minute Kodi poll can add roughly ten minutes to
 the availability toast after Jellyfin sees the item. This is an estimate, not an
 SLA; Kodi must be running and the request must be covered by the notifier.
 
-At this capture, the reconciliation worker had timed out and a new run was
-blocked in a ZFS file read. The pool reported ONLINE with no known data errors,
-but that does not prove low latency. Thus timely server visibility is currently
-unconfirmed. Storage diagnosis/repair is separate from this setup guide; no
-server restart, storage modification or test media request was performed here.
+The final September 22 fleet record supersedes the original capture's transient
+worker/storage note: the maintained reconciliation and service-health checks
+completed after coordinated maintenance. That operational result still does not
+belong in a new Kodi device profile. Server media, queues, databases, paths and
+credentials remain private and must be verified independently rather than copied
+from this public guide.
+
+## Upgrade versus replacement
+
+For an existing reviewed box, build the public release and use its guarded
+transaction with the matching private profile. It should refuse unknown addon
+versions, partial local/remote cohorts, active or paused playback, source drift,
+manifest drift and changed settings during shutdown.
+
+For a replacement or truly new box, complete every preparation step above first.
+Create new client and backup identities, authenticate locally, validate that
+device's AV/network/PVR capabilities, and only then establish a reviewed cohort.
+Never reuse another box's private profile merely to satisfy the installer.

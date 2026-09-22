@@ -1,0 +1,25 @@
+diff --git a/apps/proxy/live_proxy/server.py b/apps/proxy/live_proxy/server.py
+--- a/apps/proxy/live_proxy/server.py
++++ b/apps/proxy/live_proxy/server.py
+@@ -454,7 +454,7 @@
+     def try_acquire_ownership(self, channel_id, ttl=30):
+         """Try to become the owner of this channel using proper locking"""
+         if not self.redis_client:
+-            return True  # If no Redis, always become owner
++            return False  # Shared provider capacity requires a working lock.
+ 
+         try:
+             # Create a lock key with proper namespace
+@@ -465,9 +465,9 @@
+                 lambda: self.redis_client.set(lock_key, self.worker_id, nx=True, ex=ttl)
+             )
+ 
+-            if acquired is None:  # Redis command failed
+-                logger.warning(f"Redis command failed during ownership acquisition - assuming ownership")
+-                return True
++            # Redis SET NX returns None when another worker already owns the
++            # lock. This is normal contention, not permission to assume ownership.
++            # Fall through to verify the owner; an unavailable Redis fails closed.
+ 
+             if acquired:
+                 logger.info(f"Worker {self.worker_id} acquired ownership of channel {channel_id}")

@@ -46,7 +46,13 @@ def main():
             return
         start = max(0,int(params.get('start',0)))
         listing_started = time.monotonic()
-        items = client.listing(mode, params.get('series'), start)
+        is_search = mode in ('searchmovies', 'searchshows')
+        query = params.get('query', '')
+        if is_search:
+            from search import search
+            items = search(client, query, 'Movie' if mode == 'searchmovies' else 'Series', start)
+        else:
+            items = client.listing(mode, params.get('series'), start)
         rows = []
         for item in items:
             kind = item.get('Type')
@@ -78,7 +84,7 @@ def main():
             if kind in ('Movie','Series') and xbmc.getCondVisibility('System.HasAddon(slyguy.trailers)'):
                 trailer_action = ('PlayMedia(plugin://slyguy.trailers/?'+urlencode({'_':'/imdb','video_id':provider_ids['imdb']})+')') if provider_ids.get('imdb') else 'RunScript(slyguy.trailers)'
                 context.append(('Watch trailer',trailer_action))
-            if mode != 'series':
+            if mode != 'series' and not is_search:
                 context.append(('View all — '+LABELS[mode], 'ActivateWindow(Videos,plugin://plugin.video.habibi.resume/?mode='+mode+',return)'))
             favorite = bool(user.get('IsFavorite'))
             favorite_path = 'plugin://plugin.video.habibi.resume/?'+urlencode({'mode':'setfavorite','id':item['Id'],'value':'false' if favorite else 'true'})
@@ -110,6 +116,7 @@ def main():
         page_size = 100 if mode == 'series' else 30
         if len(items) == page_size:
             more_params = {'mode':mode,'start':start+page_size}
+            if is_search:more_params['query']=query
             if mode == 'series':more_params['series']=valid_id(params.get('series'))
             path = 'plugin://plugin.video.habibi.resume/?'+urlencode(more_params)
             more = xbmcgui.ListItem(label='More…',path=path,offscreen=True)

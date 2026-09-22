@@ -15,17 +15,102 @@ import default as catalogue
 import shared_favorites
 
 PAGE=80
+NETWORK_CACHE_SECONDS=300
+PVR_PLAYBACK_CACHE_SECONDS=30
+PVR_PLAYBACK_CACHE_LIMIT=15000
+CHANNEL_COSMETIC_PREFIXES='VIP|CA|UK|US|AR|NW|IRQ|LB'
+LIVE_HANDOFF_TIMEOUT_SECONDS=25
+LIVE_HANDOFF_POLL_SECONDS=.1
+
+class LatestWorker:
+    """One daemon worker with one replaceable pending request/result slot."""
+    def __init__(self):
+        self.lock=threading.Lock();self.wake=threading.Event()
+        self.pending=None;self.critical=None;self.active_critical=False
+        self.result=None;self.critical_result=None;self.stopped=False;self.closing=False
+        self.thread=threading.Thread(target=self._run,name='VenomNetwork',daemon=True)
+        self.thread.start()
+
+    def submit(self,generation,name,work,critical=False):
+        with self.lock:
+            if self.stopped or self.closing:return False
+            if critical:
+                if self.critical is not None or self.active_critical:return False
+                self.critical=(generation,name,work)
+            else:self.pending=(generation,name,work)
+            self.wake.set()
+        return True
+
+    def discard_pending(self):
+        with self.lock:self.pending=None
+
+    def poll(self):
+        with self.lock:
+            result=self.result;self.result=None
+        return result
+
+    def poll_critical(self):
+        with self.lock:
+            result=self.critical_result;self.critical_result=None
+        return result
+
+    def can_submit_critical(self):
+        with self.lock:
+            return not self.stopped and not self.closing and self.critical is None and not self.active_critical
+
+    def close(self):
+        with self.lock:
+            # A user-confirmed mutation is non-replaceable and may finish after
+            # its window closes. Its result is discarded, never applied late.
+            self.closing=True;self.pending=None;self.result=None;self.critical_result=None;self.wake.set()
+
+    def _run(self):
+        while True:
+            self.wake.wait()
+            with self.lock:
+                if self.stopped:return
+                is_critical=self.critical is not None
+                if is_critical:
+                    job=self.critical;self.critical=None;self.active_critical=True
+                elif self.closing:
+                    self.stopped=True;return
+                else:job=self.pending;self.pending=None
+                if self.pending is None and self.critical is None:self.wake.clear()
+                else:self.wake.set()
+            if job is None:continue
+            generation,name,work=job;started=time.monotonic()
+            try:value=work();error=None
+            except Exception as exc:value=None;error=exc
+            result=(generation,name,value,error,time.monotonic()-started)
+            with self.lock:
+                if is_critical:self.active_critical=False
+                if self.closing:
+                    if self.critical is None:self.stopped=True
+                    else:self.wake.set()
+                    if self.stopped:return
+                    continue
+                if is_critical:self.critical_result=result
+                # Never allow a late older completion to replace a newer one.
+                elif self.result is None or generation>=self.result[0]:self.result=result
 
 def clean_label(value):
     # Preserve Arabic text; omit decorative emoji unsupported by the skin font.
     return ' '.join(''.join(c for c in str(value) if unicodedata.category(c) not in ('So','Cs') and c not in ('\ufe0f','\ufe0e')).split())
 
 def channel_display_name(value):
-    """Cosmetic only: raw entry labels remain available for exact PVR matching."""
+    """Remove only reviewed cosmetic prefixes; preserve the full channel title."""
     label=clean_label(value)
-    label=re.sub(r'^\d{3,6}\s+(?=(?:VIP\b|CA\b|UK\b|US\b|AR\b|NW\b))','',label,flags=re.I)
-    label=re.sub(r'^(?:(?:VIP|CA|UK|US|AR|NW)\b[\s:|.-]*)+','',label,flags=re.I).strip()
+    label=re.sub(r'^\d{3,6}\s+(?=(?:'+CHANNEL_COSMETIC_PREFIXES+r')\b)','',label,flags=re.I)
+    label=re.sub(r'^(?:(?:'+CHANNEL_COSMETIC_PREFIXES+r')\b[\s:|.-]*)+','',label,flags=re.I).strip()
     return label or clean_label(value)
+
+def channel_number_name(value):
+    """Normalize reviewed prefixes only when an exact number also identifies it."""
+    return channel_display_name(value).casefold()
+
+def channel_full_name(value):
+    """Preserve every word, digit and quality/country marker for name identity."""
+    return clean_label(value).casefold()
 
 def rpc(method,params):
     response=json.loads(xbmc.executeJSONRPC(json.dumps({'jsonrpc':'2.0','id':1,'method':method,'params':params})))
@@ -35,17 +120,66 @@ def rpc(method,params):
 def entry(label,params,art='',folder=False,plot='',media=None,metadata=None):
     return dict(label=label,params=params,art=art,folder=folder,plot=plot,media=media,metadata=metadata or {})
 
-def channel_playback_item(target,channels):
-    """Use exact PVR identity when present; otherwise play the actual server ID.
+def active_video_channel(rpc_call):
+    """Return one known Kodi TV channel; ambiguity/other media stays unknown."""
+    try:players=rpc_call('Player.GetActivePlayers',{})
+    except Exception:return None
+    videos=[p for p in players if p.get('type')=='video' and isinstance(p.get('playerid'),int) and not isinstance(p.get('playerid'),bool)]
+    if len(videos)!=1:return None
+    playerid=videos[0]['playerid']
+    try:item=rpc_call('Player.GetItem',{'playerid':playerid}).get('item',{})
+    except Exception:return None
+    channelid=item.get('id')
+    if item.get('type')!='channel' or not isinstance(channelid,int) or isinstance(channelid,bool):return None
+    return playerid,channelid
 
-    PVR numbering/names can lag server guide refreshes. Never guess a similar
-    channel or change a favourite just because its native PVR match is absent.
-    """
-    matches=[r for r in channels if shared_favorites.number(r['channelnumber'])==shared_favorites.number(target.get('ChannelNumber') or target.get('Number')) and r['label'].strip()==target['Name'].strip()]
-    if len(matches)==1:return {'channelid':matches[0]['channelid']}
+def channel_pvr_match(target,channels):
+    """Return one fail-closed PVR match and the identity rule that selected it."""
+    target_number=shared_favorites.number(target.get('ChannelNumber') or target.get('Number'))
+    numbered_name=channel_number_name(target.get('Name',''))
+    matches=[r for r in channels if target_number and shared_favorites.number(r['channelnumber'])==target_number and channel_number_name(r['label'])==numbered_name]
+    if len(matches)==1:return matches[0],'number'
+    # PVR group edits can renumber channels independently of Jellyfin.  Only a
+    # unique complete label may recover from that drift: country/source tags,
+    # quality suffixes and digits all remain significant.
+    full_name=channel_full_name(target.get('Name',''))
+    matches=[r for r in channels if full_name and channel_full_name(r['label'])==full_name]
+    if len(matches)==1:return matches[0],'label'
+    return None,None
+
+def channel_playback_item(target,channels):
+    """Use one verified PVR identity, otherwise play the exact Jellyfin ID."""
+    match,_identity=channel_pvr_match(target,channels)
+    if match:return {'channelid':match['channelid']}
     ident=target.get('Id','')
     if not re.fullmatch('[0-9a-fA-F]{32}',ident):raise RuntimeError('Invalid Jellyfin channel identity')
     return {'file':'plugin://plugin.video.jellyfin/?mode=play&id='+ident}
+
+def playback_from_pvr_cache(target,cache,rpc_call,now=None):
+    """Use a brief PVR snapshot, but freshly verify a cached native id."""
+    now=time.monotonic() if now is None else now
+    fallback=channel_playback_item(target,[])
+    rows=cache.get('rows')
+    if rows is None or now-cache.get('stamp',0)>=PVR_PLAYBACK_CACHE_SECONDS:
+        try:
+            rows=rpc_call('PVR.GetChannels',{'channelgroupid':'alltv','properties':['channelnumber']}).get('channels',[])
+            if len(rows)<=PVR_PLAYBACK_CACHE_LIMIT:cache.update(stamp=now,rows=rows)
+            else:cache.clear()
+        except Exception:return fallback
+    candidate,identity=channel_pvr_match(target,rows)
+    if not candidate:return fallback
+    try:
+        detail=rpc_call('PVR.GetChannelDetails',{'channelid':candidate['channelid'],'properties':['channelnumber']})['channeldetails']
+        if detail.get('channelid')!=candidate['channelid']:return fallback
+        if identity=='number':
+            verified=(shared_favorites.number(detail.get('channelnumber'))==shared_favorites.number(target.get('ChannelNumber') or target.get('Number'))
+                      and channel_number_name(detail.get('label',''))==channel_number_name(target.get('Name','')))
+        else:
+            verified=(bool(channel_full_name(target.get('Name','')))
+                      and channel_full_name(detail.get('label',''))==channel_full_name(target.get('Name','')))
+        return {'channelid':candidate['channelid']} if verified else fallback
+    except Exception:
+        return fallback
 
 def live_group_choices(groups,summaries):
     ranks={clean_label(row['name']):i for i,row in enumerate(summaries)}
@@ -70,14 +204,18 @@ class Browser(xbmcgui.WindowXML):
             return
         self.initialized=True
         self.jobs=queue.Queue();self.closed=False;self.busy=False
+        self.network=LatestWorker();self.request_generation=0;self.request_apply=None;self.network_busy=False
+        self.critical_apply=None;self.critical_busy=False
+        self.close_requested=False;self.pending_bookmark=None
         self.kind=sys.argv[1] if len(sys.argv)>1 and sys.argv[1] in ('live','movie','series','favorites') else 'live'
         self.page=0;self.query='';self.recent=False;self.stack=[];self.entries=[];self.categories=[]
-        self.cache={};self.source_cache=OrderedDict();self.scope=None
+        self.source_cache=OrderedDict();self.pvr_playback_cache={};self.scope=None
+        self.open_selection=None;self.open_pending=None;self.live_handoff=None
         self.category_retry_at=0
         try:self.shared=shared_favorites.from_kodi()
         except Exception:self.shared=None
         self.shared_keys=set();self.shared_error=False
-        self.favorite_refresh=None;self.favorite_result=None;self.favorite_check=0;self.favorite_generation=0
+        self.favorite_check=0
         self.jobs.put(self.load_categories)
         self.setFocusId(910)
 
@@ -94,24 +232,50 @@ class Browser(xbmcgui.WindowXML):
             try:self.safe(call)
             finally:self.busy=False;self.jobs.task_done()
         if self.closed:return
+        self.poll_live_handoff()
+        if self.closed:return
+        result=self.network.poll()
+        if result:
+            generation,name,value,error,elapsed=result
+            cancelled=generation!=self.request_generation
+            xbmc.log('Venom network: %s %.3fs%s'%(name,elapsed,' cancelled' if cancelled else ''),xbmc.LOGINFO)
+            if not cancelled:
+                self.network_busy=False
+                apply=self.request_apply;self.request_apply=None
+                if error:
+                    self.clear_open_pending(generation);self.report_error(error)
+                elif apply:
+                    try:apply(value)
+                    except Exception as exc:self.report_error(exc)
+        critical=self.network.poll_critical()
+        if critical:
+            _generation,name,value,error,elapsed=critical
+            xbmc.log('Venom network: %s %.3fs'%(name,elapsed),xbmc.LOGINFO)
+            apply=self.critical_apply;self.critical_apply=None;self.critical_busy=False
+            if error:self.report_error(error)
+            elif apply:
+                try:apply(value)
+                except Exception as exc:self.report_error(exc)
+            if self.close_requested:self._final_close();return
         self.retry_categories_if_ready()
-        if self.favorite_result is not None:
-            keys,error=self.favorite_result;self.favorite_result=None
-            changed=keys is not None and keys!=self.shared_keys
-            if keys is not None:self.shared_keys=keys
-            self.shared_error=error
-            if changed and self.category is not None:
-                pos=self.getControl(920).getSelectedPosition()
-                self.render();self.getControl(920).selectItem(max(0,pos))
-        if self.shared and time.monotonic()-self.favorite_check>30 and not (self.favorite_refresh and self.favorite_refresh.is_alive()):
+        if (self.shared and time.monotonic()-self.favorite_check>30
+                and not self.network_busy and not self.critical_busy):
             self.favorite_check=time.monotonic()
-            generation=self.favorite_generation
-            def refresh():
-                # Separate client: no races with foreground favourite mutations.
-                try:result=(shared_favorites.SharedFavorites(self.shared.server).keys(),False)
-                except Exception:result=(None,True)
-                if generation==self.favorite_generation:self.favorite_result=result
-            self.favorite_refresh=threading.Thread(target=refresh,daemon=True);self.favorite_refresh.start()
+            server=self.shared.server
+            def refresh(generation):
+                try:
+                    client=shared_favorites.SharedFavorites(server)
+                    return client.keys(cancelled=lambda:self.request_cancelled(generation)),False
+                except Exception:return None,True
+            self.start_network('favourite refresh',refresh,self.apply_favorite_refresh)
+
+    def apply_favorite_refresh(self,value):
+        keys,error=value;changed=keys is not None and keys!=self.shared_keys
+        if keys is not None:self.shared_keys=keys
+        self.shared_error=error
+        if changed and self.category is not None and not self.network_busy:
+            pos=self.getControl(920).getSelectedPosition()
+            self.render();self.getControl(920).selectItem(max(0,pos))
 
     def retry_categories_if_ready(self):
         # A temporary server outage must not leave this window stuck on PVR
@@ -119,53 +283,180 @@ class Browser(xbmcgui.WindowXML):
         deadline=getattr(self,'category_retry_at',0)
         if (deadline and time.monotonic()>=deadline and self.kind=='live'
                 and self.category is None and not self.closed
-                and not self.busy and self.jobs.empty()):
+                and not self.busy and not getattr(self,'network_busy',False) and self.jobs.empty()):
             self.category_retry_at=0
             self.enqueue(self.load_categories)
             return True
         return False
 
     def close(self):
+        if getattr(self,'critical_busy',False):
+            self.close_requested=True
+            self.cancel_network('close waiting for favourite')
+            self.getControl(940).setLabel('Saving favourite…')
+            return
+        self._final_close()
+
+    def _final_close(self):
+        if self.closed:return
+        self.cancel_live_handoff('window close')
         self.closed=True
+        self.request_generation+=1;self.request_apply=None;self.network_busy=False
+        self.critical_apply=None;self.critical_busy=False
+        if hasattr(self,'network'):self.network.close()
         super().close()
+
+    def cancel_network(self,reason):
+        if not hasattr(self,'network'):return
+        self.request_generation+=1;self.request_apply=None;self.network_busy=False
+        self.open_pending=None
+        self.network.discard_pending()
+        xbmc.log('Venom network: cancelled '+reason,xbmc.LOGINFO)
+
+    def clear_open_pending(self,generation):
+        pending=getattr(self,'open_pending',None)
+        if pending and len(pending)>1 and pending[1]==generation:self.open_pending=None
+
+    def start_network(self,name,work,apply):
+        self.cancel_network('superseded')
+        generation=self.request_generation
+        self.request_apply=apply;self.network_busy=True
+        self.network.submit(generation,name,lambda:work(generation))
+        return generation
+
+    def start_critical_network(self,name,work,apply):
+        if not self.network.can_submit_critical():
+            raise RuntimeError('Another favourite change is still pending')
+        self.cancel_network('user mutation')
+        generation=self.request_generation
+        if not self.network.submit(generation,name,lambda:work(generation),critical=True):
+            raise RuntimeError('Another favourite change is still pending')
+        self.critical_apply=apply;self.critical_busy=True
+        return generation
+
+    def request_cancelled(self,generation):
+        return self.closed or generation!=self.request_generation
+
+    def cancel_live_handoff(self,reason):
+        if not getattr(self,'live_handoff',None):return
+        self.live_handoff=None
+        self.open_pending=None
+        xbmc.log('Venom playback: cancelled channel handoff '+reason,xbmc.LOGINFO)
+
+    def open_channel_now(self,playback):
+        rpc('Player.Open',{'item':playback})
+        xbmc.executebuiltin('ActivateWindow(fullscreenvideo)')
+
+    def begin_channel_playback(self,playback,selection=None,now=None):
+        """Break before a proven different native channel; never guess state."""
+        self.cancel_live_handoff('replaced')
+        if 'channelid' not in playback:
+            self.open_channel_now(playback);return False
+        current=active_video_channel(rpc)
+        target=playback['channelid']
+        if not current or current[1]==target:
+            self.open_channel_now(playback);return False
+        playerid,_channelid=current
+        # Player.Stop is asynchronous in Kodi.  Its success only starts a
+        # bounded UI-loop wait; no new stream opens until this player vanishes.
+        rpc('Player.Stop',{'playerid':playerid})
+        now=time.monotonic() if now is None else now
+        self.live_handoff={'playerid':playerid,'playback':dict(playback),'selection':selection,
+                           'deadline':now+LIVE_HANDOFF_TIMEOUT_SECONDS,'next_poll':now}
+        self.getControl(940).setLabel('Stopping current channel before switching…')
+        return True
+
+    def poll_live_handoff(self,now=None):
+        handoff=getattr(self,'live_handoff',None)
+        if not handoff or self.closed:return False
+        now=time.monotonic() if now is None else now
+        if now<handoff['next_poll']:return False
+        if now>=handoff['deadline']:
+            self.cancel_live_handoff('timeout')
+            self.report_error(TimeoutError('Kodi did not stop the previous channel in time'))
+            return False
+        handoff['next_poll']=now+LIVE_HANDOFF_POLL_SECONDS
+        try:players=rpc('Player.GetActivePlayers',{})
+        except Exception:return False
+        videos=[p for p in players if p.get('type')=='video']
+        if any(p.get('playerid')==handoff['playerid'] for p in videos):return False
+        if videos:
+            self.cancel_live_handoff('player changed')
+            self.report_error(RuntimeError('Another video started during channel switch'))
+            return False
+        playback=handoff['playback'];self.live_handoff=None;self.open_pending=None
+        try:self.open_channel_now(playback)
+        except Exception as exc:
+            self.report_error(exc)
+            return False
+        return True
+
+    def report_error(self,exc):
+        xbmc.log('Venom browser: '+type(exc).__name__,xbmc.LOGERROR)
+        if self.closed:return
+        self.getControl(940).setLabel('Unable to load. Press OK to retry, or choose another category.')
+        message='Could not match this item for the requested action. Nothing was changed.' if isinstance(exc,LookupError) else 'Could not load or play this item. Try again.'
+        xbmcgui.Dialog().notification('Venom TV',message,xbmcgui.NOTIFICATION_ERROR)
 
     def safe(self,call):
         started=time.monotonic()
         try:call()
         except Exception as exc:
-            xbmc.log('Venom browser: '+type(exc).__name__,xbmc.LOGERROR)
-            if self.closed:return
-            self.getControl(940).setLabel('Unable to load. Press OK to retry, or choose another category.')
-            message='Could not match this item for the requested action. Nothing was changed.' if isinstance(exc,LookupError) else 'Could not load or play this item. Try again.'
-            xbmcgui.Dialog().notification('Venom TV',message,xbmcgui.NOTIFICATION_ERROR)
+            self.report_error(exc)
         finally:xbmc.log('Venom browser: '+call.__name__+' %.3fs'%(time.monotonic()-started),xbmc.LOGINFO)
 
     def load_categories(self):
+        self.cancel_live_handoff('navigation')
+        self.cancel_network('category menu')
+        self.open_pending=None
         self.page=0;self.query='';self.stack=[];self.scope=None;self.category=None;self.selected_category_index=0
+        self.categories=[];self.getControl(910).reset()
         self.getControl(940).setLabel('Choose a category on the left, then press OK. Menu / hold OK: favourites.')
         self.getControl(920).reset();self.entries=[]
         self.getControl(941).setLabel({'live':'Live TV','movie':'Movies','series':'Series','favorites':'Favourites'}[self.kind])
         if self.kind=='live':
             groups=rpc('PVR.GetChannelGroups',{'channeltype':'tv'}).get('channelgroups',[])
-            summaries=[]
             if self.shared:
-                try:
-                    summaries=self.shared.request('LiveTvCategories')
-                    self.category_retry_at=0
-                except Exception:
-                    self.category_retry_at=time.monotonic()+15
-                    xbmc.log('Venom category service unavailable; keeping native PVR groups and retrying at chooser',xbmc.LOGINFO)
-            self.categories=live_group_choices(groups,summaries)
+                def fetch(generation):
+                    client=shared_favorites.SharedFavorites(self.shared.server)
+                    try:return client.request('LiveTvCategories',cancelled=lambda:self.request_cancelled(generation)),False
+                    except Exception:return [],True
+                self.start_network('live categories',fetch,
+                    lambda value:self.apply_live_categories(groups,*value))
+                return
+            self.apply_categories(live_group_choices(groups,[]));return
         elif self.kind=='favorites':
-            self.categories=[('All shared favourites','all'),('Live channels','live'),('Movies','movie'),('Series','series'),('Local bookmarks / pending sync','local')]
+            self.apply_categories([('All shared favourites','all'),('Live channels','live'),('Movies','movie'),('Series','series'),('Local bookmarks / pending sync','local')]);return
         else:
             action='get_vod_categories' if self.kind=='movie' else 'get_series_categories'
-            self.categories=[('All titles','all')]+[(r['category_name'],str(r['category_id'])) for r in sorted(catalogue.api(action),key=lambda r:catalogue.search_text(r['category_name']))]
+            kind=self.kind
+            def fetch(generation):
+                rows=catalogue.api(action,cancelled=lambda:self.request_cancelled(generation))
+                return [('All titles','all')]+[(r['category_name'],str(r['category_id'])) for r in sorted(rows,key=lambda r:catalogue.search_text(r['category_name']))]
+            self.start_network(kind+' categories',fetch,self.apply_categories)
+            return
+
+    def apply_live_categories(self,groups,summaries,error):
         if self.closed:return
+        if error:
+            self.category_retry_at=time.monotonic()+15
+            xbmc.log('Venom category service unavailable; keeping native PVR groups and retrying at chooser',xbmc.LOGINFO)
+        else:self.category_retry_at=0
+        self.apply_categories(live_group_choices(groups,summaries))
+
+    def apply_categories(self,categories):
+        if self.closed:return
+        self.categories=categories
         self.setProperty('Venom.Posters','true' if self.kind in ('movie','series') else 'false')
         items=[xbmcgui.ListItem(label=clean_label(name)) for name,_ in self.categories]
         self.getControl(910).reset();self.getControl(910).addItems(items)
         self.getControl(910).selectItem(0);self.setFocusId(910)
+        if self.pending_bookmark:
+            category,label=self.pending_bookmark;self.pending_bookmark=None
+            index=next((i for i,row in enumerate(categories) if str(row[1])==str(category)),0)
+            self.selected_category_index=index;self.getControl(910).selectItem(index)
+            self.category=category;self.category_name=label;self.scope=None;self.stack=[];self.page=0;self.query=''
+            self.load_entries();self.setFocusId(920)
         # No automatic category fetch on focus: scrolling hundreds of groups
         # never launches hundreds of requests or lands in the first cartoon group.
 
@@ -204,73 +495,125 @@ class Browser(xbmcgui.WindowXML):
         self.scope=None;self.stack=[];self.page=0;self.query=''
         self.load_entries();self.setFocusId(920)
 
-    def source_entries(self):
-        if self.kind=='favorites':return self.fetch_entries()
-        key=(self.kind,str(self.category),json.dumps(self.scope,sort_keys=True),self.recent)
+    def entry_snapshot(self):
+        scope=getattr(self,'scope',None)
+        return {'kind':self.kind,'category':getattr(self,'category',None),'scope':dict(scope) if scope else None,
+                'recent':self.recent,'query':getattr(self,'query',''),'page':getattr(self,'page',0),
+                'category_name':getattr(self,'category_name','')}
+
+    def source_key(self,snapshot):
+        return (snapshot['kind'],str(snapshot['category']),json.dumps(snapshot['scope'],sort_keys=True),snapshot['recent'])
+
+    def cached_source(self,snapshot):
+        if snapshot['kind']=='favorites':return None
+        if not hasattr(self,'source_cache'):self.source_cache=OrderedDict()
+        key=self.source_key(snapshot)
         cached=self.source_cache.get(key)
-        if cached and time.monotonic()-cached[0]<300:
+        if cached and time.monotonic()-cached[0]<NETWORK_CACHE_SECONDS:
             self.source_cache.move_to_end(key);return cached[1]
-        rows=self.fetch_entries()
+        return None
+
+    def remember_source(self,snapshot,rows):
+        if snapshot['kind']=='favorites':return
+        if not hasattr(self,'source_cache'):self.source_cache=OrderedDict()
+        key=self.source_key(snapshot)
         self.source_cache[key]=(time.monotonic(),rows)
         # Bound both category count and retained title count (large All titles).
         while len(self.source_cache)>4 or (len(self.source_cache)>1 and sum(len(v[1]) for v in self.source_cache.values())>35000):
             self.source_cache.popitem(last=False)
+
+    def source_entries(self,snapshot=None):
+        supplied=snapshot is not None
+        snapshot=snapshot or self.entry_snapshot()
+        cached=self.cached_source(snapshot)
+        if cached is not None:return cached
+        rows=self.fetch_entries(snapshot) if supplied else self.fetch_entries()
+        self.remember_source(snapshot,rows)
         return rows
 
-    def fetch_entries(self):
-        if self.kind=='favorites':
-            if self.category=='local':return list(catalogue.venom_state.read(catalogue.ROOT).get('favorites',{}).values())
-            if not self.shared:raise RuntimeError('Jellyfin sign-in required for shared favourites')
-            favorites=self.shared.entries()
-            return [v for v in favorites if self.category=='all' or v['params'].get('kind')==self.category]
-        if self.kind=='live':
-            if str(self.category).startswith('jf:'):
-                if not self.shared:raise RuntimeError('Jellyfin sign-in required')
+    def fetch_entries(self,snapshot=None,shared_client=None,cancelled=lambda:False):
+        snapshot=snapshot or self.entry_snapshot()
+        kind=snapshot['kind'];category=snapshot['category'];scope=snapshot['scope'];recent=snapshot['recent']
+        shared=shared_client or self.shared
+        if kind=='favorites':
+            if category=='local':return list(catalogue.venom_state.read(catalogue.ROOT).get('favorites',{}).values())
+            if not shared:raise RuntimeError('Jellyfin sign-in required for shared favourites')
+            favorites=shared.entries(cancelled=cancelled)
+            return [v for v in favorites if category=='all' or v['params'].get('kind')==category]
+        if kind=='live':
+            if str(category).startswith('jf:'):
+                if not shared:raise RuntimeError('Jellyfin sign-in required')
                 result=[]
-                for offset in range(0,15000,250):
-                    page=self.shared.request('LiveTvCategories/'+self.category[3:]+'/Channels',startIndex=offset,limit=250,addCurrentProgram='false')
-                    for row in page['Items']:
-                        art=self.shared.base+'/Items/'+row['Id']+'/Images/Primary?maxWidth=320&quality=85' if row.get('ImageTags',{}).get('Primary') else ''
+                for offset in range(0,15001,250):
+                    if cancelled():return []
+                    page=shared.request('LiveTvCategories/'+category[3:]+'/Channels',cancelled=cancelled,startIndex=offset,limit=250,addCurrentProgram='false')
+                    items=page.get('Items') or []
+                    if offset>=15000:
+                        if items:raise RuntimeError('Channel category exceeds safe size')
+                        return result
+                    for row in items:
+                        art=shared.base+'/Items/'+row['Id']+'/Images/Primary?maxWidth=320&quality=85' if row.get('ImageTags',{}).get('Primary') else ''
                         result.append(entry(row['Name'],{'mode':'shared','kind':'live','id':row['Id'],'type':'TvChannel'},art=art,metadata={'channelnumber':row.get('ChannelNumber') or row.get('Number')}))
-                    if len(result)>=page['TotalRecordCount']:return result
+                    if not items or len(items)<250:return result
                 raise RuntimeError('Channel category exceeds safe size')
-            key=('live',str(self.category))
-            cached=self.cache.get(key)
-            if not cached or time.monotonic()-cached[0]>300:
-                rows=rpc('PVR.GetChannels',{'channelgroupid':self.category,'properties':['thumbnail','channelnumber']}).get('channels',[])
-                result=[entry(r['label'],{'mode':'channel','kind':'live','id':str(r['channelid'])},r.get('thumbnail',''),metadata={'channelnumber':r['channelnumber']}) for r in rows]
-                # Bound RAM: retain only the last live group, not all 11k channels per group.
-                self.cache={key:(time.monotonic(),result)}
-            return self.cache[key][1]
-        if self.scope:
-            if self.scope.get('jf_series'):
+            rows=rpc('PVR.GetChannels',{'channelgroupid':category,'properties':['thumbnail','channelnumber']}).get('channels',[])
+            return [entry(r['label'],{'mode':'channel','kind':'live','id':str(r['channelid'])},r.get('thumbnail',''),metadata={'channelnumber':r['channelnumber']}) for r in rows]
+        if scope:
+            if scope.get('jf_series'):
                 items=[]
-                for offset in range(0,10000,500):
-                    if self.closed:return []
-                    page=self.shared.request('Shows/'+self.scope['jf_series']+'/Episodes',UserId=self.shared.user,IsMissing='false',StartIndex=offset,Limit=500).get('Items',[])
+                for offset in range(0,10001,500):
+                    if cancelled():return []
+                    page=shared.request('Shows/'+scope['jf_series']+'/Episodes',cancelled=cancelled,UserId=shared.user,IsMissing='false',StartIndex=offset,Limit=500).get('Items',[])
+                    if offset>=10000:
+                        if page:raise RuntimeError('Series exceeds safe episode browser limit')
+                        break
                     items.extend(page)
                     if len(page)<500:break
                 else:raise RuntimeError('Series exceeds safe episode browser limit')
                 return [entry(r['Name'],{'mode':'shared','kind':'series','id':r['Id'],'type':'Episode'}) for r in items]
-            data=catalogue.api('get_series_info',series_id=catalogue.ident(self.scope['id']))
+            data=catalogue.api('get_series_info',series_id=catalogue.ident(scope['id']),cancelled=cancelled)
             episodes=data.get('episodes') or {};cover=data.get('info',{}).get('cover','')
-            if 'season' not in self.scope:
-                return [entry('Season '+str(s),{'mode':'episodes','kind':'series','id':self.scope['id'],'season':s},cover,True) for s in sorted(episodes,key=lambda s:int(s) if str(s).isdigit() else 999)]
-            return [entry(r.get('title') or 'Episode '+str(r.get('episode_num','')),{'mode':'play','kind':'series','id':catalogue.ident(r['id']),'ext':r.get('container_extension') or 'mp4','title':r.get('title',''),'series_id':self.scope['id'],'season':self.scope['season'],'episode':r.get('episode_num',0)},(r.get('info') or {}).get('movie_image') or cover,False,(r.get('info') or {}).get('plot',''),'episode') for r in episodes.get(self.scope['season'],[])]
-        action='get_vod_streams' if self.kind=='movie' else 'get_series'
-        rows=catalogue.api(action,**({} if self.category=='all' else {'category_id':self.category}))
-        rows=catalogue.ordered(rows,order='recent' if self.recent else 'name')
-        return [entry(r['name'],{'mode':'play','kind':'movie','id':catalogue.ident(r['stream_id']),'ext':r.get('container_extension') or 'mp4','title':r['name']} if self.kind=='movie' else {'mode':'seasons','kind':'series','id':catalogue.ident(r['series_id'])},r.get('stream_icon') or r.get('cover') or '',self.kind=='series',r.get('plot') or '','movie' if self.kind=='movie' else 'tvshow') for r in rows]
+            if 'season' not in scope:
+                return [entry('Season '+str(s),{'mode':'episodes','kind':'series','id':scope['id'],'season':s},cover,True) for s in sorted(episodes,key=lambda s:int(s) if str(s).isdigit() else 999)]
+            return [entry(r.get('title') or 'Episode '+str(r.get('episode_num','')),{'mode':'play','kind':'series','id':catalogue.ident(r['id']),'ext':r.get('container_extension') or 'mp4','title':r.get('title',''),'series_id':scope['id'],'season':scope['season'],'episode':r.get('episode_num',0)},(r.get('info') or {}).get('movie_image') or cover,False,(r.get('info') or {}).get('plot',''),'episode') for r in episodes.get(scope['season'],[])]
+        action='get_vod_streams' if kind=='movie' else 'get_series'
+        args={} if category=='all' else {'category_id':category}
+        rows=catalogue.api(action,cancelled=cancelled,**args)
+        rows=catalogue.ordered(rows,order='recent' if recent else 'name')
+        return [entry(r['name'],{'mode':'play','kind':'movie','id':catalogue.ident(r['stream_id']),'ext':r.get('container_extension') or 'mp4','title':r['name']} if kind=='movie' else {'mode':'seasons','kind':'series','id':catalogue.ident(r['series_id'])},r.get('stream_icon') or r.get('cover') or '',kind=='series',r.get('plot') or '','movie' if kind=='movie' else 'tvshow') for r in rows]
 
     def load_entries(self):
+        # A cache hit has no replacement worker submission to invalidate a
+        # pending shared-channel lookup, so cancel it explicitly on navigation.
+        if getattr(self,'open_pending',None):self.cancel_network('entry navigation')
         self.getControl(940).setLabel('Loading…')
         self.entries=[];self.visible_entries=[];self.getControl(920).reset()
-        rows=self.source_entries()
+        snapshot=self.entry_snapshot()
+        cached=self.cached_source(snapshot)
+        if cached is not None:
+            xbmc.log('Venom network: entries 0.000s cachehit',xbmc.LOGINFO)
+            self.apply_entries(snapshot,cached);return
+        # Raw unit-test windows have no lifecycle worker; production windows do.
+        if not hasattr(self,'network'):
+            self.apply_entries(snapshot,self.source_entries());return
+        server=getattr(self.shared,'server',None)
+        def fetch(generation):
+            shared=shared_favorites.SharedFavorites(server) if server else self.shared
+            return self.fetch_entries(snapshot,shared,lambda:self.request_cancelled(generation))
+        self.start_network(snapshot['kind']+' entries',fetch,
+            lambda rows:self.finish_entries(snapshot,rows))
+
+    def finish_entries(self,snapshot,rows):
+        if self.closed:return
+        self.remember_source(snapshot,rows)
+        self.apply_entries(snapshot,rows)
+
+    def apply_entries(self,snapshot,rows):
         if getattr(self,'closed',False):return
         if hasattr(self,'setProperty'):self.setProperty('Venom.Posters','true' if self.kind in ('movie','series') else 'false')
-        words=catalogue.search_text(self.query).split()
+        words=catalogue.search_text(snapshot['query']).split()
         self.entries=[r for r in rows if all(w in catalogue.search_text(r['label']) for w in words)]
-        self.page=min(self.page,max(0,(len(self.entries)-1)//PAGE))
+        self.page=min(snapshot['page'],max(0,(len(self.entries)-1)//PAGE))
         self.render()
 
     def render(self):
@@ -295,26 +638,40 @@ class Browser(xbmcgui.WindowXML):
         if not 0<=pos<len(self.visible_entries):return
         self.last_grid_position=pos
         e=self.visible_entries[pos];p=e['params']
+        selection=(p.get('mode'),p.get('id'),p.get('season'))
+        now=time.monotonic()
+        if self.open_selection and self.open_selection[0]==selection and now-self.open_selection[1]<1:return
+        if self.open_pending and self.open_pending[0]!=selection:
+            self.cancel_network('new playback selection')
+        handoff=getattr(self,'live_handoff',None)
+        if handoff:
+            if handoff.get('selection')==selection:return
+            self.cancel_live_handoff('new selection')
+        self.open_selection=(selection,now)
         if p['mode']=='shared':
             if p.get('type')=='TvChannel':
-                target=self.shared.resolve(e)
-                channels=rpc('PVR.GetChannels',{'channelgroupid':'alltv','properties':['channelnumber']}).get('channels',[])
-                playback=channel_playback_item(target,channels)
-                if 'file' in playback:xbmc.log('Venom playback: native PVR identity unavailable; delegating exact Jellyfin channel ID',xbmc.LOGINFO)
-                rpc('Player.Open',{'item':playback});xbmc.executebuiltin('ActivateWindow(fullscreenvideo)')
+                if self.open_pending and self.open_pending[0]==selection:return
+                target={'Id':p['id'],'Name':e['label'],'ChannelNumber':e.get('metadata',{}).get('channelnumber')}
+                pvr_cache=dict(self.pvr_playback_cache)
+                def lookup(_generation):return playback_from_pvr_cache(target,pvr_cache,rpc),pvr_cache
+                def play(result):
+                    playback,updated_cache=result;self.pvr_playback_cache=updated_cache;self.open_pending=None
+                    if 'file' in playback:xbmc.log('Venom playback: native PVR identity unavailable; delegating exact Jellyfin channel ID',xbmc.LOGINFO)
+                    self.begin_channel_playback(playback,selection)
+                generation=self.start_network('shared channel lookup',lookup,play)
+                self.open_pending=(selection,generation)
             elif p.get('type')=='Series':
                 self.stack.append((self.kind,self.scope,self.page,self.query,self.category_name,pos))
                 self.kind='series';self.scope={'jf_series':p['id']};self.page=0;self.query='';self.category_name=e['label'];self.load_entries()
             else:
                 xbmc.Player().play('plugin://plugin.video.jellyfin/?mode=play&id='+p['id']);xbmc.executebuiltin('ActivateWindow(fullscreenvideo)')
         elif p['mode']=='channel':
-            rpc('Player.Open',{'item':{'channelid':int(catalogue.ident(p['id']))}})
-            xbmc.executebuiltin('ActivateWindow(fullscreenvideo)')
+            self.begin_channel_playback({'channelid':int(catalogue.ident(p['id']))},selection)
         elif p['mode'] in ('seasons','episodes'):
             self.stack.append((self.kind,self.scope,self.page,self.query,self.category_name,pos))
             self.kind='series';self.scope=p;self.page=0;self.query='';self.category_name=e['label'];self.load_entries()
         elif p['mode']=='items':
-            self.kind=p['kind'];self.load_categories();self.category=p['category'];self.category_name=e['label'];self.load_entries()
+            self.kind=p['kind'];self.pending_bookmark=(p['category'],e['label']);self.load_categories()
         else:
             xbmc.Player().play(catalogue.route(**p));xbmc.executebuiltin('ActivateWindow(fullscreenvideo)')
 
@@ -337,21 +694,27 @@ class Browser(xbmcgui.WindowXML):
         exists=shared_favorites.identity(e) in self.shared_keys
         choice=xbmcgui.Dialog().select(e['label'],['Remove from Jellyfin favourites (all devices)' if exists else 'Add to Jellyfin favourites (all devices)','Play / Open'])
         if choice==0:
-            self.shared.set(e,not exists)
-            key=shared_favorites.identity(e)
-            if exists:self.shared_keys.discard(key)
-            else:self.shared_keys.add(key)
-            # Discard any pre-mutation snapshot still in flight.
-            self.favorite_generation+=1
-            self.favorite_result=None;self.favorite_check=0
-            xbmcgui.Window(10000).setProperty('Habibi.Home.Refresh',str(time.time_ns()))
-            if self.kind=='favorites':self.load_entries()
-            else:self.render();self.getControl(920).selectItem(pos)
+            server=self.shared.server;enabled=not exists;key=shared_favorites.identity(e)
+            origin=(self.kind,self.category)
+            def mutate(generation):
+                return shared_favorites.SharedFavorites(server).set(e,enabled)
+            def applied(_result):
+                if exists:self.shared_keys.discard(key)
+                else:self.shared_keys.add(key)
+                # Discard any pre-mutation snapshot still in flight.
+                self.favorite_check=0
+                xbmcgui.Window(10000).setProperty('Habibi.Home.Refresh',str(time.time_ns()))
+                if self.network_busy or (self.kind,self.category)!=origin:return
+                if self.close_requested:return
+                if self.kind=='favorites':self.load_entries()
+                else:self.render();self.getControl(920).selectItem(pos)
+            self.start_critical_network('favourite mutation',mutate,applied)
         elif choice==1:self.open_selected()
 
     def onClick(self,control):
         def handle():
             if control in (901,902,903,904):
+                self.pending_bookmark=None
                 self.kind={901:'live',902:'movie',903:'series',904:'favorites'}[control];self.load_categories();self.setFocusId(910)
             elif control==910:self.select_category()
             elif control==920:self.open_selected()
@@ -374,7 +737,8 @@ class Browser(xbmcgui.WindowXML):
                     self.kind,self.scope,self.page,self.query,self.category_name,pos=self.stack.pop()
                     self.load_entries();self.getControl(920).selectItem(pos)
                 self.enqueue(back)
-            elif self.getFocusId()==920:self.setFocusId(910)
+            elif self.getFocusId()==920:
+                self.cancel_network('navigation back');self.cancel_live_handoff('navigation back');self.open_pending=None;self.setFocusId(910)
             else:self.close()
         elif action.getId() in (117,101):self.enqueue(self.favorite_menu)
 

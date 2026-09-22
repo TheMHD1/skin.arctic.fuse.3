@@ -1,0 +1,92 @@
+diff --git a/Jellyfin.Server.Implementations/Item/BaseItemRepository.TranslateQuery.cs b/Jellyfin.Server.Implementations/Item/BaseItemRepository.TranslateQuery.cs
+index d726f0f..922c547 100644
+--- a/Jellyfin.Server.Implementations/Item/BaseItemRepository.TranslateQuery.cs
++++ b/Jellyfin.Server.Implementations/Item/BaseItemRepository.TranslateQuery.cs
+@@ -610,6 +610,87 @@ public sealed partial class BaseItemRepository
+                             || (inProgress.Where(su => su.ItemId == s.Id).Max(su => su.LastPlayedDate)
+                                     == inProgress.Where(eu => eu.ItemId == e.Id).Max(eu => eu.LastPlayedDate)
+                                 && s.Id.CompareTo(e.Id) < 0)));
++
++                // Continue Watching is a series-level surface for episodes. A user can leave
++                // several episodes with a resume point (for example after the client advances to
++                // the next episode without explicitly clearing an earlier point). Do not return
++                // every stale point as a separate card. Instead retain the episode with the most
++                // recent actual playback activity in each series. This also removes an old resume
++                // point when a later episode has since been completed, while preserving an
++                // intentional rewind: playing the older episode again gives it the newest date.
++                // Movies and non-series episodes are deliberately unaffected.
++                var episodeType = _itemTypeLookup.BaseItemKindNames[BaseItemKind.Episode];
++                // Activity must have the same library and content restrictions as the
++                // candidate Resume query. Otherwise a newer episode hidden by a
++                // TopParent/parental/tag rule could incorrectly suppress an allowed
++                // in-progress episode of the same series. Deliberately do not apply
++                // alternate-version ownership filtering here: Resume supports the
++                // version the user actually played (IncludeOwnedItems semantics).
++                var activityItems = ApplyTopParentFiltering(context, context.BaseItems.AsNoTracking(), filter);
++                activityItems = ApplyParentalRestrictions(context, activityItems, filter);
++                var episodeActivity = context.UserData
++                    .Where(ud => ud.UserId == userId)
++                    .Join(
++                        activityItems,
++                        ud => ud.ItemId,
++                        bi => bi.Id,
++                        (ud, bi) => new
++                        {
++                            bi.Id,
++                            bi.SeriesPresentationUniqueKey,
++                            bi.Type,
++                            bi.ParentIndexNumber,
++                            bi.IndexNumber,
++                            ud.LastPlayedDate,
++                            ud.Played,
++                            ud.PlayCount,
++                            ud.PlaybackPositionTicks
++                        })
++                    .Where(x => x.Type == episodeType
++                        && x.SeriesPresentationUniqueKey != null
++                        // A favourite/unwatched metadata row is not playback activity and must
++                        // never suppress an actual resume point from the same series.
++                        && (x.LastPlayedDate != null || x.Played || x.PlayCount > 0 || x.PlaybackPositionTicks > 0));
++
++                baseQuery = baseQuery.Where(e => e.Type != episodeType
++                    || e.SeriesPresentationUniqueKey == null
++                    || e.SeriesPresentationUniqueKey == string.Empty
++                    || !episodeActivity.Any(other => other.Id != e.Id
++                        && other.SeriesPresentationUniqueKey == e.SeriesPresentationUniqueKey
++                        && (
++                            // Normal playback always has a date. Newer activity (finished or not)
++                            // is the authoritative Continue Watching state for the series.
++                            (inProgress.Where(ud => ud.ItemId == e.Id && ud.LastPlayedDate != null).Any()
++                                && (
++                                    other.LastPlayedDate > inProgress.Where(ud => ud.ItemId == e.Id).Max(ud => ud.LastPlayedDate)
++                                    || (other.LastPlayedDate == inProgress.Where(ud => ud.ItemId == e.Id).Max(ud => ud.LastPlayedDate)
++                                        && (
++                                            other.ParentIndexNumber > e.ParentIndexNumber
++                                            || (other.ParentIndexNumber == e.ParentIndexNumber
++                                                && (other.IndexNumber > e.IndexNumber
++                                                    || (other.IndexNumber == e.IndexNumber
++                                                        && (other.Played || other.Id.CompareTo(e.Id) < 0))))
++                                        )
++                                    )
++                                )
++                            )
++                            // Imported legacy data may have no timestamp. Prefer any dated state;
++                            // when none exists, pick the most advanced episode deterministically.
++                            || (!inProgress.Where(ud => ud.ItemId == e.Id && ud.LastPlayedDate != null).Any()
++                                && (
++                                    other.LastPlayedDate != null
++                                    || (other.LastPlayedDate == null
++                                        && (
++                                            other.ParentIndexNumber > e.ParentIndexNumber
++                                            || (other.ParentIndexNumber == e.ParentIndexNumber
++                                                && (other.IndexNumber > e.IndexNumber
++                                                    || (other.IndexNumber == e.IndexNumber
++                                                        && (other.Played || other.Id.CompareTo(e.Id) < 0))))
++                                        )
++                                    )
++                                )
++                            )
++                        )));
+             }
+             else
+             {

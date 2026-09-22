@@ -69,7 +69,8 @@ def category_art(kind):
     except (OSError,ValueError,KeyError):pass
     return {}
 
-def api(action,**params):
+def api(action,cancelled=None,**params):
+    cancelled=cancelled or (lambda:False)
     query={'action':action,**params}
     key=hashlib.sha256(json.dumps([BASE,AUTH['username'],query],sort_keys=True).encode()).hexdigest()
     path=os.path.join(ROOT,key+'.json')
@@ -77,21 +78,37 @@ def api(action,**params):
     try:
         with open(path) as f:cached=json.load(f)
         if time.time()-cached['time']<1800:
+            if cancelled():raise RuntimeError('Catalogue request cancelled')
             if not params:remember_category_art(action,cached['data'],cached['time'])
             return cached['data']
     except (OSError,ValueError,KeyError):pass
     try:
+        deadline=time.monotonic()+25
         with urlopen(BASE+'/player_api.php?'+urlencode({**AUTH,**query}),timeout=20) as r:
-            raw=r.read(32*1024*1024+1)
+            chunks=[];size=0
+            read=getattr(r,'read1',r.read)
+            while True:
+                if cancelled():raise RuntimeError('Catalogue request cancelled')
+                if time.monotonic()>deadline:raise TimeoutError('Catalogue response deadline exceeded')
+                chunk=read(min(64*1024,32*1024*1024+1-size))
+                if not chunk:break
+                chunks.append(chunk);size+=len(chunk)
+                if size>32*1024*1024:raise ValueError('Catalogue response too large')
+            raw=b''.join(chunks)
         if len(raw)>32*1024*1024:raise ValueError('Catalogue response too large')
         data=json.loads(raw)
+        if cancelled():raise RuntimeError('Catalogue request cancelled')
         tmp=path+'.'+str(os.getpid())+'.tmp'
         stamp=time.time()
         with open(tmp,'w') as f:json.dump({'time':stamp,'data':data},f)
+        if cancelled():
+            os.remove(tmp)
+            raise RuntimeError('Catalogue request cancelled')
         os.replace(tmp,path)
-        if not params:remember_category_art(action,data,stamp)
+        if not params and not cancelled():remember_category_art(action,data,stamp)
         return data
     except Exception:
+        if cancelled():raise
         if cached and time.time()-cached.get('time',0)<86400:
             xbmc.log('Venom TV: using cached catalogue after network failure',xbmc.LOGWARNING)
             return cached['data']

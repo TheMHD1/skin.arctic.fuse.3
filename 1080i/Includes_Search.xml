@@ -426,19 +426,19 @@
                     <ondown condition="String.IsEqual(Skin.String(HomeSwitcher.Search.Mode),Standard)">602</ondown>
                     <content>
                         <item>
-                            <label>$LOCALIZE[31066]$INFO[Window(Home).Property(TMDbHelper.UserDiscover.FolderPath.Name), ,]</label>
-                            <icon>special://skin/extras/icons/binoculars.png</icon>
-                            <property name="mode">discover</property>
-                            <onclick>RunPlugin(plugin://plugin.video.themoviedb.helper/?info=user_discover$INFO[Window(Home).Property(TMDbHelper.UserDiscover.Folderpath.ParamString),&amp;,])</onclick>
-                            <visible>String.IsEqual(Skin.String(HomeSwitcher.Search.Mode),Combined) + !Skin.HasSetting(Search.DisableDiscover)</visible>
-                        </item>
-                        <item>
                             <label>$LOCALIZE[137]$VAR[Search_Label_Results]</label>
                             <icon>special://skin/extras/icons/chart-simple.png</icon>
                             <property name="mode">search</property>
                             <onclick>SetFocus(3000)</onclick>
                             <onclick>Action(Select)</onclick>
                             <onclick>SetFocus(3003)</onclick>
+                        </item>
+                        <item>
+                            <label>$LOCALIZE[31066]$INFO[Window(Home).Property(TMDbHelper.UserDiscover.FolderPath.Name), ,]</label>
+                            <icon>special://skin/extras/icons/binoculars.png</icon>
+                            <property name="mode">discover</property>
+                            <onclick>RunPlugin(plugin://plugin.video.themoviedb.helper/?info=user_discover$INFO[Window(Home).Property(TMDbHelper.UserDiscover.Folderpath.ParamString),&amp;,])</onclick>
+                            <visible>String.IsEqual(Skin.String(HomeSwitcher.Search.Mode),Combined) + !Skin.HasSetting(Search.DisableDiscover)</visible>
                         </item>
                         <item>
                             <label>$LOCALIZE[31155]$VAR[Search_Label_Results]</label>

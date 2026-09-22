@@ -1,0 +1,290 @@
+--- a/browser.py
++++ b/browser.py
+@@ -13,6 +13,9 @@
+ sys.path.insert(0,os.path.dirname(__file__))
+ import default as catalogue
+ import shared_favorites
++from remote_catalogue import RemoteCatalogue
++
++REMOTE_NATIVE=os.path.exists(os.path.join(catalogue.ROOT,'remote-native.json'))
+ 
+ PAGE=80
+ NETWORK_CACHE_SECONDS=300
+@@ -212,6 +215,7 @@ class Browser(xbmcgui.WindowXML):
+         self.source_cache=OrderedDict();self.pvr_playback_cache={};self.scope=None
+         self.open_selection=None;self.open_pending=None;self.live_handoff=None
+         self.category_retry_at=0
++        self.native_offset=0
+         try:self.shared=shared_favorites.from_kodi()
+         except Exception:self.shared=None
+         self.shared_keys=set();self.shared_error=False
+@@ -405,6 +409,7 @@ class Browser(xbmcgui.WindowXML):
+ 
+     def load_categories(self):
+         self.cancel_live_handoff('navigation')
+         self.cancel_network('category menu')
++        self.native_offset=0
+         self.open_pending=None
+         self.page=0;self.query='';self.stack=[];self.scope=None;self.category=None;self.selected_category_index=0
+@@ -317,7 +322,8 @@
+         self.getControl(920).reset();self.entries=[]
+         self.getControl(941).setLabel({'live':'Live TV','movie':'Movies','series':'Series','favorites':'Favourites'}[self.kind])
+         if self.kind=='live':
+-            groups=rpc('PVR.GetChannelGroups',{'channeltype':'tv'}).get('channelgroups',[])
++            if REMOTE_NATIVE and not self.shared:raise RuntimeError('Jellyfin sign-in required')
++            groups=[] if REMOTE_NATIVE else rpc('PVR.GetChannelGroups',{'channeltype':'tv'}).get('channelgroups',[])
+             if self.shared:
+                 def fetch(generation):
+                     client=shared_favorites.SharedFavorites(self.shared.server)
+@@ -329,6 +335,14 @@
+             self.apply_categories(live_group_choices(groups,[]));return
+         elif self.kind=='favorites':
+             self.apply_categories([('All shared favourites','all'),('Live channels','live'),('Movies','movie'),('Series','series'),('Local bookmarks / pending sync','local')]);return
++        elif REMOTE_NATIVE:
++            if not self.shared:raise RuntimeError('Jellyfin sign-in required')
++            kind=self.kind;server=self.shared.server
++            def fetch(generation):
++                remote=RemoteCatalogue(shared_favorites.SharedFavorites(server))
++                return remote.categories(kind,cancelled=lambda:self.request_cancelled(generation))
++            self.start_network(kind+' remote categories',fetch,self.apply_categories)
++            return
+         else:
+             action='get_vod_categories' if self.kind=='movie' else 'get_series_categories'
+             kind=self.kind
+@@ -342,9 +356,11 @@
+         if self.closed:return
+         if error:
+             self.category_retry_at=time.monotonic()+15
+-            xbmc.log('Venom category service unavailable; keeping native PVR groups and retrying at chooser',xbmc.LOGINFO)
++            xbmc.log('Venom category service unavailable; retrying at chooser',xbmc.LOGINFO)
+         else:self.category_retry_at=0
+-        self.apply_categories(live_group_choices(groups,summaries))
++        choices=live_group_choices(groups,summaries)
++        if REMOTE_NATIVE:choices=[(name,category) for name,category in choices if str(category).startswith('jf:')]
++        self.apply_categories(choices)
+ 
+     def apply_categories(self,categories):
+         if self.closed:return
+@@ -363,6 +379,8 @@
+         # never launches hundreds of requests or lands in the first cartoon group.
+ 
+     def prepare_shared_entry(self,e):
++        if REMOTE_NATIVE and e['params'].get('mode')!='shared':
++            raise RuntimeError('Reopen this legacy bookmark from its Jellyfin category')
+         if e['params'].get('mode')=='channel' and not e.get('metadata',{}).get('channelnumber'):
+             detail=rpc('PVR.GetChannelDetails',{'channelid':int(e['params']['id']),'properties':['channelnumber']})['channeldetails']
+             e={**e,'metadata':{**e.get('metadata',{}),'channelnumber':detail['channelnumber']}}
+@@ -495,6 +513,7 @@ class Browser(xbmcgui.WindowXML):
+     def select_category(self):
+         index=self.getControl(910).getSelectedPosition()
+         if not 0<=index<len(self.categories):return
++        self.native_offset=0
+         self.selected_category_index=index
+         self.category_name,self.category=self.categories[index]
+         self.scope=None;self.stack=[];self.page=0;self.query=''
+@@ -402,10 +421,13 @@
+         scope=getattr(self,'scope',None)
+         return {'kind':self.kind,'category':getattr(self,'category',None),'scope':dict(scope) if scope else None,
+                 'recent':self.recent,'query':getattr(self,'query',''),'page':getattr(self,'page',0),
+-                'category_name':getattr(self,'category_name','')}
++                'category_name':getattr(self,'category_name',''),
++                'native_offset':getattr(self,'native_offset',0)}
+ 
+     def source_key(self,snapshot):
+-        return (snapshot['kind'],str(snapshot['category']),json.dumps(snapshot['scope'],sort_keys=True),snapshot['recent'])
++        remote_page=REMOTE_NATIVE and snapshot['kind'] in ('movie','series') and not snapshot['scope']
++        return (snapshot['kind'],str(snapshot['category']),json.dumps(snapshot['scope'],sort_keys=True),snapshot['recent'],
++                snapshot.get('native_offset',0) if remote_page else 0,snapshot['query'] if remote_page else '')
+ 
+     def cached_source(self,snapshot):
+         if snapshot['kind']=='favorites':return None
+@@ -459,6 +481,7 @@
+                         result.append(entry(row['Name'],{'mode':'shared','kind':'live','id':row['Id'],'type':'TvChannel'},art=art,metadata={'channelnumber':row.get('ChannelNumber') or row.get('Number')}))
+                     if not items or len(items)<250:return result
+                 raise RuntimeError('Channel category exceeds safe size')
++            if REMOTE_NATIVE:raise RuntimeError('Choose a Jellyfin live category; local PVR is unavailable remotely')
+             rows=rpc('PVR.GetChannels',{'channelgroupid':category,'properties':['thumbnail','channelnumber']}).get('channels',[])
+             return [entry(r['label'],{'mode':'channel','kind':'live','id':str(r['channelid'])},r.get('thumbnail',''),metadata={'channelnumber':r['channelnumber']}) for r in rows]
+         if scope:
+@@ -474,11 +497,15 @@
+                     if len(page)<500:break
+                 else:raise RuntimeError('Series exceeds safe episode browser limit')
+                 return [entry(r['Name'],{'mode':'shared','kind':'series','id':r['Id'],'type':'Episode'}) for r in items]
++            if REMOTE_NATIVE:raise RuntimeError('Open this series from its Jellyfin catalogue entry')
+             data=catalogue.api('get_series_info',series_id=catalogue.ident(scope['id']),cancelled=cancelled)
+             episodes=data.get('episodes') or {};cover=data.get('info',{}).get('cover','')
+             if 'season' not in scope:
+                 return [entry('Season '+str(s),{'mode':'episodes','kind':'series','id':scope['id'],'season':s},cover,True) for s in sorted(episodes,key=lambda s:int(s) if str(s).isdigit() else 999)]
+             return [entry(r.get('title') or 'Episode '+str(r.get('episode_num','')),{'mode':'play','kind':'series','id':catalogue.ident(r['id']),'ext':r.get('container_extension') or 'mp4','title':r.get('title',''),'series_id':scope['id'],'season':scope['season'],'episode':r.get('episode_num',0)},(r.get('info') or {}).get('movie_image') or cover,False,(r.get('info') or {}).get('plot',''),'episode') for r in episodes.get(scope['season'],[])]
++        if REMOTE_NATIVE:
++            if not shared:raise RuntimeError('Jellyfin sign-in required')
++            return RemoteCatalogue(shared).page(kind,category,snapshot.get('native_offset',0),snapshot['query'],recent,cancelled=cancelled)
+         action='get_vod_streams' if kind=='movie' else 'get_series'
+         args={} if category=='all' else {'category_id':category}
+         rows=catalogue.api(action,cancelled=cancelled,**args)
+@@ -489,6 +516,8 @@
+         self.getControl(940).setLabel('Loading…')
+         self.entries=[];self.visible_entries=[];self.getControl(920).reset()
+         snapshot=self.entry_snapshot()
++        snapshot['restore_grid_position']=getattr(self,'restore_grid_position',None)
++        self.restore_grid_position=None
+         cached=self.cached_source(snapshot)
+         if cached is not None:
+             xbmc.log('Venom network: entries 0.000s cachehit',xbmc.LOGINFO)
+@@ -512,10 +541,14 @@
+         if getattr(self,'closed',False):return
+         if hasattr(self,'setProperty'):self.setProperty('Venom.Posters','true' if self.kind in ('movie','series') else 'false')
+         words=catalogue.search_text(snapshot['query']).split()
+-        self.entries=[r for r in rows if all(w in catalogue.search_text(r['label']) for w in words)]
++        remote_page=REMOTE_NATIVE and snapshot['kind'] in ('movie','series') and not snapshot['scope']
++        self.entries=[r for r in rows if r['params'].get('mode')=='nativepage' or remote_page or all(w in catalogue.search_text(r['label']) for w in words)]
+         self.page=min(snapshot['page'],max(0,(len(self.entries)-1)//PAGE))
+         self.render()
+ 
++        if snapshot.get('restore_grid_position') is not None:
++            self.getControl(920).selectItem(max(0,min(snapshot['restore_grid_position'],len(self.visible_entries)-1)))
++
+     def render(self):
+         # Rendering/page changes must NEVER contact Jellyfin or the provider.
+         # Stars are refreshed by a separate, bounded background request.
+@@ -641,9 +674,9 @@ class Browser(xbmcgui.WindowXML):
+         if not 0<=pos<len(self.visible_entries):return
+         self.last_grid_position=pos
+         e=self.visible_entries[pos];p=e['params']
+-        selection=(p.get('mode'),p.get('id'),p.get('season'))
++        selection=(p.get('mode'),p.get('id'),p.get('season'),p.get('offset'))
+         now=time.monotonic()
+         if self.open_selection and self.open_selection[0]==selection and now-self.open_selection[1]<1:return
+         if self.open_pending and self.open_pending[0]!=selection:
+             self.cancel_network('new playback selection')
+         handoff=getattr(self,'live_handoff',None)
+@@ -641,10 +674,17 @@ class Browser(xbmcgui.WindowXML):
+             if handoff.get('selection')==selection:return
+             self.cancel_live_handoff('new selection')
+         self.open_selection=(selection,now)
+-        if p['mode']=='shared':
++        if p['mode']=='nativepage':
++            self.native_offset=int(p['offset']);self.page=0;self.load_entries()
++        elif p['mode']=='shared':
+             if p.get('type')=='TvChannel':
+                 if self.open_pending and self.open_pending[0]==selection:return
+                 target={'Id':p['id'],'Name':e['label'],'ChannelNumber':e.get('metadata',{}).get('channelnumber')}
++                if REMOTE_NATIVE:
++                    self.cancel_network('remote playback')
++                    rpc('Player.Open',{'item':channel_playback_item(target,[])})
++                    xbmc.executebuiltin('ActivateWindow(fullscreenvideo)')
++                    return
+                 pvr_cache=dict(self.pvr_playback_cache)
+                 def lookup(_generation):return playback_from_pvr_cache(target,pvr_cache,rpc),pvr_cache
+                 def play(result):
+@@ -654,18 +694,21 @@ class Browser(xbmcgui.WindowXML):
+                 generation=self.start_network('shared channel lookup',lookup,play)
+                 self.open_pending=(selection,generation)
+             elif p.get('type')=='Series':
+-                self.stack.append((self.kind,self.scope,self.page,self.query,self.category_name,pos))
+-                self.kind='series';self.scope={'jf_series':p['id']};self.page=0;self.query='';self.category_name=e['label'];self.load_entries()
++                self.stack.append((self.kind,self.scope,self.page,self.query,self.category_name,pos,self.native_offset))
++                self.kind='series';self.scope={'jf_series':p['id']};self.page=0;self.native_offset=0;self.query='';self.category_name=e['label'];self.load_entries()
+             else:
+                 xbmc.Player().play('plugin://plugin.video.jellyfin/?mode=play&id='+p['id']);xbmc.executebuiltin('ActivateWindow(fullscreenvideo)')
+         elif p['mode']=='channel':
++            if REMOTE_NATIVE:raise RuntimeError('Reopen this channel from its Jellyfin category')
+             self.begin_channel_playback({'channelid':int(catalogue.ident(p['id']))},selection)
+         elif p['mode'] in ('seasons','episodes'):
+-            self.stack.append((self.kind,self.scope,self.page,self.query,self.category_name,pos))
+-            self.kind='series';self.scope=p;self.page=0;self.query='';self.category_name=e['label'];self.load_entries()
++            if REMOTE_NATIVE:raise RuntimeError('Open this series from its Jellyfin catalogue entry')
++            self.stack.append((self.kind,self.scope,self.page,self.query,self.category_name,pos,self.native_offset))
++            self.kind='series';self.scope=p;self.page=0;self.native_offset=0;self.query='';self.category_name=e['label'];self.load_entries()
+         elif p['mode']=='items':
+             self.kind=p['kind'];self.pending_bookmark=(p['category'],e['label']);self.load_categories()
+         else:
++            if REMOTE_NATIVE:raise RuntimeError('Reopen this title from its Jellyfin category')
+             xbmc.Player().play(catalogue.route(**p));xbmc.executebuiltin('ActivateWindow(fullscreenvideo)')
+ 
+     def favorite_menu(self):
+@@ -575,7 +618,7 @@
+         pos=self.getControl(920).getSelectedPosition()
+         if not 0<=pos<len(self.visible_entries):return
+         e=self.visible_entries[pos]
+-        if e['params'].get('mode')=='episodes':return
++        if e['params'].get('mode') in ('episodes','nativepage'):return
+         if self.kind=='favorites' and self.category=='local':
+             choice=xbmcgui.Dialog().select(e['label'],['Remove this local bookmark / pending entry','Play / Open'])
+             if choice==0:
+@@ -615,11 +658,11 @@
+             elif control==920:self.open_selected()
+             elif control==931 and self.category is not None:
+                 query=xbmcgui.Dialog().input('Search '+self.category_name,defaultt=self.query)
+-                self.query=query.strip();self.page=0;self.load_entries();self.setFocusId(920)
++                self.query=query.strip();self.page=0;self.native_offset=0;self.load_entries();self.setFocusId(920)
+             elif control in (932,933) and self.entries:
+                 self.page=max(0,min(self.page+(-1 if control==932 else 1),(len(self.entries)-1)//PAGE));self.render();self.setFocusId(920)
+             elif control==934 and self.kind in ('movie','series') and self.category is not None:
+-                self.recent=not self.recent;self.page=0;self.load_entries()
++                self.recent=not self.recent;self.page=0;self.native_offset=0;self.load_entries()
+             elif control==934 and self.kind=='favorites' and self.category is not None:
+                 self.load_entries()
+         self.enqueue(handle)
+@@ -727,8 +770,8 @@ class Browser(xbmcgui.WindowXML):
+             if self.busy:self.close();return
+             if self.stack:
+                 def back():
+-                    self.kind,self.scope,self.page,self.query,self.category_name,pos=self.stack.pop()
+-                    self.load_entries();self.getControl(920).selectItem(pos)
++                    self.kind,self.scope,self.page,self.query,self.category_name,pos,self.native_offset=self.stack.pop()
++                    self.restore_grid_position=pos;self.load_entries()
+                 self.enqueue(back)
+             elif self.getFocusId()==920:
+                 self.cancel_network('navigation back');self.cancel_live_handoff('navigation back');self.open_pending=None;self.setFocusId(910)
+@@ -643,7 +686,7 @@
+     if not home.getProperty('Venom.Browser.Open'):
+         home.setProperty('Venom.Browser.Open','true')
+         try:
+-            catalogue.BASE,catalogue.AUTH=catalogue.auth()
++            if not REMOTE_NATIVE:catalogue.BASE,catalogue.AUTH=catalogue.auth()
+             xbmc.log('Venom browser: credentials loaded',xbmc.LOGINFO)
+             window=Browser('VenomBrowser.xml',os.path.dirname(__file__),'Default','1080i')
+             window.show()
+--- a/default.py
++++ b/default.py
+@@ -22,6 +22,8 @@
+ os.makedirs(ROOT,exist_ok=True)
+ 
+ def auth():
++    if os.path.exists(os.path.join(ROOT,'remote-native.json')):
++        raise RuntimeError('Remote Venom uses Jellyfin account authentication')
+     path=xbmcvfs.translatePath('special://profile/addon_data/pvr.iptvsimple/instance-settings-1.xml')
+     url=ET.parse(path).getroot().find("setting[@id='m3uUrl']").text
+     parts=urlsplit(url)
+@@ -70,6 +72,8 @@
+     return {}
+ 
+ def api(action,cancelled=None,**params):
++    if os.path.exists(os.path.join(ROOT,'remote-native.json')):
++        raise RuntimeError('Remote Venom catalogue must use Jellyfin')
+     cancelled=cancelled or (lambda:False)
+     query={'action':action,**params}
+     key=hashlib.sha256(json.dumps([BASE,AUTH['username'],query],sort_keys=True).encode()).hexdigest()
+@@ -176,6 +180,12 @@
+     kind=PARAMS.get('kind','movie')
+     if kind not in ('movie','series') and not (kind=='live' and mode=='channel'):raise ValueError('Invalid catalogue')
+     FAVORITES=venom_state.read(ROOT).get('favorites',{})
++    if os.path.exists(os.path.join(ROOT,'remote-native.json')):
++        if mode=='categories':
++            xbmcplugin.endOfDirectory(HANDLE,succeeded=False)
++            xbmc.executebuiltin('RunScript(special://home/addons/plugin.video.venom.tv/browser.py,'+kind+')');return
++        if mode not in ('root','live','favorites'):
++            raise RuntimeError('Reopen this legacy item from the Jellyfin-backed Venom browser')
+     if mode=='root':
+         add('Live TV — Categories & Channels',{'mode':'live'},plot='Category browser, channel grid and favourites. Your subscription allows one simultaneous stream.',icon_name='tv')
+         add('Movies',{'mode':'categories','kind':'movie'},plot='All movies, search, recently added and provider categories.',icon_name='film')
+@@ -273,7 +283,7 @@
+ 
+ if __name__=='__main__':
+     try:
+-        BASE,AUTH=auth()
++        if not os.path.exists(os.path.join(ROOT,'remote-native.json')):BASE,AUTH=auth()
+         main()
+         if PARAMS.get('mode') in ('categories','items','seasons','episodes','favorites') and xbmc.getSkinDir()=='skin.arctic.fuse.3' and xbmc.getCondVisibility('Window.IsActive(videos)'):
+             xbmc.executebuiltin('Container.SetViewMode(512)')

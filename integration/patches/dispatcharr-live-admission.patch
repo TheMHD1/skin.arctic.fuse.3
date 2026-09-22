@@ -1,0 +1,179 @@
+--- a/apps/proxy/live_proxy/views.py
++++ b/apps/proxy/live_proxy/views.py
+@@ -46,6 +46,32 @@
+ logger = get_logger()
+ 
+ 
++def _wait_for_stream_capacity(fetch, shutdown_delay, *, clock=time.monotonic, sleep=gevent.sleep):
++    """Bounded admission only; never preempt a viewer or release a provider slot.
++
++    Keep the existing reconnect grace, allow two seconds of scheduling margin,
++    and cap the request budget at fifteen seconds. The final attempt happens at
++    the deadline rather than before it because a backoff would not fit.
++    """
++    budget = max(3.0, min(15.0, float(shutdown_delay) + 2.0))
++    deadline = clock() + budget
++    interval = 0.1
++    attempts = 0
++    while True:
++        attempts += 1
++        result = fetch()
++        if result[0] is not None:
++            return result, attempts
++        reason = result[5]
++        if not reason or "maximum connection limits" not in reason:
++            return result, attempts
++        remaining = deadline - clock()
++        if remaining <= 0:
++            return result, attempts
++        sleep(min(interval, remaining))
++        interval += 0.025
++
++
+ def _channel_stopping_response():
+     response = JsonResponse(
+         {"error": "Channel is stopping, retry shortly"},
+@@ -297,98 +323,31 @@
+ 
+             if perform_setup:
+                 try:
+-                    # Use fixed retry interval and timeout
+-                    retry_timeout = 3  # 3 seconds total timeout
+-                    retry_interval = 0.1  # 100ms between attempts
+-                    wait_start_time = time.time()
+-
+-                    stream_url = None
+-                    stream_user_agent = None
+-                    transcode = False
+-                    profile_value = None
+-                    slot_reserved = False
+-                    error_reason = None
+-                    resolved_stream_id = None
+-                    attempt = 0
+-                    should_retry = True
+-
+-                    # Try to get a stream with fixed interval retries
+-                    while should_retry and time.time() - wait_start_time < retry_timeout:
+-                        attempt += 1
+-                        (
+-                            stream_url,
+-                            stream_user_agent,
+-                            transcode,
+-                            profile_value,
+-                            slot_reserved,
+-                            error_reason,
+-                            resolved_stream_id,
+-                        ) = generate_stream_url(
+-                            channel_id, user, allowed_m3u_profiles
+-                        )
+-
+-                        if stream_url is not None:
+-                            logger.info(
+-                                f"[{client_id}] Successfully obtained stream for channel {channel_id} after {attempt} attempts"
+-                            )
+-                            break
+-
+-                        # On first failure, check if the error is retryable
+-                        if attempt == 1:
+-                            if error_reason and "maximum connection limits" not in error_reason:
+-                                logger.warning(
+-                                    f"[{client_id}] Can't retry - error not related to connection limits: {error_reason}"
+-                                )
+-                                should_retry = False
+-                                break
+-
+-                        # Check if we have time remaining for another sleep cycle
+-                        elapsed_time = time.time() - wait_start_time
+-                        remaining_time = retry_timeout - elapsed_time
+-
+-                        # If we don't have enough time for the next sleep interval, break
+-                        # but only after we've already made an attempt (the while condition will try one more time)
+-                        if remaining_time <= retry_interval:
+-                            logger.info(
+-                                f"[{client_id}] Insufficient time ({remaining_time:.1f}s) for another sleep cycle, will make one final attempt"
+-                            )
+-                            break
+-
+-                        # Wait before retrying
+-                        logger.info(
+-                            f"[{client_id}] Waiting {retry_interval*1000:.0f}ms for a connection to become available (attempt {attempt}, {remaining_time:.1f}s remaining)"
+-                        )
+-                        gevent.sleep(retry_interval)
+-                        retry_interval += 0.025  # Increase wait time by 25ms for next attempt
+-
+-                    # Make one final attempt if we still don't have a stream, should retry, and haven't exceeded timeout
+-                    if stream_url is None and should_retry and time.time() - wait_start_time < retry_timeout:
+-                        attempt += 1
+-                        logger.info(
+-                            f"[{client_id}] Making final attempt {attempt} at timeout boundary"
+-                        )
+-                        (
+-                            stream_url,
+-                            stream_user_agent,
+-                            transcode,
+-                            profile_value,
+-                            slot_reserved,
+-                            error_reason,
+-                            resolved_stream_id,
+-                        ) = generate_stream_url(
+-                            channel_id, user, allowed_m3u_profiles
+-                        )
+-                        if stream_url is not None:
+-                            logger.info(
+-                                f"[{client_id}] Successfully obtained stream on final attempt for channel {channel_id}"
+-                            )
++                    wait_start_time = time.monotonic()
++                    result, attempt = _wait_for_stream_capacity(
++                        lambda: generate_stream_url(channel_id, user, allowed_m3u_profiles),
++                        CoreSettings.get_proxy_settings().get("channel_shutdown_delay", 0),
++                    )
++                    (
++                        stream_url,
++                        stream_user_agent,
++                        transcode,
++                        profile_value,
++                        slot_reserved,
++                        error_reason,
++                        resolved_stream_id,
++                    ) = result
++                    logger.info(
++                        f"[{client_id}] Stream admission finished after {attempt} attempts "
++                        f"in {time.monotonic() - wait_start_time:.3f}s"
++                    )
+ 
+                     if stream_url is None:
+                         if slot_reserved and not channel.release_stream():
+                             logger.debug(f"[{client_id}] release_stream found no keys during failed init cleanup")
+ 
+                         # Get the specific error message if available
+-                        wait_duration = f"{int(time.time() - wait_start_time)}s"
++                        wait_duration = f"{int(time.monotonic() - wait_start_time)}s"
+                         error_msg = (
+                             error_reason
+                             if error_reason
+@@ -810,7 +769,7 @@
+         close_old_connections()
+ 
+ 
+-@api_view(["GET"])
++@api_view(["GET", "HEAD"])
+ @permission_classes([AllowAny])
+ def stream_xc(request, username, password, channel_id):
+     try:
+@@ -862,6 +821,16 @@
+             force_format = 'mpegts'
+         else:
+             force_format = None
++        # Kodi probes live transport metadata before releasing the previous input.
++        # All existing network/credential/channel gates above apply to HEAD too.
++        # A probe must not allocate a provider slot or register a streaming client.
++        if request.method == "HEAD":
++            output_format = _resolve_output_format(user, force_format, request._request)
++            response = HttpResponse(content_type=(
++                "video/mp4" if output_format == "fmp4" else "video/mp2t"
++            ))
++            response["Cache-Control"] = "no-cache"
++            return response
+         return stream_ts(request._request, str(channel.uuid), user, force_output_format=force_format)
+     except Http404:
+         raise

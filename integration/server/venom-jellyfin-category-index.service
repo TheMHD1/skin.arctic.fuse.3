@@ -1,0 +1,10 @@
+[Unit]
+Description=Make Venom provider categories available to native Jellyfin clients
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /data/config/iptv-venom/venom-jellyfin-category-index.py
+TimeoutStartSec=5min
+UMask=0077
+Nice=10

@@ -1,0 +1,11 @@
+{
+  "name": "replace-with-private-profile-name",
+  "variant": "local",
+  "hostnames": ["replace-device-hostname", "CoreELEC"],
+  "mac": "00:00:00:00:00:00",
+  "jellyfin_user_id": "replace-with-device-account-user-id",
+  "native_paths": {
+    "/server/media/movies/": "nfs://private-server/movies/",
+    "/server/media/shows/": "nfs://private-server/shows/"
+  }
+}

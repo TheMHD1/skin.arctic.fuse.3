@@ -1,0 +1,62 @@
+--- a/apps/proxy/live_proxy/output/ts/generator.py
++++ b/apps/proxy/live_proxy/output/ts/generator.py
+@@ -376,7 +376,9 @@
+                         )
+                         break
+ 
+-                    keepalive_packet = create_ts_packet('keepalive')
++                    # ISO/IEC 13818-1 null PID, payload-only AFC; no media timestamps.
++                    # The shared legacy helper uses reserved AFC=00 for keepalive.
++                    keepalive_packet = b"\x47\x1f\xff\x10" + b"\xff" * 184
+                     logger.debug(f"[{self.client_id}] Sending keepalive packet while waiting at buffer head")
+                     yield keepalive_packet
+                     self.bytes_sent += len(keepalive_packet)
+@@ -532,41 +534,13 @@
+                 raise  # Re-raise to exit the generator
+ 
+     def _should_send_keepalive(self, local_index):
+-        """Determine if a keepalive packet should be sent."""
+-        # Check if we're caught up to buffer head
+-        at_buffer_head = local_index >= self.buffer.index
+-        if not at_buffer_head or self.consecutive_empty < 5:
+-            return False
+-
+-        if self.stream_manager is not None:
+-            # Owner worker: use the in-memory health flag directly.
+-            return not self.stream_manager.healthy
+-        else:
+-            # Non-owner worker: stream_manager only exists in the owner process.
+-            # Approximate health from the Redis last_data timestamp; if stale
+-            # beyond CONNECTION_TIMEOUT, send keepalives to prevent DVR timeout.
+-            # Throttled: only re-query Redis every _health_check_interval seconds
+-            # to avoid a Redis GET on every loop iteration during sustained waits.
+-            now = time.time()
+-            if now - self._last_health_check_time < self._health_check_interval:
+-                return self._last_health_check_result
+-            try:
+-                proxy_server = self.proxy_server or ProxyServer.get_instance()
+-                if proxy_server.redis_client:
+-                    raw = proxy_server.redis_client.get(RedisKeys.last_data(self.channel_id))
+-                    if raw:
+-                        age = now - float(raw)
+-                        timeout_threshold = getattr(Config, 'CONNECTION_TIMEOUT', 10)
+-                        result = age >= timeout_threshold
+-                    else:
+-                        # No timestamp in Redis → key missing or expired → unhealthy
+-                        result = True
+-                    self._last_health_check_time = now
+-                    self._last_health_check_result = result
+-                    return result
+-            except Exception:
+-                pass
+-            return False
++        """Probe this downstream transport, independently of upstream health.
++
++        Real data wins in the caller and resets consecutive_empty. At a quiet
++        buffer head the existing bounded write path must also run on followers:
++        global upstream health cannot establish that this client is connected.
++        """
++        return local_index >= self.buffer.index and self.consecutive_empty >= 5
+ 
+     def _is_ghost_client(self, local_index):
+         """Check if this appears to be a ghost client (stuck but buffer advancing)."""

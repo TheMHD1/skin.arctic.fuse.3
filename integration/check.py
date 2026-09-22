@@ -8,6 +8,7 @@ import xml.etree.ElementTree as ET
 
 HERE=Path(__file__).resolve().parent
 ROOT=HERE.parent
+SOURCE_LAYOUT_TESTS=('test-search-default.py',)
 def run(*args, cwd=None):subprocess.run(args,cwd=cwd,check=True)
 def fetch(url,commit,path):
     run('git','init','-q',str(path))
@@ -24,8 +25,14 @@ with tempfile.TemporaryDirectory(prefix='arctic-integration-test-') as tmp:
     work=Path(tmp)
     shutil.copytree(HERE/'plugin.video.habibi.resume',work/'plugin.video.habibi.resume')
     shutil.copytree(HERE/'plugin.video.venom.tv',work/'plugin.video.venom.tv')
+    shutil.copytree(HERE/'remote-venom',work/'remote-venom')
+    # Regression fixtures inspect the maintained 2.2 patch as well as the legacy
+    # upstream checkout. Include them in the isolated test tree.
+    shutil.copytree(HERE/'patches',work/'patches')
     shutil.copy2(HERE/'ugoos-osd-seek.py',work/'ugoos-osd-seek.py')
-    for test in HERE.glob('test-*.py'):shutil.copy2(test,work/test.name)
+    shutil.copy2(HERE/'jellyfin_native_originals.py',work/'jellyfin_native_originals.py')
+    for test in HERE.glob('test-*.py'):
+        if test.name not in SOURCE_LAYOUT_TESTS:shutil.copy2(test,work/test.name)
     kodi=work/'kodiseerr-upstream'
     fetch('https://github.com/yocksers/KodiSeerr.git','8d23b6c14473f747080719884cd998fa98a17fc6',kodi)
     jf=work/'jellyfin-upstream'
@@ -39,5 +46,9 @@ with tempfile.TemporaryDirectory(prefix='arctic-integration-test-') as tmp:
     shutil.copy2(jf/'jellyfin_kodi/downloader.py',work/'venom-jellyfin-downloader.py')
     for test in sorted(work.glob('test-*.py')):run(sys.executable,str(test))
     run(sys.executable,'-m','compileall','-q',str(work/'plugin.video.habibi.resume'),str(work/'plugin.video.venom.tv'),str(kodi/'plugin.video.kodiseerr'))
+# The skin source/hash regression requires the actual source-tree layout,
+# not a flat temporary fixture that changes Path(__file__).parents[1]. It is
+# independent of Git history and also works in a source archive.
+for name in SOURCE_LAYOUT_TESTS:run(sys.executable,str(HERE/name),cwd=ROOT)
 run(sys.executable,str(HERE/'check-venom-package.py'))
 print('PASS: skin XML, clean patch application, integration regressions and compile checks')

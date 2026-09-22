@@ -6,7 +6,8 @@ from urllib.request import Request, urlopen
 
 FIELDS = 'Overview,DateCreated,Path,ProviderIds'
 LABELS = {'resume':'Continue Watching', 'nextup':'Next Up', 'movies':'Latest Movies',
-          'episodes':'Latest Episodes', 'shows':'Latest Shows', 'favorites':'Favorites', 'series':'Episodes', 'toprated':'Top Rated Movies'}
+          'episodes':'Latest Episodes', 'shows':'Latest Shows', 'favorites':'Favorites', 'series':'Episodes', 'toprated':'Top Rated Movies',
+          'searchmovies':'Library Movies', 'searchshows':'Library TV Shows'}
 
 def valid_id(value):
     if not re.fullmatch(r'[0-9a-fA-F]{32}', value or ''):
