@@ -1,0 +1,8 @@
+{
+  "powermanagement.displaysoff": 0,
+  "powermanagement.shutdowntime": 0,
+  "screensaver.mode": "screensaver.xbmc.builtin.black",
+  "screensaver.time": 3,
+  "screensaver.usedimonpause": false,
+  "screensaver.disableforaudio": false
+}

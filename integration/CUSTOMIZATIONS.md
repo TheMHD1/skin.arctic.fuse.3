@@ -65,6 +65,12 @@ rollback record with the private deployment.
 
 ### Arctic, Kodi and client integrations
 
+- `device-policy/always-awake/`: local AM9 persistent settings for ignoring TV
+  standby while leaving CEC remote control enabled; independent TV power and
+  three-minute black screensaver for idle/paused/static audio screens. See its
+  README for verified enum meanings, merge/rollback rules and physical TV-cycle
+  acceptance limits. No boot-media or systemd sleep-mask changes.
+
 - `patches/arctic-3.3.1-habibi.patch`: the maintained skin port for reviewed
   upstream 3.3.1 source. The repository-root skin and `addon.xml` are still the
   legacy 3.2.19 integration baseline: never relabel, ZIP or install that root

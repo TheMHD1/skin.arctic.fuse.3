@@ -1,0 +1,10 @@
+<settings>
+  <setting id="enabled" value="1" />
+  <setting id="standby_pc_on_tv_standby" value="36028" />
+  <setting id="cec_standby_screensaver_mode" value="231" />
+  <setting id="cec_wake_screensaver" value="0" />
+  <setting id="wake_devices" value="231" />
+  <setting id="activate_source" value="0" />
+  <setting id="standby_devices" value="231" />
+  <setting id="standby_tv_on_pc_standby" value="0" />
+</settings>

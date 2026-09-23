@@ -135,6 +135,11 @@ patches. Do not stack the 2.2.0 consolidated patch with older 2.1.0 patches.
 Custom add-ons use manual updates so stock packages cannot silently erase the
 ports. Ordinary unmodified add-ons retain their normal update policy.
 
+Preserve the [always-awake/OLED configuration](device-policy/always-awake/README.md)
+when commissioning or upgrading the local AM9. It uses Kodi settings and a
+version-reviewed peripheral XML merge, not a replacement system image. Recheck
+CEC enum/file identity after updates; do not clone a whole peripheral profile.
+
 1. Confirm the last private backup succeeded. Keep the currently working addon
    sources, settings and a SQLite-consistent DB backup. Verify rollback artifacts.
 2. Fetch `upstream` (jurialmunkey/skin.arctic.fuse.3). Create a candidate from
