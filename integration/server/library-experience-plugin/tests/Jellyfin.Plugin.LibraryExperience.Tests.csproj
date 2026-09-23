@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <_WorkspaceJellyfinSource>$(MSBuildThisFileDirectory)../../../../../update-20260918/jellyfin-source</_WorkspaceJellyfinSource>
+    <JellyfinSourceRoot Condition="'$(JellyfinSourceRoot)' == '' and Exists('$(_WorkspaceJellyfinSource)/Jellyfin.sln')">$(_WorkspaceJellyfinSource)</JellyfinSourceRoot>
+    <JellyfinSourceRoot Condition="'$(JellyfinSourceRoot)' != ''">$([System.IO.Path]::GetFullPath('$(JellyfinSourceRoot)'))</JellyfinSourceRoot>
+  </PropertyGroup>
+
+  <Target Name="ValidateJellyfinSource" BeforeTargets="PrepareForBuild">
+    <Error Condition="'$(JellyfinSourceRoot)' == '' or !Exists('$(JellyfinSourceRoot)/Jellyfin.sln')"
+           Text="Set JellyfinSourceRoot to a checkout of Jellyfin ee91c75e777da41a9c4f4855e70adc604fbf2ef8 (12.1)." />
+    <Exec Condition="'$(JellyfinSourceRoot)' != '' and Exists('$(JellyfinSourceRoot)/Jellyfin.sln')"
+          Command="git -c safe.directory=&quot;$(JellyfinSourceRoot)&quot; -C &quot;$(JellyfinSourceRoot)&quot; rev-parse HEAD"
+          ConsoleToMSBuild="true"
+          StandardOutputImportance="Low">
+      <Output TaskParameter="ConsoleOutput" PropertyName="_JellyfinSourceRevision" />
+    </Exec>
+    <Error Condition="'$(_JellyfinSourceRevision)' != 'ee91c75e777da41a9c4f4855e70adc604fbf2ef8'"
+           Text="JellyfinSourceRoot is not the reviewed Jellyfin 12.1 revision ee91c75e777da41a9c4f4855e70adc604fbf2ef8." />
+  </Target>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.11" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.9.0" />
+    <PackageReference Include="Moq" Version="4.18.4" />
+    <PackageReference Include="xunit.v3" Version="3.2.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Jellyfin.Plugin.LibraryExperience.csproj" />
+    <ProjectReference Include="$(JellyfinSourceRoot)/src/Jellyfin.Database/Jellyfin.Database.Providers.Sqlite/Jellyfin.Database.Providers.Sqlite.csproj" />
+  </ItemGroup>
+
+</Project>

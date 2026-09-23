@@ -24,6 +24,13 @@ a redacted inventory, not importable configuration.
 
 ## Deployment state at the September 22 acceptance point
 
+The subsequent September 22–23 library-experience rollout is documented in
+[LIBRARY-EXPERIENCE-2026-09-22.md](LIBRARY-EXPERIENCE-2026-09-22.md). Local Kodi
+is now R7 for Home/search, with the R6 playback/transport cohort retained.
+Server Next Up, Web search separation and the request-ready timer are deployed.
+The following R6 physical playback acceptance remains historical evidence, not
+a claim that every R7 UI interaction was physically repeated.
+
 - The local/LAN AM9 cohort is at revision r6. General Jellyfin Movies/TV search,
   Search-first Arctic navigation, the secure TLS default, native-original
   selection and local Venom channel handoff were installed and exercised on the
@@ -85,6 +92,13 @@ rollback record with the private deployment.
   custom server behavior, including Continue Watching and retained One Pace
   integration. A production image, database, Compose file and credentials are
   private deployment artifacts, not reconstructed by this directory.
+- `server/library-experience-plugin/` and `server/library-dates/`: narrowly
+  guarded import-date maintenance, derived Series dates and resumable journal.
+- `server/request-ready/`: durable requester-specific readiness notifications
+  and the version-checked repair of the existing Seerr webhook encoding.
+- `server/arr-maintenance/`: bounded generic manual-import recovery and audit.
+- `web-navigation/search-jellyfin-web-12.1.patch`: permission-scoped owned and
+  secondary provider search rows; see its README and bundle installer.
 - `server/dovi/`: portable source and tests for the P7-to-P8.1 reconciliation
   policy. Media, probe/retry databases, queues, exports and validated companions
   remain private runtime state. Its source/runtime map verifies the maintained

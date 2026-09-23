@@ -14,7 +14,7 @@ REMOTE_PATCH=FORK/'integration/patches/venom-remote-performance.patch'
 REMOTE_PATCH_SHA='2c7bf2737473c7eed249c6fa3a9a637d1f19eafa0ba1ac179183a9d162f6abbb'
 INPUTS={
     'native_originals.py':(FORK/'integration/jellyfin_native_originals.py','656df894c18d6d005c7d81a5ec04b3a9957a744f36ead16c6c05358309252171'),
-    'search.py':(FORK/'integration/plugin.video.habibi.resume/search.py','74a5b1dcb21b36ca3004179b81cf3d2f4e7894025bba85fe8a941c68d8033ee8'),
+    'search.py':(HERE/'baseline-r6/search.py','74a5b1dcb21b36ca3004179b81cf3d2f4e7894025bba85fe8a941c68d8033ee8'),
     'venom/browser.py':(FORK/'integration/plugin.video.venom.tv/browser.py','f8d1c57b08a03e3df73036c91e760214e4127ee6a697c6e83ee6f15af558b281'),
     'venom/default.py':(FORK/'integration/plugin.video.venom.tv/default.py','edbf99577e7238caad07529b8ed62665f2a5b189190b894c691941ac10c1b027'),
     'venom/shared_favorites.py':(FORK/'integration/plugin.video.venom.tv/shared_favorites.py','ab270c3806c4916b2a793b65570d650e8df06dac692e490215351e0f68e34df4'),

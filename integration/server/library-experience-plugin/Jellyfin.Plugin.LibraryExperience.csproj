@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>Jellyfin.Plugin.LibraryExperience</AssemblyName>
+    <RootNamespace>Jellyfin.Plugin.LibraryExperience</RootNamespace>
+    <Version>1.0.0.0</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <_WorkspaceJellyfinSource>$(MSBuildThisFileDirectory)..\..\..\..\update-20260918\jellyfin-source</_WorkspaceJellyfinSource>
+    <JellyfinSourceRoot Condition="'$(JellyfinSourceRoot)' == '' and Exists('$(_WorkspaceJellyfinSource)/Jellyfin.sln')">$(_WorkspaceJellyfinSource)</JellyfinSourceRoot>
+    <JellyfinSourceRoot Condition="'$(JellyfinSourceRoot)' != ''">$([System.IO.Path]::GetFullPath('$(JellyfinSourceRoot)'))</JellyfinSourceRoot>
+  </PropertyGroup>
+
+  <Target Name="ValidateJellyfinSource" BeforeTargets="PrepareForBuild">
+    <Error Condition="'$(JellyfinSourceRoot)' == '' or !Exists('$(JellyfinSourceRoot)/Jellyfin.sln')"
+           Text="Set JellyfinSourceRoot to a checkout of Jellyfin ee91c75e777da41a9c4f4855e70adc604fbf2ef8 (12.1)." />
+    <Exec Condition="'$(JellyfinSourceRoot)' != '' and Exists('$(JellyfinSourceRoot)/Jellyfin.sln')"
+          Command="git -c safe.directory=&quot;$(JellyfinSourceRoot)&quot; -C &quot;$(JellyfinSourceRoot)&quot; rev-parse HEAD"
+          ConsoleToMSBuild="true"
+          StandardOutputImportance="Low">
+      <Output TaskParameter="ConsoleOutput" PropertyName="_JellyfinSourceRevision" />
+    </Exec>
+    <Error Condition="'$(_JellyfinSourceRevision)' != 'ee91c75e777da41a9c4f4855e70adc604fbf2ef8'"
+           Text="JellyfinSourceRoot is not the reviewed Jellyfin 12.1 revision ee91c75e777da41a9c4f4855e70adc604fbf2ef8." />
+  </Target>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <ProjectReference Include="$(JellyfinSourceRoot)/MediaBrowser.Common/MediaBrowser.Common.csproj" Private="false" />
+    <ProjectReference Include="$(JellyfinSourceRoot)/MediaBrowser.Controller/MediaBrowser.Controller.csproj" Private="false" />
+    <ProjectReference Include="$(JellyfinSourceRoot)/src/Jellyfin.Database/Jellyfin.Database.Implementations/Jellyfin.Database.Implementations.csproj" Private="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="tests/**/*.cs" />
+    <None Include="meta.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

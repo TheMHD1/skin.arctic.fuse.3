@@ -32,6 +32,8 @@ def prepare(destination, source=None):
         run("git", "apply", path, cwd=destination)
     for filename, target in (
         ("BaseItemRepositoryResumeDedupTests.cs", "tests/Jellyfin.Server.Implementations.Tests/Item"),
+        ("NextUpServiceTests.cs", "tests/Jellyfin.Server.Implementations.Tests/Item"),
+        ("TVSeriesManagerOrderingTests.cs", "tests/Jellyfin.Server.Implementations.Tests/Item"),
     ):
         shutil.copyfile(HERE / filename, destination / target / filename)
     print(f"Prepared Jellyfin 12.1 source at {destination}; no build or deployment performed.")

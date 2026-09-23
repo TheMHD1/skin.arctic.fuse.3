@@ -9,6 +9,7 @@ the fixes, required versions and tested/pending status. It covers the Kodi/Arcti
 experience and the paired Jellyfin/IPTV server changes.
 
 - [Build and guarded update tooling](integration/release/README.md)
+- [Home ordering, library search and request-ready rollout](integration/LIBRARY-EXPERIENCE-2026-09-22.md)
 - [New Ugoos commissioning](integration/SECOND-UGOOS.md)
 - [Update, rebase and rollback procedure](integration/UPDATING.md)
 - [Server Continue Watching and colour configuration](integration/server/jellyfin-custom/README.md)
@@ -28,6 +29,7 @@ inventory before they are recorded as preserved. Verify a clone or source archiv
 python3 integration/release/verify-preservation.py
 ```
 
-The September 22 local-device r6 changes were accepted; the remote-device
+The September 22 local-device R6 playback changes were accepted; the subsequent
+R7 Home/search update is deployed and source/API checked. The remote-device
 overlay remains source-tested but not deployed. The CoreELEC update remains
 held. Source preservation never implies permission to reboot or update a device.

@@ -1,3 +1,87 @@
+diff --git a/Emby.Server.Implementations/TV/TVSeriesManager.cs b/Emby.Server.Implementations/TV/TVSeriesManager.cs
+index 459ad1a..89fb07b 100644
+--- a/Emby.Server.Implementations/TV/TVSeriesManager.cs
++++ b/Emby.Server.Implementations/TV/TVSeriesManager.cs
+@@ -124,7 +124,10 @@ namespace Emby.Server.Implementations.TV
+ 
+             var batchResult = _libraryManager.GetNextUpEpisodesBatch(query, seriesKeys, includeSpecials, includeRewatching);
+ 
+-            var nextUpList = new List<(DateTime LastWatchedDate, Episode Episode)>();
++            // GetNextUpSeriesKeys is the authoritative per-user activity order. Do not
++            // re-sort it from LastWatched below: LastWatched is the furthest completed
++            // episode by sequence, which need not be the episode the user played most recently.
++            var nextUpList = new List<BaseItem>();
+ 
+             foreach (var seriesKey in seriesKeys)
+             {
+@@ -134,6 +137,7 @@ namespace Emby.Server.Implementations.TV
+                 }
+ 
+                 var nextEpisode = DetermineNextEpisode(result, user, includeSpecials, request.EnableResumable, false);
++                DateTime? nextActivityDate = null;
+ 
+                 if (nextEpisode is not null)
+                 {
+@@ -141,41 +145,38 @@ namespace Emby.Server.Implementations.TV
+                     // The played state propagated to the sibling versions carries no date
+                     var (playedVersion, lastPlayedDate) = GetMostRecentlyPlayedVersion(result.LastWatched, user);
+                     nextEpisode = GetPreferredVersion(nextEpisode, result.LastWatched, playedVersion);
+-
+-                    DateTime lastWatchedDate = DateTime.MinValue;
+-                    if (result.LastWatched is not null)
+-                    {
+-                        lastWatchedDate = lastPlayedDate ?? DateTime.MinValue.AddDays(1);
+-                    }
+-
+-                    nextUpList.Add((lastWatchedDate, nextEpisode));
++                    nextActivityDate = lastPlayedDate;
+                 }
+ 
++                Episode? nextPlayedEpisode = null;
++                DateTime? rewatchActivityDate = null;
+                 if (includeRewatching)
+                 {
+-                    var nextPlayedEpisode = DetermineNextEpisodeForRewatching(result, user, includeSpecials);
++                    nextPlayedEpisode = DetermineNextEpisodeForRewatching(result, user, includeSpecials);
+ 
+                     if (nextPlayedEpisode is not null)
+                     {
+                         var (playedVersion, lastPlayedDate) = GetMostRecentlyPlayedVersion(result.LastWatchedForRewatching, user);
+                         nextPlayedEpisode = GetPreferredVersion(nextPlayedEpisode, result.LastWatchedForRewatching, playedVersion);
++                        rewatchActivityDate = lastPlayedDate;
++                    }
++                }
+ 
+-                        DateTime rewatchLastWatchedDate = DateTime.MinValue;
+-                        if (result.LastWatchedForRewatching is not null)
+-                        {
+-                            rewatchLastWatchedDate = lastPlayedDate ?? DateTime.MinValue.AddDays(1);
+-                        }
++                // Next Up is one card per series. A genuinely newer rewind continues along
++                // that replay path; otherwise retain the ordinary next-unplayed episode.
++                var selectedEpisode = nextPlayedEpisode is not null
++                    && (nextEpisode is null
++                        || (rewatchActivityDate ?? DateTime.MinValue) > (nextActivityDate ?? DateTime.MinValue))
++                    ? nextPlayedEpisode
++                    : nextEpisode;
+ 
+-                        nextUpList.Add((rewatchLastWatchedDate, nextPlayedEpisode));
+-                    }
++                if (selectedEpisode is not null)
++                {
++                    nextUpList.Add(selectedEpisode);
+                 }
+             }
+ 
+-            var sortedEpisodes = nextUpList
+-                .OrderByDescending(x => x.LastWatchedDate)
+-                .Select(x => (BaseItem)x.Episode);
+-
+-            return GetResult(sortedEpisodes, request);
++            return GetResult(nextUpList, request);
+         }
+ 
+         private Episode? DetermineNextEpisode(
 diff --git a/Jellyfin.Server.Implementations/Item/BaseItemRepository.TranslateQuery.cs b/Jellyfin.Server.Implementations/Item/BaseItemRepository.TranslateQuery.cs
 index d726f0f..922c547 100644
 --- a/Jellyfin.Server.Implementations/Item/BaseItemRepository.TranslateQuery.cs
@@ -90,3 +174,37 @@ index d726f0f..922c547 100644
              }
              else
              {
+diff --git a/Jellyfin.Server.Implementations/Item/NextUpService.cs b/Jellyfin.Server.Implementations/Item/NextUpService.cs
+index 897fb98..7429eec 100644
+--- a/Jellyfin.Server.Implementations/Item/NextUpService.cs
++++ b/Jellyfin.Server.Implementations/Item/NextUpService.cs
+@@ -46,10 +46,17 @@ public class NextUpService : INextUpService
+ 
+         using var context = _dbProvider.CreateDbContext();
+ 
+-        var query = context.BaseItems
+-            .AsNoTracking()
+-            .Where(i => filter.TopParentIds.Contains(i.TopParentId!.Value))
+-            .Where(i => i.Type == _itemTypeLookup.BaseItemKindNames[BaseItemKind.Episode])
++        // Activity can live on the alternate version that was actually played. Keep those
++        // rows while applying the same library, ancestor, parental and tag restrictions as
++        // the episode candidate query; hidden activity must neither enter nor reorder Next Up.
++        filter.IncludeOwnedItems = true;
++        _queryHelpers.PrepareFilterQuery(filter);
++        var accessibleEpisodes = _queryHelpers.PrepareItemQuery(context, filter)
++            .Where(i => i.Type == _itemTypeLookup.BaseItemKindNames[BaseItemKind.Episode]);
++        accessibleEpisodes = _queryHelpers.ApplyAccessFiltering(context, accessibleEpisodes, filter);
++        accessibleEpisodes = _queryHelpers.TranslateQuery(accessibleEpisodes, context, filter);
++
++        var query = accessibleEpisodes
+             .Join(
+                 context.UserData.AsNoTracking().Where(e => e.ItemId != EF.Constant(BaseItemRepository.PlaceholderId)),
+                 i => new { UserId = filter.User.Id, ItemId = i.Id },
+@@ -59,6 +66,7 @@ public class NextUpService : INextUpService
+             .Select(g => new { g.Key, LastPlayedDate = g.Max(u => u.UserData.LastPlayedDate) })
+             .Where(g => g.Key != null && g.LastPlayedDate != null && g.LastPlayedDate >= dateCutoff)
+             .OrderByDescending(g => g.LastPlayedDate)
++            .ThenBy(g => g.Key)
+             .Select(g => g.Key!);
+ 
+         if (filter.Limit.HasValue)

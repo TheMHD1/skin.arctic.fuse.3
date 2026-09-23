@@ -1,0 +1,16 @@
+[Unit]
+Description=Request-ready notifications after requester-scoped Jellyfin verification
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/habibi-request-ready/worker.py --config /data/config/habibi-request-ready/config.json --once
+TimeoutStartSec=300
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/data/config/habibi-request-ready
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX

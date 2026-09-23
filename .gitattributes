@@ -15,3 +15,5 @@ addon.xml merge=ours
 
 # Unified diff blank context lines must retain their leading space.
 integration/patches/*.patch -text -whitespace
+integration/server/jellyfin-custom/*.patch -text -whitespace
+integration/web-navigation/*.patch -text -whitespace

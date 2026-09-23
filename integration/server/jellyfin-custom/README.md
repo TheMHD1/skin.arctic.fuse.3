@@ -18,23 +18,27 @@ No original server checkout or production service is modified.
 ```sh
 python3 integration/server/jellyfin-custom/prepare.py /tmp/jellyfin-reviewed-source
 cd /tmp/jellyfin-reviewed-source
-dotnet test tests/Jellyfin.Server.Implementations.Tests/Jellyfin.Server.Implementations.Tests.csproj -c Release --filter 'FullyQualifiedName~BaseItemRepositoryPlayedVersionTests|FullyQualifiedName~BaseItemRepositoryResumeDedupTests' --nologo
+dotnet run --project tests/Jellyfin.Server.Implementations.Tests/Jellyfin.Server.Implementations.Tests.csproj -c Release -- -class Jellyfin.Server.Implementations.Tests.Item.TVSeriesManagerOrderingTests -class Jellyfin.Server.Implementations.Tests.Item.NextUpServiceTests -class Jellyfin.Server.Implementations.Tests.Item.BaseItemRepositoryResumeDedupTests -class Jellyfin.Server.Implementations.Tests.Item.BaseItemRepositoryPlayedVersionTests -noLogo -noColor
 dotnet test tests/Jellyfin.Naming.Tests/Jellyfin.Naming.Tests.csproj -c Release --filter 'FullyQualifiedName~EpisodeVersionExclusionTests' --nologo
 dotnet build Jellyfin.Server.Implementations/Jellyfin.Server.Implementations.csproj -c Release --nologo
+dotnet build Emby.Server.Implementations/Emby.Server.Implementations.csproj -c Release --nologo
 dotnet build Emby.Naming/Emby.Naming.csproj -c Release --nologo
 ```
 
 Use the .NET 10 SDK required by upstream `global.json`. Build outputs are
 generated artifacts, not committed DLLs. A rebuilt DLL need not have an old
 binary hash unless the entire compiler/dependency environment is reproduced.
-The deployed September 22 server-implementation DLL was
-`9c31c8f008a90fcde2b536c8ef73397a92c17f0c9be15f0f1eb7391fbce193f3`.
+The current library-experience deployment includes both
+`Jellyfin.Server.Implementations.dll` and `Emby.Server.Implementations.dll`.
+The former contains activity ranking; the latter preserves that ranking in the
+final Next Up response. Deploying only one does not reproduce this correction.
+Binary hashes and the prior image are retained in the private operations record.
 
 ### Patch contract
 
 | File | Purpose | Required configuration |
 | --- | --- | --- |
-| `continue-watching.patch` | One resumable episode per series, selected by newest real playback activity; preserves rewinds, per-user permissions and paging | None; changes the shared Resume API, not history |
+| `continue-watching.patch` | Continue Watching: one resumable episode per series from newest real playback activity. Next Up: one card per series in newest-activity order, with intentional rewinds, deterministic ties, access filtering and paging preserved | None; changes read/query selection, not history |
 | `../../patches/jellyfin-12.1-onepace.patch` | Exact directory opt-out from episode multi-version collapsing (includes tests) | `HABIBI_JF_EPISODE_VERSION_EXCLUDED_DIRECTORIES=One Pace` (semicolon-separated exact directory names) |
 
 The preparer reuses the existing episode-exclusion patch instead of keeping a
@@ -44,23 +48,26 @@ second copy. Other custom server plugins have their own source/patches: see
 
 ## Deployment and rollback
 
-These changes were deployed and tested on September 22; preparation here is
-not a fresh claim of live acceptance. Continue Watching passed eight scoped
-tests and a read-only 26-account API audit with no duplicate series or errors.
-It does not mark anything watched or delete watch progress.
+Continue Watching and the Next Up roll-up are deployed. Twelve scoped executable
+tests passed. The post-deployment read-only 26-account API audit found no
+duplicate series, Resume activity-order violations or API errors. Neither
+change marks anything watched or deletes watch progress. This checks server
+behavior; native clients may still apply their own presentation or cache.
 
 Build a candidate image from the matching maintained server image, adding only
-the two reviewed assemblies. The pinned baseline recipe is
-`../maintenance-20260918/jellyfin-Dockerfile`; add the server implementation DLL
-alongside its existing naming DLL. Preserve OpenCL/QSV dependencies, mounted
+the two implementation assemblies. The pinned baseline recipe is
+`../maintenance-20260918/jellyfin-Dockerfile`; retain its existing naming DLL
+and add both implementation DLLs using `Dockerfile.library-experience`.
+Preserve OpenCL/QSV dependencies, mounted
 plugins, web integration and all private configuration. Never replace a newer
 server's assemblies with 12.1 binaries. Rebase source and rerun tests first.
 
 Before a deployment, retain the prior image/compose and a consistent private
 database/config backup. Test ordinary Resume queries with `MediaTypes=Video`,
-episode rewinds, library restrictions and Next Up separately. Roll back the
-image first; restoring the database unnecessarily would lose recent viewing
-progress. Private production backup locations remain in the operations record.
+episode rewinds, library restrictions, one-card-per-series Next Up, activity
+ordering and paging. Roll back the image first; restoring the database
+unnecessarily would lose recent viewing progress. Private production backup
+locations remain in the operations record.
 
 ## Colour/tone-mapping configuration fix
 

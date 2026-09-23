@@ -4,13 +4,38 @@ import xbmc
 import xbmcgui
 
 class Monitor(xbmc.Monitor):
-    due = 0
+    def __init__(self):
+        super().__init__()
+        self.due = 0
+
     def onNotification(self, sender, method, data):
         if method in ('Player.OnStop', 'VideoLibrary.OnUpdate', 'VideoLibrary.OnScanFinished'):
-            self.due = time.monotonic()+4
+            self.due = max(self.due, time.monotonic()+4)
+
+
+class RefreshClock:
+    """Strictly increasing cache-busters, independent of wall-clock changes."""
+    def __init__(self):
+        self.value = 0
+
+    def next(self):
+        self.value = max(self.value+1, time.monotonic_ns())
+        return str(self.value)
+
+
+def home_hub_active():
+    return (xbmc.getCondVisibility('Window.IsActive(home)')
+            or xbmc.getCondVisibility('Window.IsActive(videos)'))
+
+
+def refresh_decision(active, entered, now, last, due):
+    event_due = bool(due and now >= due)
+    return (active and ((not entered and now-last > 5)
+                        or now-last >= 60 or event_due), event_due)
 
 def main():
     monitor = Monitor()
+    refresh_clock = RefreshClock()
     home = xbmcgui.Window(10000)
     # Avoid duplicate launch if a manual start overlaps Kodi's service startup.
     try:
@@ -31,8 +56,9 @@ def main():
     entered = False
     while not monitor.waitForAbort(1):
         home.setProperty('Habibi.Home.ServiceAlive', str(time.time()))
+        home_hub = home_hub_active()
         active = (xbmc.getSkinDir() == 'skin.arctic.fuse.3'
-                  and xbmc.getCondVisibility('Window.IsActive(home)')
+                  and home_hub
                   and not xbmc.getCondVisibility('Player.HasMedia')
                   and not xbmc.getCondVisibility('System.HasModalDialog'))
         now = time.monotonic()
@@ -41,13 +67,17 @@ def main():
                     and not xbmc.getCondVisibility('Player.HasMedia')
                     and not xbmc.getCondVisibility('System.HasModalDialog'))
         if discover and ((not discover_entered and now-discover_last>5) or now-discover_last>=60):
-            home.setProperty('Habibi.Discover.Refresh',str(time.time_ns()))
+            home.setProperty('Habibi.Discover.Refresh',refresh_clock.next())
             discover_last=now
         discover_entered=discover
-        if active and ((not entered and now-last > 5) or now-last >= 60 or (monitor.due and now >= monitor.due)):
-            home.setProperty('Habibi.Home.Refresh', str(time.time_ns()))
+        refresh, event_due = refresh_decision(active, entered, now, last, monitor.due)
+        if refresh:
+            home.setProperty('Habibi.Home.Refresh', refresh_clock.next())
             last = now
-            monitor.due = 0
+            # An entry/periodic refresh before the four-second event grace must
+            # not consume the later refresh that sees the committed server state.
+            if event_due:
+                monitor.due = 0
         entered = active
     home.clearProperty('Habibi.Home.Refresh')
     home.clearProperty('Habibi.Home.ServiceAlive')

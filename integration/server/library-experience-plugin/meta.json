@@ -1,0 +1,13 @@
+{
+  "category": "General",
+  "changelog": "Initial guarded import-date maintenance release.",
+  "description": "Admin-only exact import-date repair and derived series latest-date recomputation.",
+  "guid": "872004df-ed6b-4fa5-bf31-201ca4e27019",
+  "imageUrl": "",
+  "name": "Library Experience Maintenance",
+  "overview": "Repairs selected library import dates without metadata refreshes, NFO writes, or watch-history changes.",
+  "owner": "Habibi",
+  "targetAbi": "12.1.0.0",
+  "timestamp": "2026-09-22T00:00:00.0000000+00:00",
+  "version": "1.0.0.0"
+}

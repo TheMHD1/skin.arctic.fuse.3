@@ -21,9 +21,9 @@ class ReleaseTests(unittest.TestCase):
             addon=self.root/'addons'/name;addon.mkdir(parents=True,exist_ok=True)
             (addon/'addon.xml').write_text('<addon id="'+name+'" version="'+version+'"/>')
         copies={
-          'addons/plugin.video.habibi.resume/client.py':FORK/'integration/plugin.video.habibi.resume/client.py',
-          'addons/plugin.video.habibi.resume/default.py':FORK/'integration/plugin.video.habibi.resume/default.py',
-          'addons/skin.arctic.fuse.3/shortcuts/generator/data/setup/search_path.xml':FORK/'shortcuts/generator/data/setup/search_path.xml',
+          'addons/plugin.video.habibi.resume/client.py':HERE/'baseline-r6/client.py',
+          'addons/plugin.video.habibi.resume/default.py':HERE/'baseline-r6/default.py',
+          'addons/skin.arctic.fuse.3/shortcuts/generator/data/setup/search_path.xml':HERE/'baseline-r6/search_path.xml',
           installer.SEARCH_SKIN:FORK/'1080i/Includes_Search.xml',
         }
         for relative,source_path in copies.items():

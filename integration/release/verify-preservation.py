@@ -13,8 +13,9 @@ import subprocess
 ROOT = Path(__file__).resolve().parents[2]
 MANIFEST = ROOT / "integration/release/source-manifest.json"
 EXTRA = {
-    ".gitignore", ".github/workflows/integration.yml", "addon.xml", "LICENSE.txt", "README.md", "AGENTS.md",
+    ".gitignore", ".gitattributes", ".github/workflows/integration.yml", "addon.xml", "LICENSE.txt", "README.md", "AGENTS.md",
     "1080i/Includes_Search.xml", "shortcuts/generator/data/setup/search_path.xml",
+    "shortcuts/skinvariables-shortcut-searchwidgets.json",
 }
 
 
@@ -28,14 +29,36 @@ def sources():
                   and n != MANIFEST.relative_to(ROOT).as_posix())
 
 
+def relevant(name):
+    return name.startswith("integration/") or name in EXTRA
+
+
+def unstaged_sources():
+    untracked = subprocess.check_output(
+        ["git", "ls-files", "--others", "--exclude-standard", "-z"], cwd=ROOT).decode().split("\0")
+    unstaged = subprocess.check_output(
+        ["git", "diff", "--name-only", "-z"], cwd=ROOT).decode().split("\0")
+    manifest_name = MANIFEST.relative_to(ROOT).as_posix()
+    return sorted({name for name in untracked + unstaged
+                   if name and relevant(name) and name != manifest_name})
+
+
 def write():
+    pending = unstaged_sources()
+    if pending:
+        raise SystemExit("Review and stage sources before recording them:\n" + "\n".join(pending))
     payload = {
         "schema": 1,
-        "release": "2026-09-22-r6-preservation",
+        "release": "2026-09-23-library-experience-r7",
         "meaning": "Reviewed source bytes, not a runtime credential/settings backup or proof of deployment",
         "status": {
             "local_kodi_r6": "deployed-and-accepted",
+            "local_kodi_r7": "deployed-source-and-live-api-accepted",
             "remote_kodi_r6": "source-tested-not-deployed",
+            "remote_kodi_r7": "not-deployed",
+            "jellyfin_nextup": "deployed-26-account-readonly-audit-passed",
+            "web_search": "deployed-mobile-browser-verified",
+            "request_ready": "timer-deployed-no-real-completion-delivery-yet",
             "remote_original_p7": "pending",
             "coreelec_update": "held-not-authorized",
             "provider_403_retry": "deployed-fixture-tested-not-live-recovery-proven",
@@ -44,6 +67,7 @@ def write():
         "upstream": {
             "jellyfin-kodi": "a1aeda1352eb49c16d8da877121ea2068a7a7508",
             "jellyfin-server": "ee91c75e777da41a9c4f4855e70adc604fbf2ef8",
+            "jellyfin-web": "fae41f33eb7cd636a9ef68984adb82bb247a6e1b",
         },
         "files": {n: digest(ROOT / n) for n in sources()},
     }
@@ -52,12 +76,18 @@ def write():
 
 
 def verify():
-    # Verify listed source bytes, not the absence of unrelated local files.
-    # Public archive hygiene is a separate reviewed staging/secret-scan step.
+    # Git-free source archives remain supported; in a clone also enforce exact
+    # tracked inventory completeness and reject overlooked untracked sources.
     payload = json.loads(MANIFEST.read_text())
     if payload.get("schema") != 1 or not payload.get("files"):
         raise SystemExit("Invalid or empty source inventory")
     errors = []
+    if (ROOT / ".git").exists():
+        tracked = set(sources())
+        listed = set(payload["files"])
+        errors.extend(f"Unlisted tracked source: {name}" for name in sorted(tracked - listed))
+        errors.extend(f"No longer tracked source: {name}" for name in sorted(listed - tracked))
+        errors.extend(f"Unstaged source: {name}" for name in unstaged_sources())
     for name, expected in payload["files"].items():
         relative = PurePosixPath(name)
         if relative.is_absolute() or ".." in relative.parts:

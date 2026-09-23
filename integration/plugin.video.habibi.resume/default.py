@@ -11,6 +11,13 @@ import xbmcvfs
 from client import Client, LABELS, play_path, valid_id
 from titles import display_title, display_label
 
+SEARCH_MODES = {
+    'searchmovies': ('Movie', 'movies'),
+    'searchshows': ('Series', 'shows'),
+    'searchvenommovies': ('Movie', 'venom_movies'),
+    'searchvenomshows': ('Series', 'venom_shows'),
+}
+
 
 def main():
     handle = int(sys.argv[1])
@@ -46,11 +53,12 @@ def main():
             return
         start = max(0,int(params.get('start',0)))
         listing_started = time.monotonic()
-        is_search = mode in ('searchmovies', 'searchshows')
+        is_search = mode in SEARCH_MODES
         query = params.get('query', '')
         if is_search:
             from search import search
-            items = search(client, query, 'Movie' if mode == 'searchmovies' else 'Series', start)
+            kind, scope = SEARCH_MODES[mode]
+            items = search(client, query, kind, start, scope=scope)
         else:
             items = client.listing(mode, params.get('series'), start)
         rows = []

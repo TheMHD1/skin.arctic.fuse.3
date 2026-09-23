@@ -38,3 +38,9 @@ integration/release/**/profile.*.json
 *.tar.gz
 *.tgz
 *.zip
+
+# Plugin build products; rebuild from maintained C# source and pinned SDK.
+integration/server/library-experience-plugin/**/bin/
+integration/server/library-experience-plugin/**/obj/
+integration/server/library-experience-plugin/bin/
+integration/server/library-experience-plugin/obj/

@@ -123,8 +123,8 @@ public sealed class BaseItemRepositoryResumeDedupTests : SqliteDbTestFixture
             TopParentIds = [allowedTopParent]
         });
 
-        Assert.Contains(items, item => item.Id == allowedResume);
-        Assert.DoesNotContain(items, item => item.Id == hiddenLaterEpisode);
+        Assert.Contains(items, item => item.Id.Equals(allowedResume));
+        Assert.DoesNotContain(items, item => item.Id.Equals(hiddenLaterEpisode));
     }
 
     private (Guid First, Guid Second) AddSeries(JellyfinDbContext context, string name, bool olderResumeIsLatest)
@@ -147,6 +147,7 @@ public sealed class BaseItemRepositoryResumeDedupTests : SqliteDbTestFixture
         {
             AddResume(context, second, late.AddHours(1), _otherUser);
         }
+
         return (first, second);
     }
 

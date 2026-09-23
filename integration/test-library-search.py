@@ -18,6 +18,7 @@ class SearchTests(unittest.TestCase):
         class Fake:
             user='own-user';scopes={'movies':['1'*32,'2'*32]}
             calls=[]
+            def scope_ids(self,name):return self.scopes[name]
             def get(self,path,**params):
                 self.calls.append((path,params))
                 if 'Ids' in params:
@@ -48,23 +49,26 @@ class SearchTests(unittest.TestCase):
                     user='current-user'
                     scopes={'movies':['1'*32], 'shows':['2'*32]}
                     def __init__(self): self.calls=[]
+                    def scope_ids(self,name):return self.scopes[name]
                     def get(self,path,**params):
                         self.calls.append((path,params))
                         return {'Items':[item]}
                 fake=Fake()
                 self.assertEqual(search(fake,query,kind),[item])
-                self.assertEqual(len(fake.calls),2)
+                self.assertGreaterEqual(len(fake.calls),2)
                 self.assertTrue(all(p=='Users/current-user/Items' for p,_ in fake.calls))
                 self.assertEqual(fake.calls[0][1]['IncludeItemTypes'],kind)
                 self.assertEqual(fake.calls[0][1]['ParentId'],('1' if kind=='Movie' else '2')*32)
-                self.assertEqual(fake.calls[1][1]['Ids'],item['Id'])
+                self.assertEqual(fake.calls[-1][1]['Ids'],item['Id'])
 
     def test_default_plugin_routes_use_server_search_not_local_or_discover(self):
         import client
         entry=Path(__file__).resolve().parent/'plugin.video.habibi.resume/default.py'
-        for mode, kind, title in [('searchmovies','Movie','Dune'),
-                                  ('searchshows','Series','Breaking Bad'),
-                                  ('searchshows','Series','رَمَضَان كريم')]:
+        for mode, kind, title, scope in [('searchmovies','Movie','Dune','1'),
+                                  ('searchshows','Series','Breaking Bad','2'),
+                                  ('searchshows','Series','رَمَضَان كريم','2'),
+                                  ('searchvenommovies','Movie','Dune','3'),
+                                  ('searchvenomshows','Series','Breaking Bad','4')]:
             with self.subTest(mode=mode,title=title):
                 item={'Id':'a'*32,'Name':title,'Type':kind}
                 server={'address':'https://example.test','UserId':'test-user',
@@ -73,6 +77,13 @@ class SearchTests(unittest.TestCase):
                 class FakeClient(client.Client):
                     def get(self,path,**params):
                         calls.append((path,params))
+                        if path.endswith('/Views'):
+                            return {'Items':[
+                                {'Id':'1'*32,'Name':'Movies','CollectionType':'movies'},
+                                {'Id':'2'*32,'Name':'Shows','CollectionType':'tvshows'},
+                                {'Id':'3'*32,'Name':'Venom Movies','CollectionType':'movies'},
+                                {'Id':'4'*32,'Name':'Venom Series','CollectionType':'tvshows'},
+                            ]}
                         return {'Items':[item]}
                     def listing(self,*args,**kwargs):
                         raise AssertionError('Library search fell through to ordinary listing')
@@ -83,16 +94,19 @@ class SearchTests(unittest.TestCase):
                     if str(path).endswith('/plugin.video.jellyfin/data.json'):
                         return io.StringIO(json.dumps({'Servers':[server]}))
                     if str(path).endswith('/home-library-scopes.json'):
-                        return io.StringIO(json.dumps({'movies':['1'*32],'shows':['2'*32]}))
+                        return io.StringIO(json.dumps({'movies':['1'*32],'shows':['2'*32],
+                            'venom_movies':['3'*32],'venom_shows':['4'*32]}))
                     raise AssertionError('Unexpected file access: '+str(path))
                 argv=['plugin://plugin.video.habibi.resume/','7','?'+urlencode({'mode':mode,'query':title})]
                 with mock.patch.dict(sys.modules,modules), mock.patch.object(client,'Client',FakeClient), \
                         mock.patch('builtins.open',side_effect=fixture_open), mock.patch.object(sys,'argv',argv):
                     runpy.run_path(str(entry),run_name='__main__')
                 modules['xbmcplugin'].endOfDirectory.assert_called_once_with(7,cacheToDisc=False)
-                self.assertEqual(len(calls),2)
-                self.assertTrue(all(path=='Users/test-user/Items' for path,_ in calls))
-                self.assertEqual(calls[0][1]['IncludeItemTypes'],kind)
+                self.assertGreaterEqual(len(calls),2)
+                search_calls=[call for call in calls if call[0]=='Users/test-user/Items']
+                self.assertTrue(search_calls)
+                self.assertEqual(search_calls[0][1]['IncludeItemTypes'],kind)
+                self.assertEqual(search_calls[0][1]['ParentId'],scope*32)
                 rows=modules['xbmcplugin'].addDirectoryItems.call_args.args[1]
                 self.assertEqual(len(rows),1)
                 target=urlsplit(rows[0][0])
@@ -105,7 +119,7 @@ class SearchTests(unittest.TestCase):
         path=Path(__file__).resolve().parent.parent/'shortcuts/generator/data/setup/search_path.xml'
         if not path.exists():self.skipTest('not in fork checkout')
         root=ET.parse(path).getroot()
-        for kind in ('Movies','TvShows'):
+        for kind in ('Movies','TvShows','VenomMovies','VenomShows'):
             rules={r.get('name'):next((e.findtext('value') or '' for e in r if e.findtext('condition')=='{item_path}==DefaultSearch-'+kind),'') for r in root}
             self.assertTrue(rules['widget_path'].startswith('plugin://plugin.video.habibi.resume/'))
             self.assertEqual(rules['widget_path_end'],'')
@@ -118,7 +132,8 @@ class SearchTests(unittest.TestCase):
         root=ET.parse(path).getroot()
         rules={entry.findtext('condition'):entry.findtext('value') or ''
                for group in root if group.get('name')=='widget_path' for entry in group}
-        for kind,mode in [('Movies','searchmovies'),('TvShows','searchshows')]:
+        for kind,mode in [('Movies','searchmovies'),('TvShows','searchshows'),
+                          ('VenomMovies','searchvenommovies'),('VenomShows','searchvenomshows')]:
             prefix=html.unescape(rules['{item_path}==DefaultSearch-'+kind])
             query='Spider-Man & رَمَضَان + Dune'
             url=prefix+urlencode({'query':query}).split('=',1)[1]
@@ -127,5 +142,32 @@ class SearchTests(unittest.TestCase):
             target=html.unescape(rules['{item_path}==DefaultSearch-'+kind])
             self.assertEqual(urlsplit(target).netloc,'plugin.video.themoviedb.helper')
             self.assertEqual(parse_qs(urlsplit(target).query)['info'],['search'])
+
+    def test_owned_and_venom_scopes_never_mix(self):
+        class Fake:
+            user='current-user'
+            def __init__(self):self.calls=[]
+            def scope_ids(self,name):
+                return {'movies':['1'*32], 'venom_movies':['2'*32]}[name]
+            def get(self,path,**params):
+                self.calls.append(params)
+                if 'Ids' in params:
+                    return {'Items':[{'Id':params['Ids'],'Name':'Dune','Type':'Movie'}]}
+                return {'Items':[{'Id':params['ParentId'],'Name':'Dune','Type':'Movie'}]}
+        owned=Fake();venom=Fake()
+        self.assertEqual(search(owned,'Dune',scope='movies')[0]['Id'],'1'*32)
+        self.assertEqual(search(venom,'Dune',scope='venom_movies')[0]['Id'],'2'*32)
+        self.assertEqual({call.get('ParentId') for call in owned.calls if 'SearchTerm' in call},{'1'*32})
+        self.assertEqual({call.get('ParentId') for call in venom.calls if 'SearchTerm' in call},{'2'*32})
+
+    def test_search_widget_sections(self):
+        import json
+        path=Path(__file__).resolve().parent.parent/'shortcuts/skinvariables-shortcut-searchwidgets.json'
+        if not path.exists():self.skipTest('not in fork checkout')
+        rows=json.loads(path.read_text())
+        self.assertEqual([row['label'] for row in rows],
+                         ['Movies','Shows','Venom Movies — Not HD','Venom Shows — Not HD'])
+        # Discover is the skin's independent built-in selector, not another
+        # library route in this generated list.
 
 if __name__=='__main__':unittest.main()

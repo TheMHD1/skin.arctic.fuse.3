@@ -22,35 +22,53 @@ def matches(query, title):
             or all(any(part in word for word in title_words) for part in query_words))
 
 
-def search(client, query, kind='Movie', start=0, page_size=30):
+def search(client, query, kind='Movie', start=0, page_size=30, scope=None):
     if kind not in ('Movie', 'Series'):
         raise ValueError('Unsupported search kind')
     if not words(query):
         return []
     if len(query) > 200:
         raise ValueError('Search is too long')
-    parents = client.scopes.get('movies' if kind == 'Movie' else 'shows') or [None]
+    scope = scope or ('movies' if kind == 'Movie' else 'shows')
+    allowed = {'movies':'Movie', 'shows':'Series',
+               'venom_movies':'Movie', 'venom_shows':'Series'}
+    if allowed.get(scope) != kind:
+        raise ValueError('Unsupported search scope')
+    parents = client.scope_ids(scope)
+    if not parents:
+        return []
     found = {}
     for parent in parents:
-        offset = 0
-        while True:
-            params = dict(Recursive='true', IncludeItemTypes=kind, IsMissing='false',
-                          Fields='OriginalTitle', EnableImages='false',
-                          EnableUserData='false', EnableTotalRecordCount='false',
-                          SortBy='SortName', SortOrder='Ascending', Limit=500, StartIndex=offset)
-            if parent:
+        # Jellyfin's SearchTerm keeps large provider libraries bounded. Try the
+        # literal, spaced and joined spellings so punctuation-insensitive local
+        # matching still handles Spider-Man / spider man / spiderman.
+        terms = []
+        seen_terms = set()
+        for term in (query.strip(), ' '.join(words(query)), ''.join(words(query))):
+            key = term.casefold()
+            if key not in seen_terms:
+                seen_terms.add(key)
+                terms.append(term)
+        for term in terms:
+            offset = 0
+            while True:
+                params = dict(Recursive='true', IncludeItemTypes=kind, IsMissing='false',
+                              Fields='OriginalTitle', EnableImages='false',
+                              EnableUserData='false', EnableTotalRecordCount='false',
+                              SearchTerm=term, SortBy='SortName', SortOrder='Ascending',
+                              Limit=500, StartIndex=offset)
                 from client import valid_id
                 params['ParentId'] = valid_id(parent)
-            rows = client.get('Users/'+client.user+'/Items', **params)['Items']
-            for item in rows:
-                if matches(query, item.get('Name')) or matches(query, item.get('OriginalTitle')):
-                    found[item['Id']] = item
-            offset += len(rows)
-            if len(rows) < 500:
-                break
-            if offset >= 50000:
-                # Never silently present a truncated search as complete.
-                raise RuntimeError('Configure Home library scopes for this large catalogue')
+                rows = client.get('Users/'+client.user+'/Items', **params)['Items']
+                for item in rows:
+                    if matches(query, item.get('Name')) or matches(query, item.get('OriginalTitle')):
+                        found[item['Id']] = item
+                offset += len(rows)
+                if len(rows) < 500:
+                    break
+                if offset >= 10000:
+                    # Never silently present a truncated search as complete.
+                    raise RuntimeError('Search result set is too large')
     results = sorted(found.values(), key=lambda i: (
         ''.join(words(i.get('Name'))) != ''.join(words(query)),
         ' '.join(words(i.get('Name'))), i['Id']))

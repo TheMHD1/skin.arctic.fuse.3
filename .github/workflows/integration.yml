@@ -15,6 +15,24 @@ jobs:
       - run: python integration/server/dovi/test_dovi_reconciler.py
       - run: bash -n integration/server/dovi/dovi-process-queue-20260922.sh
       - run: python integration/release/verify-preservation.py
+      - run: python integration/release/test-preservation.py
       - run: python integration/release/kodi/build.py --output "$RUNNER_TEMP/habibi-payload"
       - run: python integration/release/kodi/test_release.py "$RUNNER_TEMP/habibi-payload"
       - run: python integration/release/handoff/test_profile.py
+      - run: python -m unittest discover -s integration/server/library-dates -p 'test_*.py'
+      - run: python -m unittest discover -s integration/server/request-ready -p 'test_*.py'
+      - run: python -m unittest discover -s integration/server/arr-maintenance -p 'test_*.py'
+      - run: python integration/release/library-experience/build.py --output "$RUNNER_TEMP/library-payload"
+      - run: python integration/release/library-experience/test_installer.py
+  csharp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: python3 integration/server/jellyfin-custom/prepare.py "$RUNNER_TEMP/jellyfin-reviewed-source"
+      - name: Execute maintenance plugin SQLite and lifecycle tests
+        run: dotnet run --project integration/server/library-experience-plugin/tests/Jellyfin.Plugin.LibraryExperience.Tests.csproj -c Release -p:JellyfinSourceRoot="$RUNNER_TEMP/jellyfin-reviewed-source" -- -noLogo -noColor
+      - name: Execute server resume and next-up regression tests
+        run: dotnet run --project "$RUNNER_TEMP/jellyfin-reviewed-source/tests/Jellyfin.Server.Implementations.Tests/Jellyfin.Server.Implementations.Tests.csproj" -c Release -- -class Jellyfin.Server.Implementations.Tests.Item.TVSeriesManagerOrderingTests -class Jellyfin.Server.Implementations.Tests.Item.NextUpServiceTests -class Jellyfin.Server.Implementations.Tests.Item.BaseItemRepositoryResumeDedupTests -class Jellyfin.Server.Implementations.Tests.Item.BaseItemRepositoryPlayedVersionTests -noLogo -noColor

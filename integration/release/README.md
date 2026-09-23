@@ -1,5 +1,12 @@
 # Portable September 22 source release
 
+For the subsequent local R7 Home/search rollout, use
+[`library-experience/README.md`](library-experience/README.md). The original R6
+builder below intentionally uses preserved historical inputs in
+`kodi/baseline-r6/`; current Home source must not silently alter its hashes.
+Server/Web/notification changes are indexed in
+[`../LIBRARY-EXPERIENCE-2026-09-22.md`](../LIBRARY-EXPERIENCE-2026-09-22.md).
+
 This directory preserves the reviewed Kodi/Jellyfin/Arctic changes as source,
 builders and fail-closed update tooling. It is not a blank-device installer and
 does not contain credentials, device identities, private paths, userdata,

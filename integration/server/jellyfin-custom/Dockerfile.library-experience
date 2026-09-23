@@ -1,0 +1,7 @@
+# BASE_IMAGE must be the privately retained, version-matched 12.1 image with
+# the maintained naming/One Pace and hardware dependencies already installed.
+# Copy only newly built implementation DLLs into this build context.
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+COPY Emby.Server.Implementations.dll /usr/lib/jellyfin/bin/Emby.Server.Implementations.dll
+COPY Jellyfin.Server.Implementations.dll /usr/lib/jellyfin/bin/Jellyfin.Server.Implementations.dll

@@ -1,0 +1,295 @@
+diff --git a/src/apps/legacy/features/search/api/useSearchItems.ts b/src/apps/legacy/features/search/api/useSearchItems.ts
+index 5a23dcb..2e5499d 100644
+--- a/src/apps/legacy/features/search/api/useSearchItems.ts
++++ b/src/apps/legacy/features/search/api/useSearchItems.ts
+@@ -1,5 +1,4 @@
+ import { BaseItemKind } from '@jellyfin/sdk/lib/generated-client/models/base-item-kind';
+-import type { BaseItemDto } from '@jellyfin/sdk/lib/generated-client/models/base-item-dto';
+ import { CollectionType } from '@jellyfin/sdk/lib/generated-client/models/collection-type';
+ import { useQuery } from '@tanstack/react-query';
+ import { CardShape } from 'components/cardbuilder/utils/shape';
+@@ -14,6 +13,9 @@ import { useLiveTvSearch } from './useLiveTvSearch';
+ import { fetchItemsByType } from './fetchItemsByType';
+ import { useProgramsSearch } from './useProgramsSearch';
+ import { LIVETV_CARD_OPTIONS } from '../constants/liveTvCardOptions';
++import { useUserViews } from 'hooks/api/useUserViews';
++import { classifySearchLibraries } from '../utils/libraryScopes';
++import { fetchScopedMedia } from './fetchScopedMedia';
+ 
+ export const useSearchItems = (
+     parentId?: string,
+@@ -28,6 +30,9 @@ export const useSearchItems = (
+     const { data: liveTvSections, isPending: isLiveTvPending } = useLiveTvSearch(parentId, collectionType, searchTerm);
+     const { api, user } = useApi();
+     const userId = user?.Id;
++    const isGlobalSearch = !parentId && !collectionType;
++    const { data: userViews, isPending: areViewsPending } = useUserViews({ userId });
++    const libraryScopes = classifySearchLibraries(userViews?.Items);
+ 
+     const isArtistsEnabled = !isArtistsPending || (collectionType && !isMusic(collectionType));
+     const isPeopleEnabled = !isPeoplePending || (collectionType && !isMovies(collectionType) && !isTVShows(collectionType));
+@@ -37,7 +42,7 @@ export const useSearchItems = (
+     const isLiveTvEnabled = !isLiveTvPending || !collectionType || !isLivetv(collectionType);
+ 
+     return useQuery({
+-        queryKey: ['Search', 'Items', collectionType, parentId, searchTerm],
++        queryKey: ['Search', 'Items', userId, collectionType, parentId, searchTerm, isGlobalSearch ? libraryScopes : undefined],
+         queryFn: async ({ signal }) => {
+             if (liveTvSections && collectionType && isLivetv(collectionType)) {
+                 return sortSections(liveTvSections);
+@@ -67,28 +72,39 @@ export const useSearchItems = (
+ 
+             const itemTypes: BaseItemKind[] = getItemTypesFromCollectionType(collectionType);
+ 
+-            const searchData = await fetchItemsByType(
+-                api!,
+-                userId,
+-                {
+-                    includeItemTypes: itemTypes,
+-                    parentId,
+-                    searchTerm,
+-                    isMissing: itemTypes.includes(BaseItemKind.Episode) && !user?.Configuration?.DisplayMissingEpisodes ? false : undefined,
+-                    limit: 800
+-                },
+-                { signal }
+-            );
++            if (isGlobalSearch) {
++                // Query each permitted library before limiting results. Filtering
++                // a small global page would let the large Venom catalogue hide
++                // owned titles. Views come from Jellyfin for this signed-in user.
++                const scoped = await fetchScopedMedia(libraryScopes, async (parent, type) => {
++                    const page = await fetchItemsByType(api!, userId, {
++                        includeItemTypes: [type], parentId: parent,
++                        searchTerm, limit: 800,
++                        isMissing: type === BaseItemKind.Episode && !user?.Configuration?.DisplayMissingEpisodes ? false : undefined
++                    }, { signal });
++                    return page.Items || [];
++                });
++                for (const group of scoped) {
++                    addSection(sections, group.title, group.items, getCardOptionsFromType(group.type));
++                }
+ 
+-            if (searchData.Items) {
++                const otherTypes = itemTypes.filter(type => type !== BaseItemKind.Movie && type !== BaseItemKind.Series && type !== BaseItemKind.Episode);
++                const otherData = await fetchItemsByType(api!, userId, {
++                    includeItemTypes: otherTypes, searchTerm, limit: 800
++                }, { signal });
++                for (const itemType of otherTypes) {
++                    addSection(sections, getTitleFromType(itemType), otherData.Items?.filter(item => item.Type === itemType), getCardOptionsFromType(itemType));
++                }
++            } else {
++                const searchData = await fetchItemsByType(
++                    api!, userId, {
++                        includeItemTypes: itemTypes, parentId, searchTerm,
++                        isMissing: itemTypes.includes(BaseItemKind.Episode) && !user?.Configuration?.DisplayMissingEpisodes ? false : undefined,
++                        limit: 800
++                    }, { signal }
++                );
+                 for (const itemType of itemTypes) {
+-                    const items: BaseItemDto[] = [];
+-                    for (const searchItem of searchData.Items) {
+-                        if (searchItem.Type === itemType) {
+-                            items.push(searchItem);
+-                        }
+-                    }
+-                    addSection(sections, getTitleFromType(itemType), items, getCardOptionsFromType(itemType));
++                    addSection(sections, getTitleFromType(itemType), searchData.Items?.filter(item => item.Type === itemType), getCardOptionsFromType(itemType));
+                 }
+             }
+ 
+@@ -103,6 +119,7 @@ export const useSearchItems = (
+             && !!isVideosEnabled
+             && !!isLiveTvEnabled
+             && !!isProgramsEnabled
++            && (!isGlobalSearch || !areViewsPending)
+         )
+     });
+ };
+diff --git a/src/apps/legacy/features/search/components/SearchResults.tsx b/src/apps/legacy/features/search/components/SearchResults.tsx
+index b96910f..e269b82 100644
+--- a/src/apps/legacy/features/search/components/SearchResults.tsx
++++ b/src/apps/legacy/features/search/components/SearchResults.tsx
+@@ -46,7 +46,7 @@ const SearchResults: FC<SearchResultsProps> = ({
+         return (
+             <SearchResultsRow
+                 key={`${section.title}-${index}`}
+-                title={globalize.translate(section.title)}
++                title={section.title.startsWith('Venom ') ? section.title : globalize.translate(section.title)}
+                 items={section.items}
+                 cardOptions={{
+                     shape: CardShape.AutoOverflow,
+diff --git a/src/apps/legacy/features/search/constants/sectionSortOrder.ts b/src/apps/legacy/features/search/constants/sectionSortOrder.ts
+index d66ee43..6da73b2 100644
+--- a/src/apps/legacy/features/search/constants/sectionSortOrder.ts
++++ b/src/apps/legacy/features/search/constants/sectionSortOrder.ts
+@@ -1,6 +1,8 @@
+ export const SEARCH_SECTIONS_SORT_ORDER = [
+     'Movies',
+     'Shows',
++    'Venom Movies — Not HD',
++    'Venom Shows — Not HD',
+     'Episodes',
+     'People',
+     'Studios',
+
+diff --git a/src/apps/legacy/features/search/utils/libraryScopes.ts b/src/apps/legacy/features/search/utils/libraryScopes.ts
+new file mode 100644
+index 0000000..3bdf6a6
+--- /dev/null
++++ b/src/apps/legacy/features/search/utils/libraryScopes.ts
+@@ -0,0 +1,43 @@
++import type { BaseItemDto } from '@jellyfin/sdk/lib/generated-client/models/base-item-dto';
++import { BaseItemKind } from '@jellyfin/sdk/lib/generated-client/models/base-item-kind';
++import { CollectionType } from '@jellyfin/sdk/lib/generated-client/models/collection-type';
++
++export interface SearchLibraryScopes {
++    ownedMovies: string[];
++    ownedShows: string[];
++    venomMovies: string[];
++    venomShows: string[];
++}
++
++const normalName = (name: string) => name.trim().replace(/\s+/g, ' ').toLocaleLowerCase('en-US');
++const validId = (id?: string | null): id is string => !!id && /^[0-9a-f]{32}$/i.test(id);
++const nonMovieViews = new Set(['collections', 'playlists', 'live tv', 'music', 'photos', 'home videos', 'books', 'audiobooks']);
++type ScopeName = keyof SearchLibraryScopes;
++
++const scopesForView = (view: BaseItemDto): ScopeName[] => {
++    const name = normalName(view.Name || '');
++    if (name.startsWith('venom ')) {
++        if (view.CollectionType === CollectionType.Movies && name === 'venom movies') return ['venomMovies'];
++        if (view.CollectionType === CollectionType.Tvshows && (name === 'venom series' || name === 'venom shows')) return ['venomShows'];
++        return [];
++    }
++    if (view.CollectionType === CollectionType.Movies) return ['ownedMovies'];
++    if (view.CollectionType === CollectionType.Tvshows) return ['ownedShows'];
++    // Mixed media libraries (including Shoko Anime) have no collection type.
++    if (!view.CollectionType && !nonMovieViews.has(name) && (view.Type === BaseItemKind.CollectionFolder || view.Type === BaseItemKind.UserView)) {
++        return ['ownedMovies', 'ownedShows'];
++    }
++    return [];
++};
++
++/** User views are already permission-filtered by Jellyfin. Unknown Venom views are excluded. */
++export const classifySearchLibraries = (views?: BaseItemDto[]): SearchLibraryScopes => {
++    const scopes: SearchLibraryScopes = {
++        ownedMovies: [], ownedShows: [], venomMovies: [], venomShows: []
++    };
++    for (const view of views || []) {
++        if (!validId(view.Id) || !view.Name) continue;
++        for (const scope of scopesForView(view)) scopes[scope].push(view.Id);
++    }
++    return scopes;
++};
+
+diff --git a/src/apps/legacy/features/search/api/fetchScopedMedia.ts b/src/apps/legacy/features/search/api/fetchScopedMedia.ts
+new file mode 100644
+index 0000000..5109c31
+--- /dev/null
++++ b/src/apps/legacy/features/search/api/fetchScopedMedia.ts
+@@ -0,0 +1,33 @@
++import { BaseItemKind } from '@jellyfin/sdk/lib/generated-client/models/base-item-kind';
++import type { BaseItemDto } from '@jellyfin/sdk/lib/generated-client/models/base-item-dto';
++import type { SearchLibraryScopes } from '../utils/libraryScopes';
++
++export interface ScopedMediaGroup {
++    type: BaseItemKind;
++    title: string;
++    items: BaseItemDto[];
++}
++
++/** Fetch each permission-filtered parent separately, before result limits apply. */
++export const fetchScopedMedia = async (
++    scopes: SearchLibraryScopes,
++    fetchPage: (parentId: string, type: BaseItemKind) => Promise<BaseItemDto[]>
++): Promise<ScopedMediaGroup[]> => {
++    const groups = [
++        { type: BaseItemKind.Movie, title: 'Movies', parents: scopes.ownedMovies },
++        { type: BaseItemKind.Series, title: 'Shows', parents: scopes.ownedShows },
++        { type: BaseItemKind.Movie, title: 'Venom Movies — Not HD', parents: scopes.venomMovies },
++        { type: BaseItemKind.Series, title: 'Venom Shows — Not HD', parents: scopes.venomShows },
++        { type: BaseItemKind.Episode, title: 'Episodes', parents: scopes.ownedShows }
++    ];
++    return Promise.all(groups.map(async group => {
++        const pages = await Promise.all(group.parents.map(parent => fetchPage(parent, group.type)));
++        const items = new Map<string, BaseItemDto>();
++        for (const page of pages) {
++            for (const item of page) {
++                if (item.Id && item.Type === group.type) items.set(item.Id, item);
++            }
++        }
++        return { type: group.type, title: group.title, items: [...items.values()] };
++    }));
++};
+
+diff --git a/src/apps/legacy/features/search/api/fetchScopedMedia.test.ts b/src/apps/legacy/features/search/api/fetchScopedMedia.test.ts
+new file mode 100644
+index 0000000..a2e5ebd
+--- /dev/null
++++ b/src/apps/legacy/features/search/api/fetchScopedMedia.test.ts
+@@ -0,0 +1,64 @@
++import { describe, expect, it, vi } from 'vitest';
++import { BaseItemKind } from '@jellyfin/sdk/lib/generated-client/models/base-item-kind';
++import type { BaseItemDto } from '@jellyfin/sdk/lib/generated-client/models/base-item-dto';
++import { CollectionType } from '@jellyfin/sdk/lib/generated-client/models/collection-type';
++import { classifySearchLibraries } from '../utils/libraryScopes';
++import { fetchScopedMedia } from './fetchScopedMedia';
++
++const id = (digit: string) => digit.repeat(32);
++const view = (digit: string, name: string, type?: CollectionType): BaseItemDto => ({
++    Id: id(digit), Name: name, Type: BaseItemKind.CollectionFolder, CollectionType: type
++});
++
++describe('authenticated library search scopes', () => {
++    it('separates Venom from owned libraries, includes mixed views, and excludes unrelated views', () => {
++        const scopes = classifySearchLibraries([
++            view('1', 'Movies', CollectionType.Movies),
++            view('2', 'Shows', CollectionType.Tvshows),
++            view('3', 'Shoko Anime'),
++            view('4', ' Venom   Movies ', CollectionType.Movies),
++            view('5', 'VENOM SERIES', CollectionType.Tvshows),
++            view('6', 'Venom Other', CollectionType.Movies),
++            view('7', 'Music', CollectionType.Music),
++            view('8', 'Live TV', CollectionType.Livetv),
++            { ...view('9', 'Box Sets'), Type: BaseItemKind.BoxSet },
++            { ...view('a', 'Invalid', CollectionType.Movies), Id: 'bad' },
++            view('b', 'Collections'),
++            view('c', 'Playlists')
++        ]);
++        expect(scopes).toEqual({
++            ownedMovies: [id('1'), id('3')], ownedShows: [id('2'), id('3')],
++            venomMovies: [id('4')], venomShows: [id('5')]
++        });
++    });
++
++    it('queries only permitted parents per type and deduplicates item identities', async () => {
++        const scopes = classifySearchLibraries([
++            view('1', 'Movies', CollectionType.Movies),
++            view('2', 'Shoko Anime'),
++            view('3', 'Venom Movies', CollectionType.Movies)
++        ]);
++        const fetchPage = vi.fn(async (parent: string, type: BaseItemKind): Promise<BaseItemDto[]> => {
++            if (type === BaseItemKind.Movie && parent !== id('3')) {
++                return [{ Id: id('f'), Type: BaseItemKind.Movie, Name: 'Owned film' }];
++            }
++            return [{ Id: parent, Type: type, Name: 'Result' }];
++        });
++        const groups = await fetchScopedMedia(scopes, fetchPage);
++        expect(groups.find(group => group.title === 'Movies')?.items).toHaveLength(1);
++        expect(groups.find(group => group.title === 'Venom Movies — Not HD')?.items).toHaveLength(1);
++        expect(groups.find(group => group.title === 'Venom Shows — Not HD')?.items).toHaveLength(0);
++        expect(fetchPage).toHaveBeenCalledWith(id('1'), BaseItemKind.Movie);
++        expect(fetchPage).toHaveBeenCalledWith(id('2'), BaseItemKind.Series);
++        expect(fetchPage).toHaveBeenCalledWith(id('2'), BaseItemKind.Episode);
++        expect(fetchPage.mock.calls.every(([parent]) => !!parent)).toBe(true);
++        expect(fetchPage).toHaveBeenCalledWith(id('3'), BaseItemKind.Movie);
++    });
++
++    it('fails closed when no permission-filtered views are available', async () => {
++        const fetchPage = vi.fn();
++        const groups = await fetchScopedMedia(classifySearchLibraries(), fetchPage);
++        expect(fetchPage).not.toHaveBeenCalled();
++        expect(groups.every(group => group.items.length === 0)).toBe(true);
++    });
++});
+

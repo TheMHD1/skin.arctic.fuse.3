@@ -21,6 +21,14 @@
             <value>plugin://plugin.video.habibi.resume/?mode=searchshows&amp;amp;query=</value>
         </rule>
         <rule>
+            <condition>{item_path}==DefaultSearch-VenomMovies</condition>
+            <value>plugin://plugin.video.habibi.resume/?mode=searchvenommovies&amp;amp;query=</value>
+        </rule>
+        <rule>
+            <condition>{item_path}==DefaultSearch-VenomShows</condition>
+            <value>plugin://plugin.video.habibi.resume/?mode=searchvenomshows&amp;amp;query=</value>
+        </rule>
+        <rule>
             <condition>{item_path}==DefaultSearch-Episodes</condition>
             <value>videodb://tvshows/titles/-1/-1/-1/-1/?xsp=%7B%22order%22%3A%7B%22direction%22%3A%22ascending%22%2C%22ignorefolders%22%3A0%2C%22method%22%3A%22sorttitle%22%7D%2C%22rules%22%3A%7B%22and%22%3A%5B%7B%22field%22%3A%22title%22%2C%22operator%22%3A%22contains%22%2C%22value%22%3A%5B%22</value>
         </rule>
@@ -294,6 +302,14 @@
             <value></value>
         </rule>
         <rule>
+            <condition>{item_path}==DefaultSearch-VenomMovies</condition>
+            <value></value>
+        </rule>
+        <rule>
+            <condition>{item_path}==DefaultSearch-VenomShows</condition>
+            <value></value>
+        </rule>
+        <rule>
             <condition>{item_path}==DefaultSearch-Episodes</condition>
             <value>%22%5D%7D%5D%7D%2C%22type%22%3A%22episodes%22%7D</value>
         </rule>
@@ -519,6 +535,14 @@
         </rule>
         <rule>
             <condition>{item_path}==DefaultSearch-TvShows</condition>
+            <value>videos</value>
+        </rule>
+        <rule>
+            <condition>{item_path}==DefaultSearch-VenomMovies</condition>
+            <value>videos</value>
+        </rule>
+        <rule>
+            <condition>{item_path}==DefaultSearch-VenomShows</condition>
             <value>videos</value>
         </rule>
         <rule>
@@ -796,6 +820,14 @@
         </rule>
         <rule>
             <condition>{item_path}==DefaultSearch-TvShows</condition>
+            <value>Path_SearchTerm_SingleEncoded</value>
+        </rule>
+        <rule>
+            <condition>{item_path}==DefaultSearch-VenomMovies</condition>
+            <value>Path_SearchTerm_SingleEncoded</value>
+        </rule>
+        <rule>
+            <condition>{item_path}==DefaultSearch-VenomShows</condition>
             <value>Path_SearchTerm_SingleEncoded</value>
         </rule>
         <rule>
