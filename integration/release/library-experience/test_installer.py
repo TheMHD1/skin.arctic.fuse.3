@@ -127,6 +127,35 @@ class InstallerTests(unittest.TestCase):
         self.assertEqual(run.call_count,2)
         self.assertEqual(idle.call_count,2)
 
+    def test_previous_r7_search_requires_matching_manifest_and_updates_two_paths(self):
+        plan=installer.build_changes(self.root,self.stage,self.profile)
+        installer.transaction.deploy(self.root,plan,self.temp/'before',run=mock.Mock(),
+                                     wait_ready=mock.Mock(),idle_check=mock.Mock())
+        relative=installer.TARGETS['home/search.py']
+        previous=b'# previous reviewed R7 search fixture\n'
+        (self.root/relative).write_bytes(previous)
+        with mock.patch.object(installer,'PREVIOUS_SEARCH_HASH',sha(previous)):
+            with self.assertRaisesRegex(RuntimeError,'manifest drift'):
+                installer.build_changes(self.root,self.stage,self.profile)
+            record=json.loads(self.manifest.read_text())
+            record['files'][relative]=sha(previous)
+            self.manifest.write_text(json.dumps(record,indent=2)+'\n')
+            upgrade=installer.build_changes(self.root,self.stage,self.profile)
+            self.assertEqual(set(upgrade),{self.root/relative,self.manifest})
+
+    def test_reviewed_generator_reindent_updates_only_manifest(self):
+        plan=installer.build_changes(self.root,self.stage,self.profile)
+        installer.transaction.deploy(self.root,plan,self.temp/'before',run=mock.Mock(),
+                                     wait_ready=mock.Mock(),idle_check=mock.Mock())
+        target=self.root/installer.GENERATED
+        rebuilt=target.read_bytes()+b'\n\n'
+        target.write_bytes(rebuilt)
+        with mock.patch.object(installer,'REBUILT_GENERATED_HASH',sha(rebuilt)):
+            plan=installer.build_changes(self.root,self.stage,self.profile)
+            self.assertEqual(set(plan),{self.manifest})
+            record=json.loads(plan[self.manifest])
+            self.assertEqual(record['files'][installer.GENERATED],sha(rebuilt))
+
     def test_drift_and_partial_output_fail_before_writes(self):
         before=self.snapshot()
         target=self.root/installer.TARGETS['home/client.py']

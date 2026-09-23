@@ -46,7 +46,12 @@ use it only with current user authorization. It does not relax source, manifest,
 version, hostname, MAC or Jellyfin-user checks.
 
 The installer accepts only the captured local r6 whole-file cohort or its own
-complete output cohort. Partial updates, stale manifests and unrelated source
+complete output cohort, plus the exact initial R7 cohort for the joined-search
+correction. It also recognizes the one captured post-startup generator output
+whose only difference is indentation; element order, attributes and nonblank
+text were independently compared. That known regenerated file is preserved and
+its manifest hash refreshed. Unknown regeneration/source drift still fails.
+Partial updates, stale manifests and unrelated source
 drift fail before Kodi is stopped. Writes are backed up and use the shared
 transaction rollback/readiness behavior. Power loss or forced process death is
 not guaranteed rollback; recover manually from the printed backup directory.
@@ -60,3 +65,13 @@ python3 integration/release/library-experience/test_installer.py
 Passing source tests are not device acceptance. After deployment, verify Home
 ordering/refresh and the five visible sections: Movies, Shows, Venom Movies —
 Not HD, Venom Shows — Not HD, and the existing independent Discover section.
+
+Joined input is checked explicitly: `Spider-Man`/`spider man` already worked,
+but `spiderman` originally produced no upstream candidates. The generic fallback
+uses bounded four-character then three-character prefix/suffix anchors, only
+after a parent's normal search has no full match. It stops widening after a
+matching anchor, filters every candidate against the full normalized query,
+and never removes the authorized ParentId. A global 500-row fallback budget
+fails with “try spaces between words” when too broad. This is bounded candidate
+discovery, not a promise of exhaustive punctuation normalization across an
+entire provider catalogue. Twelve search and six installer tests cover this.

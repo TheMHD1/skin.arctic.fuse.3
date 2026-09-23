@@ -1,9 +1,12 @@
 # Import-date repair runbook
 
-Status: source and local tests only. The historical dates have **not** been
-applied by this repository stage. `repair.py` works with the reviewed
-`/Habibi/LibraryImportDate/{itemId}` endpoint, now intended to be supplied by
-the version-matched `Habibi.LibraryExperience` plugin. Do not use an older
+Status: deployed September 23. One canary plus the journaled batch corrected
+4,050 Movie/Episode dates and recomputed 165 exact parent Series dates.
+Independent read-only database verification found zero missing items, path/date
+mismatches, derived-Series mismatches or pending refreshes. Fifteen focused CLI
+tests pass. `repair.py` uses the reviewed
+`/Habibi/LibraryImportDate/{itemId}` endpoint supplied by
+the version-matched Library Experience Maintenance plugin. Do not use an older
 core-API implementation that invokes `UpdateToRepositoryAsync` for this
 bulk operation: Jellyfin's `MetadataEdit` path can run metadata savers and
 rewrite NFO files. The plugin must persist only `DateCreated` with the same
@@ -114,4 +117,6 @@ idle, backed-up server. Check a bounded sample of persisted `DateCreated`
 values and Recently Added order before any full apply. A source-only test or
 HTTP 204 is not proof of database readback or app ordering. The maintained
 plugin, CLI, tests, build/install and rollback procedure belong together in
-the fork for future rebuilds; no production deployment is claimed here.
+the fork for future rebuilds. The accepted installed Kodi Home rows show new
+imports first, while Resume retains watch-activity ordering. A bounded sample
+of 203 repaired-media paths found no adjacent NFO added-date overrides.

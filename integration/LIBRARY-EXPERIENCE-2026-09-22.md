@@ -36,6 +36,12 @@ querying. There is no unrestricted fallback if views fail. Exact item IDs are
 retained for playback; unknown provider-named libraries are not treated as
 owned content. Punctuation variants supplement literal Kodi searches.
 
+A live joined-spelling check found that local normalization alone was not
+sufficient: the server returned no candidates for `spiderman`. Kodi now has a
+permission-scoped bounded prefix/suffix fallback before full-query matching.
+It does not download the full provider catalogue; overly broad joined searches
+ask for spaces rather than silently claiming a complete result.
+
 The deployed Web bundle was checked in an authenticated mobile-size browser
 with a user having both catalogues and a restricted user. Owned rows appeared
 first, provider rows were separate, Discover remained available, and the
@@ -55,6 +61,12 @@ current Radarr/Sonarr physical file by exact path, never title guesses. The
 administrator-only maintenance plugin changes only the guarded date column,
 then recomputes affected Series latest-media dates. The journaled CLI includes
 resume and compensating rollback; both must preserve derived parent dates.
+
+The completed live batch corrected 4,050 Movie/Episode dates and recomputed
+165 parent Series dates. Independent read-only database checks found zero
+missing items, path/date mismatches or derived-date mismatches, and no pending
+refreshes. Kodi's new imports rose to the top while Continue Watching retained
+the latest real playback first. No watch history was changed by the repair.
 
 Kodi's Home refresh recognizes both Home and Videos windows, refreshes while
 idle, and schedules a bounded refresh after playback or library-change events.

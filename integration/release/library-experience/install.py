@@ -28,7 +28,7 @@ TARGETS = {
 }
 PAYLOAD_HASHES = {
     'home/client.py':'ea2ebdec9f096df0ed9c1512ab9abb4d4661d90e72c3c5d8f80899330d2ceba4',
-    'home/search.py':'df5da027592a8c8aa9ab3be5c564e9b7ecb15c0c01d2b938c18890e4f95b168a',
+    'home/search.py':'0b04d08e0c38066b0b4cb4d5dc52b39d6626816b69991304c6d5f59128eac3f8',
     'home/default.py':'446dcf19357f7e095ca8729fa44e6ef8604b9fc4ec2bc4a7119f892d7aca2b99',
     'home/service.py':'4bd56224430ac38c9fe9a7d5aeb6123974070174403eaa6f34da1c95b21e6ffd',
     'skin/search_path.xml':'ad2c2018bb9e80b839343d975f4b939713771853b815a828845ae8e8a394007f',
@@ -46,9 +46,13 @@ BASE_HASHES = {
 }
 GENERATED = 'addons/skin.arctic.fuse.3/1080i/script-skinvariables-generator-includes-.xml'
 GENERATED_HASH = '573e388dead0fcfc2dceae9c184bd60e8802fa94f8059a5d18e4a0076688b692'
+# The real generator rewrites indentation after startup. Verified identical
+# element/attribute/order/nonblank-text content, not an arbitrary drift bypass.
+REBUILT_GENERATED_HASH = '002abbb3fd60212c7b81bdd8228a58855c9305a0e0b7498f0edd83eabced1e6a'
 NODES = 'userdata/addon_data/script.skinvariables/nodes/skin.arctic.fuse.3/skinvariables-shortcut-searchwidgets.json'
 NODES_HASH = 'e139923bbbbc7af44a609662544298327c8c93efda30d6035e09ac9f459c6f62'
 BASE_MANIFEST_HASH = 'ebd17d7779c4c50d46fa1009de0d92b38213af14093a1aef2a2ef221788f974a'
+PREVIOUS_SEARCH_HASH = 'df5da027592a8c8aa9ab3be5c564e9b7ecb15c0c01d2b938c18890e4f95b168a'
 
 
 def sha(data):
@@ -100,10 +104,15 @@ def build_changes(root, stage, profile):
     current = {relative:sha(read(root/relative) or b'') for relative in BASE_HASHES}
     output_hashes = {TARGETS[name]:digest for name,digest in PAYLOAD_HASHES.items()}
     output_hashes[GENERATED] = GENERATED_HASH
+    if current[GENERATED] == REBUILT_GENERATED_HASH:
+        output_hashes[GENERATED] = REBUILT_GENERATED_HASH
     output_hashes[NODES] = NODES_HASH
     baseline = current == BASE_HASHES
     installed = current == output_hashes
-    require(baseline or installed, 'Unreviewed or partial Home/search source cohort')
+    previous_hashes = dict(output_hashes)
+    previous_hashes[TARGETS['home/search.py']] = PREVIOUS_SEARCH_HASH
+    previous = current == previous_hashes
+    require(baseline or installed or previous, 'Unreviewed or partial Home/search source cohort')
     if baseline:
         require(sha(manifest_source) == BASE_MANIFEST_HASH,
                 'Baseline integrity manifest is not the reviewed r6 snapshot')
@@ -116,8 +125,11 @@ def build_changes(root, stage, profile):
         nodes = transform_nodes(read(root/NODES))
         require(sha(nodes) == NODES_HASH, 'Unexpected search widget node output')
     else:
-        for relative, digest in output_hashes.items():
-            require(record['files'].get(relative) == digest,
+        for relative, digest in current.items():
+            accepted = {digest}
+            if relative == GENERATED and digest == REBUILT_GENERATED_HASH:
+                accepted.add(GENERATED_HASH)
+            require(record['files'].get(relative) in accepted,
                     'Installed source/manifest drift: '+relative)
         generated = read(root/GENERATED)
         nodes = read(root/NODES)

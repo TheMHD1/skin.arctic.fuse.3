@@ -17,7 +17,7 @@ SOURCES = {
 # Updated together with the maintained sources after focused review.
 OUTPUTS = {
     'home/client.py':'ea2ebdec9f096df0ed9c1512ab9abb4d4661d90e72c3c5d8f80899330d2ceba4',
-    'home/search.py':'df5da027592a8c8aa9ab3be5c564e9b7ecb15c0c01d2b938c18890e4f95b168a',
+    'home/search.py':'0b04d08e0c38066b0b4cb4d5dc52b39d6626816b69991304c6d5f59128eac3f8',
     'home/default.py':'446dcf19357f7e095ca8729fa44e6ef8604b9fc4ec2bc4a7119f892d7aca2b99',
     'home/service.py':'4bd56224430ac38c9fe9a7d5aeb6123974070174403eaa6f34da1c95b21e6ffd',
     'skin/search_path.xml':'ad2c2018bb9e80b839343d975f4b939713771853b815a828845ae8e8a394007f',

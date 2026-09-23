@@ -23,6 +23,8 @@ class SearchTests(unittest.TestCase):
                 self.calls.append((path,params))
                 if 'Ids' in params:
                     return {'Items':[{'Id':key,'Name':'Spider-Man','Type':'Movie'} for key in reversed(params['Ids'].split(','))]}
+                if params['SearchTerm'] in ('nothing','noth','hing','not','ing'):
+                    return {'Items':[]}
                 if params['StartIndex']==0:
                     return {'Items':[{'Id':f'{i:032x}','Name':'Unrelated'} for i in range(500)]}
                 return {'Items':[{'Id':'a'*32,'Name':'Spider-Man'}, {'Id':'b'*32,'Name':'Spider-Man 2'}]}
@@ -60,6 +62,68 @@ class SearchTests(unittest.TestCase):
                 self.assertEqual(fake.calls[0][1]['IncludeItemTypes'],kind)
                 self.assertEqual(fake.calls[0][1]['ParentId'],('1' if kind=='Movie' else '2')*32)
                 self.assertEqual(fake.calls[-1][1]['Ids'],item['Id'])
+
+    def test_joined_query_uses_bounded_generic_prefix_or_suffix_fallback(self):
+        cases = [
+            ('SpiderMan', 'spid', 'Spider-Man: No Way Home'),
+            ('TheMatrix', 'trix', 'The Matrix'),
+            ('NoWayHome', 'home', 'Spider-Man: No Way Home'),
+        ]
+        for index, (query, successful_anchor, title) in enumerate(cases, 1):
+            with self.subTest(query=query):
+                item = {'Id':f'{index:032x}', 'Name':title, 'Type':'Movie'}
+                class Fake:
+                    user='current-user'
+                    def __init__(self):self.calls=[]
+                    def scope_ids(self,name):return ['1'*32]
+                    def get(self,path,**params):
+                        self.calls.append((path,params))
+                        if 'Ids' in params:
+                            return {'Items':[item]}
+                        return {'Items':[item] if params['SearchTerm'] == successful_anchor else []}
+                fake = Fake()
+                self.assertEqual(search(fake,query),[item])
+                terms = [params['SearchTerm'] for _,params in fake.calls if 'SearchTerm' in params]
+                self.assertIn(successful_anchor, terms)
+                # Stop once a four-character anchor produced a full local match;
+                # do not continue to broad three-character suffixes such as man.
+                self.assertFalse(any(len(term) == 3 for term in terms))
+                self.assertTrue(all(params.get('ParentId') == '1'*32
+                                    for _,params in fake.calls if 'SearchTerm' in params))
+
+    def test_joined_fallback_widens_to_three_only_after_four_tier_misses(self):
+        item = {'Id':'a'*32, 'Name':'Ab-Cde', 'Type':'Movie'}
+        class Fake:
+            user='current-user'
+            def __init__(self):self.calls=[]
+            def scope_ids(self,name):return ['1'*32]
+            def get(self,path,**params):
+                self.calls.append(params)
+                if 'Ids' in params:return {'Items':[item]}
+                return {'Items':[item] if params['SearchTerm'] == 'abc' else []}
+        fake=Fake()
+        self.assertEqual(search(fake,'abcde'),[item])
+        terms=[params['SearchTerm'] for params in fake.calls if 'SearchTerm' in params]
+        self.assertEqual(terms,['abcde','abcd','bcde','abc'])
+
+    def test_joined_fallback_fails_clearly_before_broad_catalogue_scan(self):
+        class Fake:
+            user='current-user'
+            def __init__(self):self.calls=[]
+            def scope_ids(self,name):return ['1'*32]
+            def get(self,path,**params):
+                self.calls.append(params)
+                if params['SearchTerm'].casefold() == 'thematrix':return {'Items':[]}
+                start=params['StartIndex']
+                return {'Items':[{'Id':f'{start+i+1:032x}','Name':'Unrelated'}
+                                 for i in range(params['Limit'])]}
+        fake=Fake()
+        with self.assertRaisesRegex(RuntimeError,'Search too broad; try spaces between words'):
+            search(fake,'TheMatrix')
+        fallback=[params for params in fake.calls if params['SearchTerm'].casefold() != 'thematrix']
+        self.assertEqual(sum(len(range(params['Limit'])) for params in fallback),501)
+        self.assertTrue(all(params['Limit'] <= 100 for params in fallback))
+        self.assertTrue(all(params['ParentId'] == '1'*32 for params in fallback))
 
     def test_default_plugin_routes_use_server_search_not_local_or_discover(self):
         import client
