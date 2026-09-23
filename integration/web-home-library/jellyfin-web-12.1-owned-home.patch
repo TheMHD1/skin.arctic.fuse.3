@@ -1,28 +1,28 @@
 diff --git a/src/components/homesections/homesections.js b/src/components/homesections/homesections.js
-index 1a03637..128a480 100644
+index 1a03637..9d27ba2 100644
 --- a/src/components/homesections/homesections.js
 +++ b/src/components/homesections/homesections.js
-@@ -11,6 +11,7 @@ import { loadLibraryButtons } from './sections/libraryButtons';
+@@ -11,6 +11,8 @@ import { loadLibraryButtons } from './sections/libraryButtons';
  import { loadLibraryTiles } from './sections/libraryTiles';
  import { loadLiveTV } from './sections/liveTv';
  import { loadNextUp } from './sections/nextUp';
 +import { mountOwnedHomeRows } from './sections/ownedLibrary';
++import { ownedHomeAnchors } from './sections/ownedHomeLogic';
  import { loadRecentlyAdded } from './sections/recentlyAdded';
  import { loadResume } from './sections/resume';
  
-@@ -74,7 +75,18 @@ export function loadSections(elem, apiClient, user, userSettings) {
+@@ -74,7 +76,17 @@ export function loadSections(elem, apiClient, user, userSettings) {
                  elem.innerHTML = html;
                  elem.classList.add('homeSectionsContainer');
  
 -                const promises = getAllSectionsToShow(userSettings)
 +                const sections = getAllSectionsToShow(userSettings);
-+                let beforeIndex = sections.indexOf(HomeSectionType.LatestMedia);
-+                if (beforeIndex < 0) {
-+                    const nextUpIndex = sections.indexOf(HomeSectionType.NextUp);
-+                    beforeIndex = nextUpIndex >= 0 ? nextUpIndex + 1 : sections.length;
-+                }
++                const { beforeIndex, topRatedIndex } = ownedHomeAnchors(
++                    sections, HomeSectionType.LatestMedia, HomeSectionType.NextUp
++                );
 +                const startOwnedRows = mountOwnedHomeRows(
-+                    elem, elem.querySelector('.section' + beforeIndex), apiClient, user, userViews,
++                    elem, elem.querySelector('.section' + beforeIndex),
++                    elem.querySelector('.section' + topRatedIndex), apiClient, user, userViews,
 +                    { enableOverflow: enableScrollX() }
 +                );
 +
@@ -53,12 +53,214 @@ index 3863b97..200d46b 100644
 +    font-size: 0.8em;
 +    opacity: 0.65;
 +}
+diff --git a/src/components/homesections/sections/ownedHomeLogic.ts b/src/components/homesections/sections/ownedHomeLogic.ts
+new file mode 100644
+index 0000000..6585190
+--- /dev/null
++++ b/src/components/homesections/sections/ownedHomeLogic.ts
+@@ -0,0 +1,100 @@
++import type { BaseItemDto } from '@jellyfin/sdk/lib/generated-client/models/base-item-dto';
++
++export type OwnedKind = 'Movie' | 'Series';
++export type RatingMap = Record<string, { imdb?: { rating?: number; votes?: number }; community?: number }>;
++
++export const OWNED_HOME_ROWS = [
++    { title: 'Recently Watched Movies', kind: 'recentMovies', sourceNote: false },
++    { title: 'Recently Watched Shows', kind: 'recentShows', sourceNote: false },
++    { title: 'Favorites', kind: 'favorites', sourceNote: false },
++    { title: 'Top Rated Movies', kind: 'topMovies', sourceNote: true },
++    { title: 'Top Rated Shows', kind: 'topShows', sourceNote: true }
++] as const;
++
++/** Leave native rows in place; bracket the complete Recently Added group. */
++export function ownedHomeAnchors(sections: string[], latest: string, nextUp: string) {
++    const firstLatest = sections.indexOf(latest);
++    if (firstLatest >= 0) {
++        return { beforeIndex: firstLatest, topRatedIndex: sections.lastIndexOf(latest) + 1 };
++    }
++    const nextUpIndex = sections.indexOf(nextUp);
++    const fallback = nextUpIndex >= 0 ? nextUpIndex + 1 : sections.length;
++    return { beforeIndex: fallback, topRatedIndex: fallback };
++}
++
++export const normalizedItemId = (id?: string | null): string | null => {
++    const normalized = (id || '').replace(/-/g, '').toLowerCase();
++    return /^[0-9a-f]{32}$/.test(normalized) ? normalized : null;
++};
++
++export const uniqueOwnedItems = (pages: BaseItemDto[][], type: OwnedKind): BaseItemDto[] => {
++    const byId = new Map<string, BaseItemDto>();
++    for (const page of pages) {
++        for (const item of page) {
++            if (item.Id && item.Type === type) byId.set(item.Id, item);
++        }
++    }
++    return [...byId.values()];
++};
++
++export const favoriteItems = (movies: BaseItemDto[], shows: BaseItemDto[]): BaseItemDto[] =>
++    [...movies, ...shows].filter(item => item.UserData?.IsFavorite === true)
++        .sort((a, b) => (a.SortName || a.Name || '').localeCompare(b.SortName || b.Name || ''));
++
++const lastPlayed = (item: BaseItemDto): number => {
++    const value = Date.parse(item.UserData?.LastPlayedDate || '');
++    return Number.isFinite(value) && value > 0 && value <= Date.now() + 5 * 60 * 1000 ? value : 0;
++};
++
++/** A partial play has a LastPlayedDate and must count; IsPlayed is irrelevant. */
++export const recentlyWatchedMovies = (recent: BaseItemDto[], owned: BaseItemDto[], limit: number): BaseItemDto[] => {
++    const permitted = new Map(owned.map(item => [normalizedItemId(item.Id), item]));
++    const latest = new Map<string, { item: BaseItemDto; when: number }>();
++    for (const item of recent) {
++        const id = normalizedItemId(item.Id);
++        const when = lastPlayed(item);
++        if (!id || item.Type !== 'Movie' || !when || !permitted.has(id)) continue;
++        if (when > (latest.get(id)?.when || 0)) {
++            latest.set(id, { item: { ...permitted.get(id)!, UserData: item.UserData }, when });
++        }
++    }
++    return [...latest.values()].sort((a, b) => b.when - a.when || (a.item.Id || '').localeCompare(b.item.Id || ''))
++        .slice(0, limit).map(entry => entry.item);
++};
++
++/** Map episode playback to already-authorized Series cards; never show an episode from another view. */
++export const recentlyWatchedShows = (episodes: BaseItemDto[], owned: BaseItemDto[], limit: number): BaseItemDto[] => {
++    const permitted = new Map(owned.map(item => [normalizedItemId(item.Id), item]));
++    const latest = new Map<string, { item: BaseItemDto; when: number }>();
++    for (const episode of episodes) {
++        const seriesId = normalizedItemId(episode.SeriesId);
++        const when = lastPlayed(episode);
++        if (!seriesId || episode.Type !== 'Episode' || !when || !permitted.has(seriesId)) continue;
++        if (when > (latest.get(seriesId)?.when || 0)) latest.set(seriesId, { item: permitted.get(seriesId)!, when });
++    }
++    return [...latest.values()].sort((a, b) => b.when - a.when || (a.item.Id || '').localeCompare(b.item.Id || ''))
++        .slice(0, limit).map(entry => entry.item);
++};
++
++export const scoreFor = (item: BaseItemDto, ratings: RatingMap): { score: number; imdb: boolean; votes: number } | null => {
++    const imdb = ratings[normalizedItemId(item.Id) || '']?.imdb;
++    if (imdb && typeof imdb.rating === 'number' && Number.isFinite(imdb.rating)
++        && imdb.rating >= 0 && imdb.rating <= 10 && typeof imdb.votes === 'number' && imdb.votes >= 1) {
++        return { score: imdb.rating, imdb: true, votes: imdb.votes };
++    }
++    const fallback = item.CommunityRating;
++    return typeof fallback === 'number' && Number.isFinite(fallback) && fallback >= 0 && fallback <= 10 ?
++        { score: fallback, imdb: false, votes: 0 } :
++        null;
++};
++
++export const topRatedItems = (items: BaseItemDto[], ratings: RatingMap, limit: number): BaseItemDto[] =>
++    items.filter(item => scoreFor(item, ratings) !== null)
++        .sort((a, b) => {
++            const left = scoreFor(a, ratings)!;
++            const right = scoreFor(b, ratings)!;
++            return right.score - left.score || Number(right.imdb) - Number(left.imdb)
++                || right.votes - left.votes || (a.Name || '').localeCompare(b.Name || '')
++                || (a.Id || '').localeCompare(b.Id || '');
++        })
++        .slice(0, limit);
+diff --git a/src/components/homesections/sections/ownedHomeLogic.test.ts b/src/components/homesections/sections/ownedHomeLogic.test.ts
+new file mode 100644
+index 0000000..88b2b58
+--- /dev/null
++++ b/src/components/homesections/sections/ownedHomeLogic.test.ts
+@@ -0,0 +1,90 @@
++import type { BaseItemDto } from '@jellyfin/sdk/lib/generated-client/models/base-item-dto';
++import { describe, expect, it } from 'vitest';
++
++import { favoriteItems, normalizedItemId, OWNED_HOME_ROWS, ownedHomeAnchors, recentlyWatchedMovies, recentlyWatchedShows, scoreFor, topRatedItems, uniqueOwnedItems } from './ownedHomeLogic';
++
++const item = (Id: string, Type: 'Movie' | 'Series', rating?: number, favorite = false): BaseItemDto => ({
++    Id, Type, Name: Id, CommunityRating: rating, UserData: { Key: Id, IsFavorite: favorite }
++});
++
++describe('owned Home row logic', () => {
++    it('puts recent viewing and favorites before Recently Added, then both Top Rated rows', () => {
++        expect(OWNED_HOME_ROWS.map(row => row.kind)).toEqual([
++            'recentMovies', 'recentShows', 'favorites', 'topMovies', 'topShows'
++        ]);
++        expect(ownedHomeAnchors(['media', 'resume', 'nextup', 'latest', 'none'], 'latest', 'nextup'))
++            .toEqual({ beforeIndex: 3, topRatedIndex: 4 });
++        expect(ownedHomeAnchors(['media', 'latest', 'latest'], 'latest', 'nextup'))
++            .toEqual({ beforeIndex: 1, topRatedIndex: 3 });
++    });
++
++    it('keeps a stable insertion point without Recently Added or Next Up', () => {
++        expect(ownedHomeAnchors(['media', 'nextup', 'none'], 'latest', 'nextup'))
++            .toEqual({ beforeIndex: 2, topRatedIndex: 2 });
++        expect(ownedHomeAnchors(['media'], 'latest', 'nextup'))
++            .toEqual({ beforeIndex: 1, topRatedIndex: 1 });
++    });
++
++    it('deduplicates the requested type and rejects box sets returned by Jellyfin', () => {
++        const movie = item('a', 'Movie', 8);
++        const box = { Id: 'b', Type: 'BoxSet' } as BaseItemDto;
++        expect(uniqueOwnedItems([[movie, box], [movie]], 'Movie')).toEqual([movie]);
++    });
++
++    it('uses per-user favorites from owned movies and shows only', () => {
++        expect(favoriteItems([item('A', 'Movie', 9, true), item('B', 'Movie', 9)],
++            [item('C', 'Series', 8, true)]).map(x => x.Id)).toEqual(['A', 'C']);
++    });
++
++    it('prefers valid IMDb per item and falls back to generic CommunityRating', () => {
++        const a = item('a'.repeat(32), 'Movie', 9.5);
++        const b = item('b'.repeat(32), 'Movie', 8.2);
++        const c = item('c'.repeat(32), 'Movie');
++        const ratings = { [a.Id!]: { imdb: { rating: 7.1, votes: 100 } }, [b.Id!]: { imdb: { rating: 9.1, votes: 50 } },
++            [c.Id!]: { imdb: { rating: 11, votes: 1 } } };
++        expect(scoreFor(a, ratings)?.score).toBe(7.1);
++        expect(scoreFor(c, ratings)).toBeNull();
++        expect(topRatedItems([a, b, c], ratings, 2).map(x => x.Id)).toEqual([b.Id, a.Id]);
++    });
++
++    it('never invents ratings for missing or malformed provider values', () => {
++        expect(scoreFor(item('a', 'Series'), {})).toBeNull();
++        expect(scoreFor(item('a', 'Series', 8), { a: { imdb: { rating: Number.NaN, votes: 10 } } })?.score).toBe(8);
++    });
++
++    it('normalizes hyphenated and uppercase Jellyfin IDs without accepting arbitrary text', () => {
++        expect(normalizedItemId('AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA')).toBe('a'.repeat(32));
++        expect(normalizedItemId('not-an-id')).toBeNull();
++    });
++
++    it('orders recent movies by actual playback, including unfinished plays, excluding unplayed and unowned', () => {
++        const older = item('a'.repeat(32), 'Movie');
++        const newer = item('b'.repeat(32), 'Movie');
++        const unowned = item('c'.repeat(32), 'Movie');
++        const watched = (movie: BaseItemDto, date: string, played = false): BaseItemDto => ({
++            ...movie, UserData: { Key: movie.Id!, LastPlayedDate: date, Played: played }
++        });
++        expect(recentlyWatchedMovies([
++            watched(older, '2026-09-20T00:00:00Z'),
++            watched(newer, '2026-09-22T00:00:00Z', false),
++            watched(unowned, '2026-09-23T00:00:00Z'),
++            watched(older, 'not-a-date')
++        ], [older, newer], 24).map(x => x.Id)).toEqual([newer.Id, older.Id]);
++    });
++
++    it('deduplicates episodes to authorized shows using the latest episode playback time', () => {
++        const first = item('a'.repeat(32), 'Series');
++        const second = item('b'.repeat(32), 'Series');
++        const episode = (id: string, series: string, date: string): BaseItemDto => ({
++            Id: id, Type: 'Episode', SeriesId: series,
++            UserData: { Key: id, LastPlayedDate: date, Played: false }
++        });
++        expect(recentlyWatchedShows([
++            episode('1'.repeat(32), first.Id!, '2026-09-18T00:00:00Z'),
++            episode('2'.repeat(32), second.Id!, '2026-09-20T00:00:00Z'),
++            episode('3'.repeat(32), first.Id!, '2026-09-22T00:00:00Z'),
++            episode('4'.repeat(32), 'c'.repeat(32), '2026-09-23T00:00:00Z'),
++            episode('5'.repeat(32), second.Id!, '')
++        ], [first, second], 24).map(x => x.Id)).toEqual([first.Id, second.Id]);
++    });
++});
 diff --git a/src/components/homesections/sections/ownedLibrary.ts b/src/components/homesections/sections/ownedLibrary.ts
 new file mode 100644
-index 0000000..2742ea6
+index 0000000..a89b038
 --- /dev/null
 +++ b/src/components/homesections/sections/ownedLibrary.ts
-@@ -0,0 +1,246 @@
+@@ -0,0 +1,241 @@
 +import type { BaseItemDto } from '@jellyfin/sdk/lib/generated-client/models/base-item-dto';
 +import type { UserDto } from '@jellyfin/sdk/lib/generated-client/models/user-dto';
 +import type { ApiClient } from 'jellyfin-apiclient';
@@ -69,7 +271,7 @@ index 0000000..2742ea6
 +import ServerConnections from 'lib/jellyfin-apiclient/ServerConnections';
 +
 +import type { SectionContainerElement, SectionOptions } from './section';
-+import { favoriteItems, normalizedItemId, recentlyWatchedMovies, recentlyWatchedShows, topRatedItems, uniqueOwnedItems, type OwnedKind, type RatingMap } from './ownedHomeLogic';
++import { favoriteItems, normalizedItemId, OWNED_HOME_ROWS, recentlyWatchedMovies, recentlyWatchedShows, topRatedItems, uniqueOwnedItems, type OwnedKind, type RatingMap } from './ownedHomeLogic';
 +
 +const PAGE_SIZE = 500;
 +const MAX_ITEMS_PER_KIND = 2000;
@@ -227,7 +429,7 @@ index 0000000..2742ea6
 +
 +/** Mount slots immediately; start work only after the built-in Home resume. */
 +export function mountOwnedHomeRows(
-+    page: HTMLElement, before: Element | null, apiClient: ApiClient,
++    page: HTMLElement, before: Element | null, beforeTopRated: Element | null, apiClient: ApiClient,
 +    user: UserDto, views: BaseItemDto[], options: SectionOptions
 +): () => void {
 +    const scopes = classifySearchLibraries(views.filter(view => {
@@ -235,19 +437,13 @@ index 0000000..2742ea6
 +        return !name.startsWith('venom') && !name.startsWith('discover');
 +    }));
 +    if (!scopes.ownedMovies.length && !scopes.ownedShows.length) return () => undefined;
-+    const rows: { title: string; kind: RowKind; sourceNote: boolean }[] = [
-+        { title: 'Favorites', kind: 'favorites', sourceNote: false },
-+        { title: 'Recently Watched Movies', kind: 'recentMovies', sourceNote: false },
-+        { title: 'Recently Watched Shows', kind: 'recentShows', sourceNote: false },
-+        { title: 'Top Rated Movies', kind: 'topMovies', sourceNote: true },
-+        { title: 'Top Rated Shows', kind: 'topShows', sourceNote: true }
-+    ];
 +    const containers: { element: HTMLElement; container: OwnedContainer; kind: RowKind }[] = [];
-+    for (const row of rows) {
++    for (const row of OWNED_HOME_ROWS) {
 +        const element = document.createElement('div');
 +        element.className = 'verticalSection hide';
 +        element.innerHTML = sectionHtml(row.title, options, row.sourceNote);
-+        page.insertBefore(element, before);
++        const anchor = row.kind === 'topMovies' || row.kind === 'topShows' ? beforeTopRated : before;
++        page.insertBefore(element, anchor);
 +        const container = element.querySelector('.itemsContainer') as OwnedContainer | null;
 +        if (container) containers.push({ element, container, kind: row.kind });
 +    }
@@ -291,6 +487,7 @@ index 0000000..2742ea6
 +    return () => {
 +        if (!page.isConnected || !isCurrentAccount()) return;
 +        for (const row of containers) {
++            if (!page.contains(row.element)) continue;
 +            row.container.fetchData = () => loadData().then(async data => {
 +                const recent = row.kind === 'recentMovies' || row.kind === 'recentShows' ?
 +                    await loadRecent() : { movies: [], shows: [] };
@@ -305,169 +502,3 @@ index 0000000..2742ea6
 +        }
 +    };
 +}
-diff --git a/src/components/homesections/sections/ownedHomeLogic.ts b/src/components/homesections/sections/ownedHomeLogic.ts
-new file mode 100644
-index 0000000..c336793
---- /dev/null
-+++ b/src/components/homesections/sections/ownedHomeLogic.ts
-@@ -0,0 +1,81 @@
-+import type { BaseItemDto } from '@jellyfin/sdk/lib/generated-client/models/base-item-dto';
-+
-+export type OwnedKind = 'Movie' | 'Series';
-+export type RatingMap = Record<string, { imdb?: { rating?: number; votes?: number }; community?: number }>;
-+
-+export const normalizedItemId = (id?: string | null): string | null => {
-+    const normalized = (id || '').replace(/-/g, '').toLowerCase();
-+    return /^[0-9a-f]{32}$/.test(normalized) ? normalized : null;
-+};
-+
-+export const uniqueOwnedItems = (pages: BaseItemDto[][], type: OwnedKind): BaseItemDto[] => {
-+    const byId = new Map<string, BaseItemDto>();
-+    for (const page of pages) {
-+        for (const item of page) {
-+            if (item.Id && item.Type === type) byId.set(item.Id, item);
-+        }
-+    }
-+    return [...byId.values()];
-+};
-+
-+export const favoriteItems = (movies: BaseItemDto[], shows: BaseItemDto[]): BaseItemDto[] =>
-+    [...movies, ...shows].filter(item => item.UserData?.IsFavorite === true)
-+        .sort((a, b) => (a.SortName || a.Name || '').localeCompare(b.SortName || b.Name || ''));
-+
-+const lastPlayed = (item: BaseItemDto): number => {
-+    const value = Date.parse(item.UserData?.LastPlayedDate || '');
-+    return Number.isFinite(value) && value > 0 && value <= Date.now() + 5 * 60 * 1000 ? value : 0;
-+};
-+
-+/** A partial play has a LastPlayedDate and must count; IsPlayed is irrelevant. */
-+export const recentlyWatchedMovies = (recent: BaseItemDto[], owned: BaseItemDto[], limit: number): BaseItemDto[] => {
-+    const permitted = new Map(owned.map(item => [normalizedItemId(item.Id), item]));
-+    const latest = new Map<string, { item: BaseItemDto; when: number }>();
-+    for (const item of recent) {
-+        const id = normalizedItemId(item.Id);
-+        const when = lastPlayed(item);
-+        if (!id || item.Type !== 'Movie' || !when || !permitted.has(id)) continue;
-+        if (when > (latest.get(id)?.when || 0)) {
-+            latest.set(id, { item: { ...permitted.get(id)!, UserData: item.UserData }, when });
-+        }
-+    }
-+    return [...latest.values()].sort((a, b) => b.when - a.when || (a.item.Id || '').localeCompare(b.item.Id || ''))
-+        .slice(0, limit).map(entry => entry.item);
-+};
-+
-+/** Map episode playback to already-authorized Series cards; never show an episode from another view. */
-+export const recentlyWatchedShows = (episodes: BaseItemDto[], owned: BaseItemDto[], limit: number): BaseItemDto[] => {
-+    const permitted = new Map(owned.map(item => [normalizedItemId(item.Id), item]));
-+    const latest = new Map<string, { item: BaseItemDto; when: number }>();
-+    for (const episode of episodes) {
-+        const seriesId = normalizedItemId(episode.SeriesId);
-+        const when = lastPlayed(episode);
-+        if (!seriesId || episode.Type !== 'Episode' || !when || !permitted.has(seriesId)) continue;
-+        if (when > (latest.get(seriesId)?.when || 0)) latest.set(seriesId, { item: permitted.get(seriesId)!, when });
-+    }
-+    return [...latest.values()].sort((a, b) => b.when - a.when || (a.item.Id || '').localeCompare(b.item.Id || ''))
-+        .slice(0, limit).map(entry => entry.item);
-+};
-+
-+export const scoreFor = (item: BaseItemDto, ratings: RatingMap): { score: number; imdb: boolean; votes: number } | null => {
-+    const imdb = ratings[normalizedItemId(item.Id) || '']?.imdb;
-+    if (imdb && typeof imdb.rating === 'number' && Number.isFinite(imdb.rating)
-+        && imdb.rating >= 0 && imdb.rating <= 10 && typeof imdb.votes === 'number' && imdb.votes >= 1) {
-+        return { score: imdb.rating, imdb: true, votes: imdb.votes };
-+    }
-+    const fallback = item.CommunityRating;
-+    return typeof fallback === 'number' && Number.isFinite(fallback) && fallback >= 0 && fallback <= 10 ?
-+        { score: fallback, imdb: false, votes: 0 } :
-+        null;
-+};
-+
-+export const topRatedItems = (items: BaseItemDto[], ratings: RatingMap, limit: number): BaseItemDto[] =>
-+    items.filter(item => scoreFor(item, ratings) !== null)
-+        .sort((a, b) => {
-+            const left = scoreFor(a, ratings)!;
-+            const right = scoreFor(b, ratings)!;
-+            return right.score - left.score || Number(right.imdb) - Number(left.imdb)
-+                || right.votes - left.votes || (a.Name || '').localeCompare(b.Name || '')
-+                || (a.Id || '').localeCompare(b.Id || '');
-+        })
-+        .slice(0, limit);
-diff --git a/src/components/homesections/sections/ownedHomeLogic.test.ts b/src/components/homesections/sections/ownedHomeLogic.test.ts
-new file mode 100644
-index 0000000..2fda1e4
---- /dev/null
-+++ b/src/components/homesections/sections/ownedHomeLogic.test.ts
-@@ -0,0 +1,73 @@
-+import type { BaseItemDto } from '@jellyfin/sdk/lib/generated-client/models/base-item-dto';
-+import { describe, expect, it } from 'vitest';
-+
-+import { favoriteItems, normalizedItemId, recentlyWatchedMovies, recentlyWatchedShows, scoreFor, topRatedItems, uniqueOwnedItems } from './ownedHomeLogic';
-+
-+const item = (Id: string, Type: 'Movie' | 'Series', rating?: number, favorite = false): BaseItemDto => ({
-+    Id, Type, Name: Id, CommunityRating: rating, UserData: { Key: Id, IsFavorite: favorite }
-+});
-+
-+describe('owned Home row logic', () => {
-+    it('deduplicates the requested type and rejects box sets returned by Jellyfin', () => {
-+        const movie = item('a', 'Movie', 8);
-+        const box = { Id: 'b', Type: 'BoxSet' } as BaseItemDto;
-+        expect(uniqueOwnedItems([[movie, box], [movie]], 'Movie')).toEqual([movie]);
-+    });
-+
-+    it('uses per-user favorites from owned movies and shows only', () => {
-+        expect(favoriteItems([item('A', 'Movie', 9, true), item('B', 'Movie', 9)],
-+            [item('C', 'Series', 8, true)]).map(x => x.Id)).toEqual(['A', 'C']);
-+    });
-+
-+    it('prefers valid IMDb per item and falls back to generic CommunityRating', () => {
-+        const a = item('a'.repeat(32), 'Movie', 9.5);
-+        const b = item('b'.repeat(32), 'Movie', 8.2);
-+        const c = item('c'.repeat(32), 'Movie');
-+        const ratings = { [a.Id!]: { imdb: { rating: 7.1, votes: 100 } }, [b.Id!]: { imdb: { rating: 9.1, votes: 50 } },
-+            [c.Id!]: { imdb: { rating: 11, votes: 1 } } };
-+        expect(scoreFor(a, ratings)?.score).toBe(7.1);
-+        expect(scoreFor(c, ratings)).toBeNull();
-+        expect(topRatedItems([a, b, c], ratings, 2).map(x => x.Id)).toEqual([b.Id, a.Id]);
-+    });
-+
-+    it('never invents ratings for missing or malformed provider values', () => {
-+        expect(scoreFor(item('a', 'Series'), {})).toBeNull();
-+        expect(scoreFor(item('a', 'Series', 8), { a: { imdb: { rating: Number.NaN, votes: 10 } } })?.score).toBe(8);
-+    });
-+
-+    it('normalizes hyphenated and uppercase Jellyfin IDs without accepting arbitrary text', () => {
-+        expect(normalizedItemId('AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA')).toBe('a'.repeat(32));
-+        expect(normalizedItemId('not-an-id')).toBeNull();
-+    });
-+
-+    it('orders recent movies by actual playback, including unfinished plays, excluding unplayed and unowned', () => {
-+        const older = item('a'.repeat(32), 'Movie');
-+        const newer = item('b'.repeat(32), 'Movie');
-+        const unowned = item('c'.repeat(32), 'Movie');
-+        const watched = (movie: BaseItemDto, date: string, played = false): BaseItemDto => ({
-+            ...movie, UserData: { Key: movie.Id!, LastPlayedDate: date, Played: played }
-+        });
-+        expect(recentlyWatchedMovies([
-+            watched(older, '2026-09-20T00:00:00Z'),
-+            watched(newer, '2026-09-22T00:00:00Z', false),
-+            watched(unowned, '2026-09-23T00:00:00Z'),
-+            watched(older, 'not-a-date')
-+        ], [older, newer], 24).map(x => x.Id)).toEqual([newer.Id, older.Id]);
-+    });
-+
-+    it('deduplicates episodes to authorized shows using the latest episode playback time', () => {
-+        const first = item('a'.repeat(32), 'Series');
-+        const second = item('b'.repeat(32), 'Series');
-+        const episode = (id: string, series: string, date: string): BaseItemDto => ({
-+            Id: id, Type: 'Episode', SeriesId: series,
-+            UserData: { Key: id, LastPlayedDate: date, Played: false }
-+        });
-+        expect(recentlyWatchedShows([
-+            episode('1'.repeat(32), first.Id!, '2026-09-18T00:00:00Z'),
-+            episode('2'.repeat(32), second.Id!, '2026-09-20T00:00:00Z'),
-+            episode('3'.repeat(32), first.Id!, '2026-09-22T00:00:00Z'),
-+            episode('4'.repeat(32), 'c'.repeat(32), '2026-09-23T00:00:00Z'),
-+            episode('5'.repeat(32), second.Id!, '')
-+        ], [first, second], 24).map(x => x.Id)).toEqual([first.Id, second.Id]);
-+    });
-+});

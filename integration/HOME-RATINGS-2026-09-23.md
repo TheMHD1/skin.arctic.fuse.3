@@ -19,8 +19,10 @@ dry-run/apply/guarded-restore tool; rerun explicitly for a future new account.
 Native clients may honor this server order, but clients with independent local
 ordering are not forcibly modified.
 
-The added Web rows are Favorites → Recently Watched Movies → Recently Watched
-Shows → Top Rated Movies → Top Rated Shows. They sit ahead of Recently Added.
+The final requested Web order is Recently Watched Movies → Recently Watched
+Shows → Favorites → Recently Added → Top Rated Movies → Top Rated Shows.
+The native Recently Added section is bracketed by the custom rows, without
+moving its per-library children or rewriting user Home preferences.
 Existing Continue Watching and Next Up remain separate. Recently Watched uses
 the current user's actual LastPlayedDate, including unfinished playback—not
 import/download dates. Each series appears once, dated by its most recently
@@ -111,7 +113,7 @@ Responses are private/no-store; there is no global index endpoint.
 
 - Clean pinned Web/Home/Enhanced patch reconstruction and five placement/
   idempotence cases: `python3 web-navigation/check-web-patches.py` from this folder.
-- Web: seven Home logic tests, three scoped-search tests, TypeScript, changed-file
+- Web: nine Home logic tests, three scoped-search tests, TypeScript, changed-file
   ESLint/Stylelint and production Webpack build passed. The build emits its
   existing bundle-size warnings; no zero-warning claim is made.
 - Plugin: 17 executed tests including SQLite maintenance, lifecycle/DI, explicit
@@ -138,6 +140,12 @@ Responses are private/no-store; there is no global index endpoint.
   both Top Rated rows. Home-order tool's three fixtures pass. The preceding
   full integration and C# GitHub Actions run passed; the follow-up source retains
   the same regression jobs plus view-order coverage.
+- Final row-order-only follow-up preserves My Media, Continue Watching, Next Up,
+  list data and sorting. Tests cover first/last Recently Added anchors and missing
+  Recently Added/Next Up fallbacks. The live mobile-size view verified Recently
+  Watched Movies / Shows, Favorites, Recently Added Movies / Shows, then both
+  Top Rated rows. No Kodi or Jellyfin service restart is required for this Web
+  bundle-only adjustment.
 
 Rollback Web using its private changed-file backup; keep old hashed assets while
 open clients may still reference them. Restore the prior Enhanced/maintenance

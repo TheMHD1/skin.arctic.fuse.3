@@ -9,11 +9,16 @@ Apply `jellyfin-web-12.1-owned-home.patch` to the exact reviewed Jellyfin Web
 the Home module reuses its `classifySearchLibraries` helper. This patch changes
 only `src/components/homesections/`; it does not add `HomeSectionType` values or
 write user Home preferences. The five extra rows are transient client DOM:
-Favorites, Recently Watched Movies, Recently Watched Shows, Top Rated Movies
-and Top Rated Shows. They mount ahead of the first Latest Media section, or
-immediately after Next Up if Latest Media is absent.
+Recently Watched Movies, Recently Watched Shows, Favorites, Top Rated Movies
+and Top Rated Shows. The first three mount ahead of the first Latest Media
+section; both Top Rated rows mount after the last Latest Media section. Thus
+the requested order is Recently Watched Movies → Recently Watched Shows →
+Favorites → Recently Added → Top Rated Movies → Top Rated Shows. All native
+per-library Recently Added rows stay together inside their existing section.
+If Latest Media is absent, the five custom rows mount together immediately
+after Next Up (or at the end if Next Up is absent).
 The ordinary Home sections load first; optional row failures hide only these
-rows.
+rows. A detached row from an earlier Home render does not start new requests.
 
 Library enumeration starts with the signed-in user's permission-filtered
 `getUserViewsQuery`. Each owned movie/show/mixed view is queried separately
