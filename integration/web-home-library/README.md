@@ -8,9 +8,10 @@ Apply `jellyfin-web-12.1-owned-home.patch` to the exact reviewed Jellyfin Web
 12.1 source **after** the maintained permission-scoped search patch, because
 the Home module reuses its `classifySearchLibraries` helper. This patch changes
 only `src/components/homesections/`; it does not add `HomeSectionType` values or
-write user Home preferences. The three extra rows are transient client DOM:
-Favorites, Top Rated Movies and Top Rated Shows. They mount ahead of the first
-Latest Media section, or immediately after Next Up if Latest Media is absent.
+write user Home preferences. The five extra rows are transient client DOM:
+Favorites, Recently Watched Movies, Recently Watched Shows, Top Rated Movies
+and Top Rated Shows. They mount ahead of the first Latest Media section, or
+immediately after Next Up if Latest Media is absent.
 The ordinary Home sections load first; optional row failures hide only these
 rows.
 
@@ -21,6 +22,16 @@ before pagination, with exact Movie/Series type checks, ID deduplication and a
 is no root/global item query. Favorites read the current user's
 `UserData.IsFavorite` and refresh on `markfavorite` events. Existing
 `emby-itemscontainer` and `cardBuilder` preserve standard card actions.
+
+Recently Watched uses separate user-scoped, per-owned-view Movie and Episode
+queries sorted by `DatePlayed` descending. Only items with a valid
+`UserData.LastPlayedDate` count; no `IsPlayed` filter is used, so unfinished
+plays remain eligible. Movies are deduplicated by item ID. Episodes are
+deduplicated to their latest play per `SeriesId`, then mapped to an already
+authorized owned Series card without per-series requests. Each view reads at
+most 500 recent items and stops after finding 24 distinct candidates. These
+rows do not wait for the optional IMDb ratings feed and do not use download or
+import dates as playback history.
 
 Top Rated prefers the authenticated plugin response
 `GET /Habibi/LibraryExperience/Ratings?ids=...`, using at most 100 exact
@@ -52,7 +63,8 @@ npm run build:development
 
 Before deployment, preserve the current Web bundle privately. Verify with a
 regular user who can see owned and Venom views: only owned Movie/Series appear
-in the three rows, favoriting/unfavoriting updates Favorites, scores fall back
+in the five rows, favoriting/unfavoriting updates Favorites, recent rows reflect
+the latest actual watched item/show including in-progress playback, scores fall back
 if the ratings endpoint is unavailable, and Next Up/Latest Media still load.
 Repeat for a user without owned-library access and after account switching.
 Build/tests alone are source validation, not live acceptance. Roll back

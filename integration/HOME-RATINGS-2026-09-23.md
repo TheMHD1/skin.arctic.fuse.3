@@ -3,11 +3,30 @@
 ## Scope and status
 
 The requested Top Rated Movies and Top Rated Shows are **owned Jellyfin library
-rows**, not Discover recommendations or Venom provider content. They and the
-user-specific Favorites row are deployed in the version-matched Jellyfin Web
+rows**, not Discover recommendations or Venom provider content. They, separate
+Recently Watched Movies/Shows, and user-specific Favorites are deployed in the version-matched Jellyfin Web
 12.1 bundle. The official mobile wrapper receives the server-hosted Web changes;
 a native client with its own Home renderer does not automatically gain these
 rows. No custom APK or new native-app fork was built.
+
+The follow-up Home organization is also deployed. Supported per-user
+`UserConfiguration.OrderedViews` sets My Media to Movies → Shows → Live TV →
+Venom Movies → Venom Shows/Series → Shoko Anime → Collections, retaining unknown
+views and hidden prior IDs afterward. All 26 existing accounts were updated and
+read back, with every unrelated configuration field preserved. Library visibility,
+exclusions and permissions are unchanged. `server/home-view-order/` contains the
+dry-run/apply/guarded-restore tool; rerun explicitly for a future new account.
+Native clients may honor this server order, but clients with independent local
+ordering are not forcibly modified.
+
+The added Web rows are Favorites → Recently Watched Movies → Recently Watched
+Shows → Top Rated Movies → Top Rated Shows. They sit ahead of Recently Added.
+Existing Continue Watching and Next Up remain separate. Recently Watched uses
+the current user's actual LastPlayedDate, including unfinished playback—not
+import/download dates. Each series appears once, dated by its most recently
+watched episode. Queries are scoped to owned parents, capped at 500 recent items
+per view and stop once enough distinct results are found. No new watch history
+is written or fabricated.
 
 Search order in the Web integration is owned Movies / Shows, Discover on Seerr,
 then secondary Venom Movies — Not HD / Venom Shows — Not HD. Other stock search
@@ -42,6 +61,14 @@ Enhanced treating provider Movie/Series cards as the primary catalogue.
    `release/search-priority/`. Do not install the legacy repository-root skin
    ZIP on a current Arctic 3.3.1 device. See that directory's final acceptance
    record for local deployment versus staged remote-house work.
+
+The local Kodi overlay is deployed: 30/30 sampled visible movie cards received
+real IMDb data in a 55 ms batch, Kodi restarted successfully and returned Home.
+The exact post-startup Skin Variables whitespace-only generated variant was
+compared recursively (all tags/attributes/text/child order/routes/GUIDs equal),
+then added to the guarded allowlist. Unknown variants remain rejected. This is
+live source/API acceptance; a physical viewing-distance check of the new badge
+is still pending, and the remote-house overlay is not deployed.
 
 No Jellyfin server core change is needed for these new Home/rating features.
 Existing Continue Watching/Next Up core fixes remain a separate maintained
@@ -84,7 +111,7 @@ Responses are private/no-store; there is no global index endpoint.
 
 - Clean pinned Web/Home/Enhanced patch reconstruction and five placement/
   idempotence cases: `python3 web-navigation/check-web-patches.py` from this folder.
-- Web: five Home logic tests, three scoped-search tests, TypeScript, changed-file
+- Web: seven Home logic tests, three scoped-search tests, TypeScript, changed-file
   ESLint/Stylelint and production Webpack build passed. The build emits its
   existing bundle-size warnings; no zero-warning claim is made.
 - Plugin: 17 executed tests including SQLite maintenance, lifecycle/DI, explicit
@@ -105,6 +132,12 @@ Responses are private/no-store; there is no global index endpoint.
   disappear from Home, restored the original favorite, and observed it return.
   The account's final favorite state is unchanged; refresh used the normal
   websocket/debounced mechanism rather than a page reload.
+- Follow-up mobile Home: exact seven-library My Media order; 24 Recently Watched
+  Movies and 24 Recently Watched Shows, each verified unique, backed by actual
+  playback timestamps and descending by those timestamps. Both appear above
+  both Top Rated rows. Home-order tool's three fixtures pass. The preceding
+  full integration and C# GitHub Actions run passed; the follow-up source retains
+  the same regression jobs plus view-order coverage.
 
 Rollback Web using its private changed-file backup; keep old hashed assets while
 open clients may still reference them. Restore the prior Enhanced/maintenance

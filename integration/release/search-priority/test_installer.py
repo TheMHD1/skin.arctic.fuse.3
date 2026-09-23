@@ -86,9 +86,20 @@ class OverlayTests(unittest.TestCase):
                 self.assertTrue(plan)
                 for path,data in plan.items():path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(data)
                 self.assertFalse(install.build_changes(root,stage,{'variant':'local'}))
-                (root/install.LABELS).write_bytes((root/install.LABELS).read_bytes()+b' ')
-                with self.assertRaisesRegex(RuntimeError,'Unreviewed or partial'):
-                    install.build_changes(root,stage,{'variant':'local'})
+                generated_path=root/install.GENERATED
+                rebuilt=generated_path.read_bytes().replace(b'</includes>',b'    \n</includes>')
+                self.assertNotEqual(sha(rebuilt),transforms[install.GENERATED][0])
+                generated_path.write_bytes(rebuilt)
+                with mock.patch.object(install,'REBUILT_GENERATED_HASH',sha(rebuilt)):
+                    reconciliation=install.build_changes(root,stage,{'variant':'local'})
+                    self.assertEqual(list(reconciliation),[manifest])
+                    for path,data in reconciliation.items():path.write_bytes(data)
+                    self.assertFalse(install.build_changes(root,stage,{'variant':'local'}))
+                    # Even a structurally harmless extra newline is not a
+                    # reviewed whole-file hash and must remain fail-closed.
+                    generated_path.write_bytes(rebuilt+b'\n')
+                    with self.assertRaisesRegex(RuntimeError,'Unreviewed or partial'):
+                        install.build_changes(root,stage,{'variant':'local'})
 
 
 if __name__=='__main__':unittest.main()

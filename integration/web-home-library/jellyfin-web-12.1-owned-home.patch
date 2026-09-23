@@ -55,10 +55,10 @@ index 3863b97..200d46b 100644
 +}
 diff --git a/src/components/homesections/sections/ownedLibrary.ts b/src/components/homesections/sections/ownedLibrary.ts
 new file mode 100644
-index 0000000..e89d887
+index 0000000..2742ea6
 --- /dev/null
 +++ b/src/components/homesections/sections/ownedLibrary.ts
-@@ -0,0 +1,191 @@
+@@ -0,0 +1,246 @@
 +import type { BaseItemDto } from '@jellyfin/sdk/lib/generated-client/models/base-item-dto';
 +import type { UserDto } from '@jellyfin/sdk/lib/generated-client/models/user-dto';
 +import type { ApiClient } from 'jellyfin-apiclient';
@@ -69,10 +69,12 @@ index 0000000..e89d887
 +import ServerConnections from 'lib/jellyfin-apiclient/ServerConnections';
 +
 +import type { SectionContainerElement, SectionOptions } from './section';
-+import { favoriteItems, normalizedItemId, topRatedItems, uniqueOwnedItems, type OwnedKind, type RatingMap } from './ownedHomeLogic';
++import { favoriteItems, normalizedItemId, recentlyWatchedMovies, recentlyWatchedShows, topRatedItems, uniqueOwnedItems, type OwnedKind, type RatingMap } from './ownedHomeLogic';
 +
 +const PAGE_SIZE = 500;
 +const MAX_ITEMS_PER_KIND = 2000;
++const RECENT_PAGE_SIZE = 100;
++const MAX_RECENT_PER_VIEW = 500;
 +const DISPLAY_LIMIT = 24;
 +const RATINGS_BATCH_SIZE = 100;
 +const RATINGS_TIMEOUT_MS = 1800;
@@ -80,6 +82,8 @@ index 0000000..e89d887
 +const ratingCache = new Map<string, { until: number; ratings: RatingMap }>();
 +
 +type OwnedData = { movies: BaseItemDto[]; shows: BaseItemDto[] };
++type RecentData = { movies: BaseItemDto[]; shows: BaseItemDto[] };
++type RowKind = 'favorites' | 'recentMovies' | 'recentShows' | 'topMovies' | 'topShows';
 +type OwnedContainer = SectionContainerElement & { resume: (options: { refresh: boolean }) => Promise<unknown> };
 +
 +function withTimeout<T>(promise: Promise<T>, milliseconds: number): Promise<T> {
@@ -113,6 +117,30 @@ index 0000000..e89d887
 +
 +async function fetchKind(apiClient: ApiClient, userId: string, parents: string[], kind: OwnedKind): Promise<BaseItemDto[]> {
 +    return uniqueOwnedItems(await Promise.all(parents.map(parent => fetchViewItems(apiClient, userId, parent, kind))), kind);
++}
++
++async function fetchRecentView(apiClient: ApiClient, userId: string, parentId: string, kind: 'Movie' | 'Episode'): Promise<BaseItemDto[]> {
++    const result: BaseItemDto[] = [];
++    const distinct = new Set<string>();
++    for (let start = 0; start < MAX_RECENT_PER_VIEW; start += RECENT_PAGE_SIZE) {
++        const page = await withTimeout(apiClient.getItems(userId, {
++            ParentId: parentId, Recursive: true, IncludeItemTypes: kind,
++            SortBy: 'DatePlayed', SortOrder: 'Descending', StartIndex: start,
++            Limit: RECENT_PAGE_SIZE, Fields: 'PrimaryImageAspectRatio',
++            ExcludeLocationTypes: 'Virtual'
++            // Deliberately no IsPlayed filter: in-progress playback counts.
++        }), 3500);
++        const items = page?.Items || [];
++        result.push(...items);
++        for (const item of items) {
++            const id = normalizedItemId(kind === 'Movie' ? item.Id : item.SeriesId);
++            const played = Date.parse(item.UserData?.LastPlayedDate || '');
++            if (item.Type === kind && id && Number.isFinite(played) && played > 0) distinct.add(id);
++        }
++        if (distinct.size >= DISPLAY_LIMIT || items.length < RECENT_PAGE_SIZE
++            || start + items.length >= (page?.TotalRecordCount ?? Infinity)) break;
++    }
++    return result;
 +}
 +
 +async function fetchRatingsBatch(apiClient: ApiClient, ids: string[]): Promise<RatingMap> {
@@ -187,6 +215,16 @@ index 0000000..e89d887
 +    });
 +}
 +
++function selectRow(kind: RowKind, data: OwnedData, recent: RecentData, ratings: RatingMap): BaseItemDto[] {
++    switch (kind) {
++        case 'favorites': return favoriteItems(data.movies, data.shows).slice(0, DISPLAY_LIMIT);
++        case 'recentMovies': return recentlyWatchedMovies(recent.movies, data.movies, DISPLAY_LIMIT);
++        case 'recentShows': return recentlyWatchedShows(recent.shows, data.shows, DISPLAY_LIMIT);
++        case 'topMovies': return topRatedItems(data.movies, ratings, DISPLAY_LIMIT);
++        case 'topShows': return topRatedItems(data.shows, ratings, DISPLAY_LIMIT);
++    }
++}
++
 +/** Mount slots immediately; start work only after the built-in Home resume. */
 +export function mountOwnedHomeRows(
 +    page: HTMLElement, before: Element | null, apiClient: ApiClient,
@@ -197,21 +235,24 @@ index 0000000..e89d887
 +        return !name.startsWith('venom') && !name.startsWith('discover');
 +    }));
 +    if (!scopes.ownedMovies.length && !scopes.ownedShows.length) return () => undefined;
-+    const rows = [
-+        { title: 'Favorites', sourceNote: false, select: (data: OwnedData) => favoriteItems(data.movies, data.shows).slice(0, DISPLAY_LIMIT) },
-+        { title: 'Top Rated Movies', sourceNote: true, select: (data: OwnedData, ratings: RatingMap) => topRatedItems(data.movies, ratings, DISPLAY_LIMIT) },
-+        { title: 'Top Rated Shows', sourceNote: true, select: (data: OwnedData, ratings: RatingMap) => topRatedItems(data.shows, ratings, DISPLAY_LIMIT) }
++    const rows: { title: string; kind: RowKind; sourceNote: boolean }[] = [
++        { title: 'Favorites', kind: 'favorites', sourceNote: false },
++        { title: 'Recently Watched Movies', kind: 'recentMovies', sourceNote: false },
++        { title: 'Recently Watched Shows', kind: 'recentShows', sourceNote: false },
++        { title: 'Top Rated Movies', kind: 'topMovies', sourceNote: true },
++        { title: 'Top Rated Shows', kind: 'topShows', sourceNote: true }
 +    ];
-+    const containers: { element: HTMLElement; container: OwnedContainer; sourceNote: boolean; select: (data: OwnedData, ratings: RatingMap) => BaseItemDto[] }[] = [];
++    const containers: { element: HTMLElement; container: OwnedContainer; kind: RowKind }[] = [];
 +    for (const row of rows) {
 +        const element = document.createElement('div');
 +        element.className = 'verticalSection hide';
 +        element.innerHTML = sectionHtml(row.title, options, row.sourceNote);
 +        page.insertBefore(element, before);
 +        const container = element.querySelector('.itemsContainer') as OwnedContainer | null;
-+        if (container) containers.push({ element, container, sourceNote: row.sourceNote, select: row.select });
++        if (container) containers.push({ element, container, kind: row.kind });
 +    }
 +    let inFlight: Promise<OwnedData> | null = null;
++    let recentInFlight: Promise<RecentData> | null = null;
 +    let ratingsInFlight: Promise<RatingMap> | null = null;
 +    const userId = user.Id || apiClient.getCurrentUserId();
 +    const isCurrentAccount = () => apiClient.getCurrentUserId() === userId
@@ -236,12 +277,26 @@ index 0000000..e89d887
 +            .finally(() => { ratingsInFlight = null; });
 +        return ratingsInFlight;
 +    };
++    const loadRecent = (): Promise<RecentData> => {
++        if (recentInFlight) return recentInFlight;
++        recentInFlight = Promise.all([
++            Promise.all(scopes.ownedMovies.map(parent => fetchRecentView(apiClient, userId, parent, 'Movie'))),
++            Promise.all(scopes.ownedShows.map(parent => fetchRecentView(apiClient, userId, parent, 'Episode')))
++        ]).then(([moviePages, showPages]) => {
++            if (!isCurrentAccount()) throw new Error('Jellyfin account changed');
++            return { movies: moviePages.flat(), shows: showPages.flat() };
++        }).finally(() => { recentInFlight = null; });
++        return recentInFlight;
++    };
 +    return () => {
 +        if (!page.isConnected || !isCurrentAccount()) return;
 +        for (const row of containers) {
 +            row.container.fetchData = () => loadData().then(async data => {
-+                const ratings = row.sourceNote ? await loadRatings(data) : {};
-+                return { Items: isCurrentAccount() ? row.select(data, ratings) : [] };
++                const recent = row.kind === 'recentMovies' || row.kind === 'recentShows' ?
++                    await loadRecent() : { movies: [], shows: [] };
++                const ratings = row.kind === 'topMovies' || row.kind === 'topShows' ?
++                    await loadRatings(data) : {};
++                return { Items: isCurrentAccount() ? selectRow(row.kind, data, recent, ratings) : [] };
 +            })
 +                .catch(() => ({ Items: [] }));
 +            row.container.getItemsHtml = items => cardsHtml(items, options);
@@ -252,10 +307,10 @@ index 0000000..e89d887
 +}
 diff --git a/src/components/homesections/sections/ownedHomeLogic.ts b/src/components/homesections/sections/ownedHomeLogic.ts
 new file mode 100644
-index 0000000..153fb70
+index 0000000..c336793
 --- /dev/null
 +++ b/src/components/homesections/sections/ownedHomeLogic.ts
-@@ -0,0 +1,46 @@
+@@ -0,0 +1,81 @@
 +import type { BaseItemDto } from '@jellyfin/sdk/lib/generated-client/models/base-item-dto';
 +
 +export type OwnedKind = 'Movie' | 'Series';
@@ -279,6 +334,41 @@ index 0000000..153fb70
 +export const favoriteItems = (movies: BaseItemDto[], shows: BaseItemDto[]): BaseItemDto[] =>
 +    [...movies, ...shows].filter(item => item.UserData?.IsFavorite === true)
 +        .sort((a, b) => (a.SortName || a.Name || '').localeCompare(b.SortName || b.Name || ''));
++
++const lastPlayed = (item: BaseItemDto): number => {
++    const value = Date.parse(item.UserData?.LastPlayedDate || '');
++    return Number.isFinite(value) && value > 0 && value <= Date.now() + 5 * 60 * 1000 ? value : 0;
++};
++
++/** A partial play has a LastPlayedDate and must count; IsPlayed is irrelevant. */
++export const recentlyWatchedMovies = (recent: BaseItemDto[], owned: BaseItemDto[], limit: number): BaseItemDto[] => {
++    const permitted = new Map(owned.map(item => [normalizedItemId(item.Id), item]));
++    const latest = new Map<string, { item: BaseItemDto; when: number }>();
++    for (const item of recent) {
++        const id = normalizedItemId(item.Id);
++        const when = lastPlayed(item);
++        if (!id || item.Type !== 'Movie' || !when || !permitted.has(id)) continue;
++        if (when > (latest.get(id)?.when || 0)) {
++            latest.set(id, { item: { ...permitted.get(id)!, UserData: item.UserData }, when });
++        }
++    }
++    return [...latest.values()].sort((a, b) => b.when - a.when || (a.item.Id || '').localeCompare(b.item.Id || ''))
++        .slice(0, limit).map(entry => entry.item);
++};
++
++/** Map episode playback to already-authorized Series cards; never show an episode from another view. */
++export const recentlyWatchedShows = (episodes: BaseItemDto[], owned: BaseItemDto[], limit: number): BaseItemDto[] => {
++    const permitted = new Map(owned.map(item => [normalizedItemId(item.Id), item]));
++    const latest = new Map<string, { item: BaseItemDto; when: number }>();
++    for (const episode of episodes) {
++        const seriesId = normalizedItemId(episode.SeriesId);
++        const when = lastPlayed(episode);
++        if (!seriesId || episode.Type !== 'Episode' || !when || !permitted.has(seriesId)) continue;
++        if (when > (latest.get(seriesId)?.when || 0)) latest.set(seriesId, { item: permitted.get(seriesId)!, when });
++    }
++    return [...latest.values()].sort((a, b) => b.when - a.when || (a.item.Id || '').localeCompare(b.item.Id || ''))
++        .slice(0, limit).map(entry => entry.item);
++};
 +
 +export const scoreFor = (item: BaseItemDto, ratings: RatingMap): { score: number; imdb: boolean; votes: number } | null => {
 +    const imdb = ratings[normalizedItemId(item.Id) || '']?.imdb;
@@ -304,14 +394,14 @@ index 0000000..153fb70
 +        .slice(0, limit);
 diff --git a/src/components/homesections/sections/ownedHomeLogic.test.ts b/src/components/homesections/sections/ownedHomeLogic.test.ts
 new file mode 100644
-index 0000000..2882a00
+index 0000000..2fda1e4
 --- /dev/null
 +++ b/src/components/homesections/sections/ownedHomeLogic.test.ts
-@@ -0,0 +1,42 @@
+@@ -0,0 +1,73 @@
 +import type { BaseItemDto } from '@jellyfin/sdk/lib/generated-client/models/base-item-dto';
 +import { describe, expect, it } from 'vitest';
 +
-+import { favoriteItems, normalizedItemId, scoreFor, topRatedItems, uniqueOwnedItems } from './ownedHomeLogic';
++import { favoriteItems, normalizedItemId, recentlyWatchedMovies, recentlyWatchedShows, scoreFor, topRatedItems, uniqueOwnedItems } from './ownedHomeLogic';
 +
 +const item = (Id: string, Type: 'Movie' | 'Series', rating?: number, favorite = false): BaseItemDto => ({
 +    Id, Type, Name: Id, CommunityRating: rating, UserData: { Key: Id, IsFavorite: favorite }
@@ -348,5 +438,36 @@ index 0000000..2882a00
 +    it('normalizes hyphenated and uppercase Jellyfin IDs without accepting arbitrary text', () => {
 +        expect(normalizedItemId('AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA')).toBe('a'.repeat(32));
 +        expect(normalizedItemId('not-an-id')).toBeNull();
++    });
++
++    it('orders recent movies by actual playback, including unfinished plays, excluding unplayed and unowned', () => {
++        const older = item('a'.repeat(32), 'Movie');
++        const newer = item('b'.repeat(32), 'Movie');
++        const unowned = item('c'.repeat(32), 'Movie');
++        const watched = (movie: BaseItemDto, date: string, played = false): BaseItemDto => ({
++            ...movie, UserData: { Key: movie.Id!, LastPlayedDate: date, Played: played }
++        });
++        expect(recentlyWatchedMovies([
++            watched(older, '2026-09-20T00:00:00Z'),
++            watched(newer, '2026-09-22T00:00:00Z', false),
++            watched(unowned, '2026-09-23T00:00:00Z'),
++            watched(older, 'not-a-date')
++        ], [older, newer], 24).map(x => x.Id)).toEqual([newer.Id, older.Id]);
++    });
++
++    it('deduplicates episodes to authorized shows using the latest episode playback time', () => {
++        const first = item('a'.repeat(32), 'Series');
++        const second = item('b'.repeat(32), 'Series');
++        const episode = (id: string, series: string, date: string): BaseItemDto => ({
++            Id: id, Type: 'Episode', SeriesId: series,
++            UserData: { Key: id, LastPlayedDate: date, Played: false }
++        });
++        expect(recentlyWatchedShows([
++            episode('1'.repeat(32), first.Id!, '2026-09-18T00:00:00Z'),
++            episode('2'.repeat(32), second.Id!, '2026-09-20T00:00:00Z'),
++            episode('3'.repeat(32), first.Id!, '2026-09-22T00:00:00Z'),
++            episode('4'.repeat(32), 'c'.repeat(32), '2026-09-23T00:00:00Z'),
++            episode('5'.repeat(32), second.Id!, '')
++        ], [first, second], 24).map(x => x.Id)).toEqual([first.Id, second.Id]);
 +    });
 +});

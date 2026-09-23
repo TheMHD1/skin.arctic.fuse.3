@@ -23,6 +23,7 @@ jobs:
       - run: python -m unittest discover -s integration/server/request-ready -p 'test_*.py'
       - run: python -m unittest discover -s integration/server/arr-maintenance -p 'test_*.py'
       - run: python -m unittest discover -s integration/server/imdb-library-ratings -p 'test_*.py'
+      - run: python -m unittest discover -s integration/server/home-view-order -p 'test_*.py'
       - run: python integration/web-navigation/check-web-patches.py
       - run: python integration/release/library-experience/build.py --output "$RUNNER_TEMP/library-payload"
       - run: python integration/release/library-experience/test_installer.py

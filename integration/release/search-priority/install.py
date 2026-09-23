@@ -57,6 +57,10 @@ BASE_HASHES={
  LAYOUTS:'b09595f1c7a76f7e2bc9800ec81adc7181b3145c9eac620790a9008135c3ff8e',
 }
 BASE_MANIFEST_HASH='a121f12b16028fb79e44258f7395ea88c937a3e5fcfc3183e6fffab8db180300'
+# Skin Variables rewrites indentation after Kodi startup. This one exact byte
+# variant was compared recursively with the reviewed generated output: tags,
+# attributes, nonblank text, child order, IDs, routes and GUIDs are identical.
+REBUILT_GENERATED_HASH='619174a0e7dd6aebce7c1e13059a04950266b43ca46b22169bc57680af79f745'
 OUTPUT_TRANSFORMS={
  SEARCH:('4a2d97a40009ed74fb49852723bb1ca13242cb222b006887ff103dd838aa49d5',generated.transform_search),
  GENERATED:('01e96f52d53ffd7b57088b0a52136fbeca50bdbba367bb1698b2ba4f8697fa0f',generated.transform_generated),
@@ -106,7 +110,9 @@ def build_changes(root,stage,profile):
     output.update({name:value[0] for name,value in OUTPUT_TRANSFORMS.items()})
     baseline=all(current.get(name)==digest for name,digest in BASE_HASHES.items()) and all(
         current.get(name) is None for name in paths-set(BASE_HASHES))
-    installed=all(current.get(name)==digest for name,digest in output.items())
+    installed=all(current.get(name)==digest or
+                  (name==GENERATED and current.get(name)==REBUILT_GENERATED_HASH)
+                  for name,digest in output.items())
     transaction.require(baseline or installed,'Unreviewed or partial search/rating cohort')
     if baseline:
         transaction.require(sha(manifest_source)==BASE_MANIFEST_HASH,
@@ -116,7 +122,10 @@ def build_changes(root,stage,profile):
                                 'Baseline source/manifest drift: '+relative)
     else:
         for relative,digest in output.items():
-            transaction.require(record['files'].get(relative)==digest,
+            accepted={digest}
+            if relative==GENERATED and current.get(relative)==REBUILT_GENERATED_HASH:
+                accepted.add(REBUILT_GENERATED_HASH)
+            transaction.require(record['files'].get(relative) in accepted,
                                 'Installed source/manifest drift: '+relative)
     changes={root/TARGETS[name]:data for name,data in bundle.items()}
     if baseline:

@@ -42,6 +42,13 @@ Playback must be idle unless the operator explicitly supplies
 `--allow-active-playback`. A power loss or SIGTERM still requires restoring the
 reported backup manually.
 
+After Kodi starts, Skin Variables may rewrite only the generated XML's
+indentation. The installer accepts the single reviewed regenerated hash
+`619174a0…` after structural comparison confirmed identical elements,
+attributes, text, ordering, routes, IDs and GUIDs. In that state a later plan
+updates only the integrity-manifest hash; any other generated-file hash remains
+an error.
+
 Focused checks:
 
 ```sh
@@ -50,5 +57,10 @@ python3 -m unittest integration/test-library-search.py
 python3 integration/test-ugoos-home.py
 ```
 
-This directory is source and installer preservation, not evidence that the
-overlay has been deployed or visually accepted on a physical device.
+The September 23 local deployment passed the exact-cohort plan, restart and
+final zero-change plan, including the precisely reviewed regenerated XML variant.
+Live Home client returned 30/30 movie IMDb ratings in 55 ms. Kodi's pending
+CoreELEC download prompt was cancelled per the firmware hold. This is live source/
+API acceptance, not a claim of physical viewing-distance badge inspection or
+remote-house deployment. See `../../HOME-RATINGS-2026-09-23.md` for the paired
+server/Web release and native-client boundaries.
