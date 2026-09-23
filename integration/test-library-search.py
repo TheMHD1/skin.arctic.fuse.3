@@ -141,6 +141,9 @@ class SearchTests(unittest.TestCase):
                 class FakeClient(client.Client):
                     def get(self,path,**params):
                         calls.append((path,params))
+                        if path=='Habibi/LibraryExperience/Ratings':
+                            return {'items':{item['Id']:{'imdb':{'rating':8.2,'votes':1234},
+                                                               'community':7.7}}}
                         if path.endswith('/Views'):
                             return {'Items':[
                                 {'Id':'1'*32,'Name':'Movies','CollectionType':'movies'},
@@ -176,6 +179,12 @@ class SearchTests(unittest.TestCase):
                 target=urlsplit(rows[0][0])
                 self.assertEqual(target.netloc,'plugin.video.habibi.resume' if kind=='Series' else 'plugin.video.jellyfin')
                 self.assertEqual(parse_qs(target.query)['series' if kind=='Series' else 'id'],[item['Id']])
+                listitem=modules['xbmcgui'].ListItem.return_value
+                info=listitem.getVideoInfoTag.return_value
+                info.setRating.assert_any_call(8.2,1234,'imdb',True)
+                info.setRating.assert_any_call(7.7,0,'community',False)
+                listitem.setProperty.assert_any_call('Habibi.Rating.IMDb','8.2')
+                listitem.setProperty.assert_any_call('Habibi.Rating.Community','7.7')
                 modules['xbmc'].executebuiltin.assert_not_called()
 
     def test_skin_paths(self):
@@ -233,5 +242,69 @@ class SearchTests(unittest.TestCase):
                          ['Movies','Shows','Venom Movies — Not HD','Venom Shows — Not HD'])
         # Discover is the skin's independent built-in selector, not another
         # library route in this generated list.
+
+    def test_owned_discover_venom_selector_order_is_rebuild_safe(self):
+        import xml.etree.ElementTree as ET
+        fork=Path(__file__).resolve().parent.parent
+        if not (fork/'1080i/Includes_Search.xml').exists():
+            self.skipTest('not in fork checkout')
+        search=ET.parse(fork/'1080i/Includes_Search.xml').getroot()
+        expected=['skinvariables-searchwidgets-selector-owned','discover',
+                  'skinvariables-searchwidgets-selector-venom']
+        section=next(node for node in search.findall('include')
+                     if node.get('name')=='Search_Switcher_Items')
+        order=[]
+        for node in list(section):
+            if node.tag=='include' and not node.get('content'):
+                order.append((node.text or '').strip())
+            elif node.tag=='item' and node.findtext("property[@name='guid']")=='discover':
+                order.append('discover')
+        self.assertEqual(order[:3],expected)
+        wall=next(node for node in search.findall('include')
+                  if node.get('name')=='Search_Switcher_Wall_Items')
+        wall_order=[]
+        for node in list(wall):
+            if node.tag=='include':wall_order.append((node.text or '').strip())
+            elif node.tag=='item':wall_order.append(node.findtext("property[@name='guid']"))
+        self.assertEqual(wall_order,[value.replace('searchwidgets-selector',
+                                                   'searchwidgets-wall-selector')
+                                     if value!='discover' else value for value in expected])
+        cases={
+            'search_selector.xml':('skinvariables-searchwidgets-selector-owned',
+                'DefaultSearch-Movies||{item_path}==DefaultSearch-TvShows'),
+            'search_selector_venom.xml':('skinvariables-searchwidgets-selector-venom',
+                'DefaultSearch-VenomMovies||{item_path}==DefaultSearch-VenomShows'),
+            'search_selector_wall.xml':('skinvariables-searchwidgets-wall-selector-owned',
+                'DefaultSearch-Movies||{item_path}==DefaultSearch-TvShows'),
+            'search_selector_wall_venom.xml':('skinvariables-searchwidgets-wall-selector-venom',
+                'DefaultSearch-VenomMovies||{item_path}==DefaultSearch-VenomShows'),
+        }
+        base=fork/'shortcuts/generator/data/base'
+        for filename,(name,guard) in cases.items():
+            node=ET.parse(base/filename).getroot()
+            self.assertEqual(next(value for value in node.findall('value')
+                                  if value.get('name')=='includes_name').text,name)
+            conditions=[value.text or '' for value in node.findall('.//condition')]
+            self.assertTrue(any(guard in value for value in conditions))
+
+    def test_poster_rating_prefers_named_sources_without_fabricating_zero(self):
+        import xml.etree.ElementTree as ET
+        fork=Path(__file__).resolve().parent.parent
+        if not (fork/'1080i/Includes_Labels.xml').exists():
+            self.skipTest('not in fork checkout')
+        labels=ET.parse(fork/'1080i/Includes_Labels.xml').getroot()
+        rating=next(node for node in labels.findall('variable')
+                    if node.get('name')=='Label_Poster_Rating')
+        values=[(node.get('condition',''),node.text or '') for node in rating.findall('value')]
+        self.assertIn('Habibi.Rating.IMDb',values[0][0])
+        self.assertIn('IMDb ',values[0][1])
+        self.assertIn('Rating(imdb)',values[1][0])
+        self.assertIn('Rating(tmdb)',values[2][0])
+        self.assertIn('Property(tmdb_id)',values[3][0])
+        self.assertIn('Habibi.Rating.Community',values[4][0])
+        self.assertNotIn('IMDb',values[4][1])
+        self.assertNotIn('0', ''.join(text for _,text in values))
+        layouts=(fork/'1080i/Includes_Layouts.xml').read_text()
+        self.assertIn('<include content="Object_PosterRating" />',layouts)
 
 if __name__=='__main__':unittest.main()

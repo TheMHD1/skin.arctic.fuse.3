@@ -6,8 +6,11 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "1080i/Includes_Search.xml"
+# This regression belongs to the historical R6 installer cohort. Current skin
+# source has a later guarded selector-priority overlay and is tested separately.
+SOURCE = ROOT / "integration/release/kodi/baseline-r6/Includes_Search.xml"
 SOURCE_SHA = "d4f2f558910882bd9dc58c65494b42ca40c8583ff5f09e2d94ba8c559c6a8434"
+STORED_SHA = "bf4d920b0b31c5187a45b1fd40d02862ac28aef019722ea7609b26a82dd7702c"
 
 
 def mode(item):
@@ -17,7 +20,11 @@ def mode(item):
 
 class SearchDefaultTests(unittest.TestCase):
     def test_library_search_precedes_discover_and_nothing_else_changed(self):
-        current = SOURCE.read_bytes()
+        stored = SOURCE.read_bytes()
+        self.assertEqual(hashlib.sha256(stored).hexdigest(), STORED_SHA)
+        # The historical upstream XML intentionally had no terminal newline;
+        # apply_patch-maintained text does. Reconstruct the exact guarded bytes.
+        current = stored[:-1]
         self.assertEqual(hashlib.sha256(current).hexdigest(), SOURCE_SHA)
         root = ET.fromstring(current)
         selectors = [control for control in root.iter("control")

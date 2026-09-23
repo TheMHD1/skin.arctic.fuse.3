@@ -7,7 +7,6 @@ from urllib.request import Request, urlopen
 FIELDS = 'Overview,DateCreated,Path,ProviderIds'
 PAGE_SIZE = 30
 MAX_LATEST = 500
-RATINGS_TIMEOUT = 2
 LABELS = {'resume':'Continue Watching', 'nextup':'Next Up', 'movies':'Latest Movies',
           'episodes':'Latest Episodes', 'shows':'Latest Shows', 'favorites':'Favorites',
           'series':'Episodes', 'toprated':'Top Rated Movies',
@@ -45,10 +44,10 @@ class Client:
         self.scopes = scopes if isinstance(scopes, dict) else {}
         self._authorized_views = None
 
-    def request(self, path, method='GET', timeout=10, **params):
+    def request(self, path, method='GET', **params):
         header = 'MediaBrowser Client="Habibi Home", Device="Kodi", DeviceId="habibi-home", Version="1.1", Token="'+self.server['AccessToken']+'"'
         req = Request(self.base+'/'+path+'?'+urlencode(params), headers={'Authorization':header}, method=method)
-        with urlopen(req, timeout=timeout) as response:
+        with urlopen(req, timeout=10) as response:
             return json.load(response)
 
     def get(self, path, **params):
@@ -57,60 +56,6 @@ class Client:
     def set_favorite(self, item_id, enabled):
         return self.request('Users/'+self.user+'/FavoriteItems/'+valid_id(item_id),
                             method='POST' if enabled else 'DELETE')
-
-    def ratings(self, items):
-        """Fetch one bounded, authenticated rating batch for visible cards.
-
-        The optional server companion omits inaccessible and unsupported IDs.
-        Any transport, shape or value failure is deliberately fail-open so a
-        ratings outage can never hide the underlying Home/search listing.
-        """
-        ids = []
-        for item in items:
-            if item.get('Type') not in ('Movie', 'Series'):
-                continue
-            try:
-                item_id = valid_id(item.get('Id'))
-            except ValueError:
-                continue
-            if item_id not in ids:
-                ids.append(item_id)
-            if len(ids) == 100:
-                break
-        if not ids:
-            return {}
-        try:
-            response = self.get('Habibi/LibraryExperience/Ratings',
-                                timeout=RATINGS_TIMEOUT, ids=','.join(ids))
-            source = response.get('items', {}) if isinstance(response, dict) else {}
-        except Exception:
-            return {}
-        if not isinstance(source, dict):
-            return {}
-        result = {}
-        for item_id in ids:
-            row = source.get(item_id)
-            if not isinstance(row, dict):
-                continue
-            clean = {}
-            imdb = row.get('imdb')
-            if isinstance(imdb, dict):
-                try:
-                    value = float(imdb.get('rating'))
-                    votes = int(imdb.get('votes', 0))
-                    if 0 < value <= 10 and votes >= 0:
-                        clean['imdb'] = {'rating':value, 'votes':votes}
-                except (TypeError, ValueError):
-                    pass
-            try:
-                value = float(row.get('community'))
-                if 0 < value <= 10:
-                    clean['community'] = value
-            except (TypeError, ValueError):
-                pass
-            if clean:
-                result[item_id] = clean
-        return result
 
     def _configured_scope(self, name):
         # Preserve the existing private scope format. A configured empty list is

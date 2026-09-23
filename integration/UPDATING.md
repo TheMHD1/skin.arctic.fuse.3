@@ -2,6 +2,12 @@
 
 ## Current release authority
 
+For the library-only Home rows, IMDb bridge/updater and revised search priority,
+apply the paired, version-pinned components in
+[HOME-RATINGS-2026-09-23.md](HOME-RATINGS-2026-09-23.md). Web alone is insufficient
+to position Enhanced Discover ahead of Venom. Use the normal authenticated
+plugin bridge; never copy an administrator key into a client or published fork.
+
 [CUSTOMIZATIONS.md](CUSTOMIZATIONS.md) is the public feature/status inventory.
 `release/README.md` is the portable build/update entry point. Its Kodi builder
 uses exact clean inputs and writes generated payloads only to a caller-selected

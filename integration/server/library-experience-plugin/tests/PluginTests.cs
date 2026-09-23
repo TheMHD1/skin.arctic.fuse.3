@@ -1,5 +1,7 @@
 using MediaBrowser.Common.Configuration;
+using MediaBrowser.Controller;
 using MediaBrowser.Model.Serialization;
+using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using Xunit;
 
@@ -17,5 +19,18 @@ public sealed class PluginTests
         Assert.Equal("Library Experience Maintenance", info.Name);
         Assert.NotNull(plugin.Version);
         Assert.False(string.IsNullOrEmpty(plugin.AssemblyFilePath));
+    }
+
+    [Fact]
+    public void ServiceRegistratorMakesRatingsIndexResolvable()
+    {
+        var paths = new Mock<IApplicationPaths>();
+        paths.SetupGet(path => path.PluginConfigurationsPath).Returns("/tmp/plugin-fixture/config");
+        var services = new ServiceCollection();
+        services.AddSingleton(paths.Object);
+        new ServiceRegistrator().RegisterServices(services, Mock.Of<IServerApplicationHost>());
+        using var provider = services.BuildServiceProvider();
+
+        Assert.IsType<RatingsIndex>(provider.GetRequiredService<RatingsIndex>());
     }
 }

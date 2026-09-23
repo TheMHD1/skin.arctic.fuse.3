@@ -14,6 +14,56 @@ in-memory item/Series field is changed only after the database transaction
 commits. Season does not support `DateLastMediaAdded` in Jellyfin 12.1, so the
 derived refresh deliberately updates Series only.
 
+## User-scoped local ratings bridge (1.1.0)
+
+`GET /Habibi/LibraryExperience/Ratings?ids=<comma-delimited-guid-list>` is a
+separate authenticated read-only bridge for Home, search and Discover. It accepts
+one to 100 distinct Jellyfin item GUIDs; malformed, empty, or oversized requests
+return 400. The endpoint takes the concrete user only from Jellyfin's authenticated
+`Jellyfin-UserId` claim. It deliberately has no `userId` query parameter and a
+userless API key returns 401 rather than becoming an administrator/global query.
+
+Submitted IDs are first filtered with Jellyfin's stock user access filter (the
+same `IItemQueryHelpers.ApplyAccessFiltering` path used by the pinned search
+manager), then loaded as non-virtual Movies/Series. This is intentional: in 12.1
+an `ItemIds` `GetItemList` query alone bypasses automatic library-scope filtering.
+Library sharing, visibility and parental restrictions therefore decide the result.
+Inaccessible, nonexistent and non-Movie/Series IDs are omitted. The route returns
+`Cache-Control: private, no-store` and `Vary: Authorization`; it never exposes
+paths, users, tokens, library listings or a global ratings index.
+
+The compact response is shaped as follows (properties use normal Jellyfin JSON
+camel case):
+
+```json
+{
+  "items": {
+    "0123456789abcdef0123456789abcdef": {
+      "imdb": { "rating": 8.2, "votes": 1234 },
+      "community": 7.7
+    }
+  },
+  "source": "IMDb non-commercial datasets",
+  "fetchedAt": "2026-09-23T00:00:00+00:00"
+}
+```
+
+`imdb` is omitted when no valid local IMDb rating is available. `community` is
+only the accessible item's Jellyfin `CommunityRating`; it is generic item metadata,
+not a fabricated TMDb value. `fetchedAt` is null when the local IMDb index is not
+usable. Clients must fail open and must not infer a provider that is absent.
+
+The plugin makes no external request. A separately maintained local updater writes
+`PluginConfigurationsPath/library-experience/imdb-library-ratings.json` atomically.
+The file is limited to 2 MiB, cached by modification time under a lock (with
+freshness rechecked on every cached read), and must have this validated schema:
+`schema` 1, UTC `fetched_at` no more than 14 days old, exact
+`https://datasets.imdbws.com/title.ratings.tsv.gz` `source_url`, and a `ratings`
+object mapping bounded IMDb `tt...` IDs to finite 0–10 `rating` and positive
+integer `votes`.
+Any malformed, stale, unauthorized, missing, or oversized file supplies no IMDb
+ratings rather than triggering a per-card lookup.
+
 ## Source pin, build and tests
 
 Build against the exact Jellyfin source revision
@@ -37,8 +87,10 @@ dotnet run --project integration/server/library-experience-plugin/tests/Jellyfin
 The executable test suite uses a real in-memory SQLite database. It verifies
 the one-column update, unchanged unrelated fields, exact path/date concurrency
 guards including database type/virtual drift, local-file rejection, elevation
-policy, Series derived-date update and plugin lifecycle metadata. Eleven tests
-passed on the deployed build.
+policy, Series derived-date update and plugin lifecycle metadata. The deployed
+1.0.0 build passed eleven tests; the 1.1.0 suite adds ratings parsing, cached
+freshness, current-user context, permission-query and rejection coverage (17 tests
+total).
 
 Deploy only `Jellyfin.Plugin.LibraryExperience.dll` and `meta.json` from
 `bin/Release/net10.0/` to a dedicated plugin directory. Do not copy its

@@ -20,7 +20,9 @@
         {"datafile": "generator/data/base/search_widgets_wall.xml"},
         {"datafile": "generator/data/base/search_widgets_standard.xml"},
         {"datafile": "generator/data/base/search_selector.xml"},
+        {"datafile": "generator/data/base/search_selector_venom.xml"},
         {"datafile": "generator/data/base/search_selector_wall.xml"},
+        {"datafile": "generator/data/base/search_selector_wall_venom.xml"},
         {"datafile": "generator/data/base/search_info.xml"}
     ]
 }

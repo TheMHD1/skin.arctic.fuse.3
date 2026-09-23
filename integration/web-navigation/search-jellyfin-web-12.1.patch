@@ -106,82 +106,56 @@ index 5a23dcb..2e5499d 100644
      });
  };
 diff --git a/src/apps/legacy/features/search/components/SearchResults.tsx b/src/apps/legacy/features/search/components/SearchResults.tsx
-index b96910f..e269b82 100644
+index b96910f..928026a 100644
 --- a/src/apps/legacy/features/search/components/SearchResults.tsx
 +++ b/src/apps/legacy/features/search/components/SearchResults.tsx
-@@ -46,7 +46,7 @@ const SearchResults: FC<SearchResultsProps> = ({
+@@ -46,7 +46,8 @@ const SearchResults: FC<SearchResultsProps> = ({
          return (
              <SearchResultsRow
                  key={`${section.title}-${index}`}
 -                title={globalize.translate(section.title)}
 +                title={section.title.startsWith('Venom ') ? section.title : globalize.translate(section.title)}
++                secondaryCatalogue={section.title === 'Venom Movies — Not HD' || section.title === 'Venom Shows — Not HD'}
                  items={section.items}
                  cardOptions={{
                      shape: CardShape.AutoOverflow,
+diff --git a/src/apps/legacy/features/search/components/SearchResultsRow.tsx b/src/apps/legacy/features/search/components/SearchResultsRow.tsx
+index f1a109f..aa54c5b 100644
+--- a/src/apps/legacy/features/search/components/SearchResultsRow.tsx
++++ b/src/apps/legacy/features/search/components/SearchResultsRow.tsx
+@@ -20,9 +20,10 @@ interface SearchResultsRowProps {
+     title?: string;
+     items?: BaseItemDto[];
+     cardOptions?: CardOptions;
++    secondaryCatalogue?: boolean;
+ }
+ 
+-const SearchResultsRow: FC<SearchResultsRowProps> = ({ title, items = [], cardOptions = {} }) => {
++const SearchResultsRow: FC<SearchResultsRowProps> = ({ title, items = [], cardOptions = {}, secondaryCatalogue = false }) => {
+     const element = useRef<HTMLDivElement>(null);
+ 
+     useEffect(() => {
+@@ -39,6 +40,7 @@ const SearchResultsRow: FC<SearchResultsRowProps> = ({ title, items = [], cardOp
+         <div
+             ref={element}
+             className='verticalSection'
++            data-habibi-catalogue={secondaryCatalogue ? 'venom' : undefined}
+             dangerouslySetInnerHTML={createScroller({ title })}
+         />
+     );
 diff --git a/src/apps/legacy/features/search/constants/sectionSortOrder.ts b/src/apps/legacy/features/search/constants/sectionSortOrder.ts
-index d66ee43..6da73b2 100644
+index d66ee43..88d971d 100644
 --- a/src/apps/legacy/features/search/constants/sectionSortOrder.ts
 +++ b/src/apps/legacy/features/search/constants/sectionSortOrder.ts
-@@ -1,6 +1,8 @@
- export const SEARCH_SECTIONS_SORT_ORDER = [
-     'Movies',
-     'Shows',
+@@ -15,5 +15,7 @@ export const SEARCH_SECTIONS_SORT_ORDER = [
+     'Photos',
+     'HeaderAudioBooks',
+     'Books',
+-    'Collections'
++    'Collections',
 +    'Venom Movies — Not HD',
-+    'Venom Shows — Not HD',
-     'Episodes',
-     'People',
-     'Studios',
-
-diff --git a/src/apps/legacy/features/search/utils/libraryScopes.ts b/src/apps/legacy/features/search/utils/libraryScopes.ts
-new file mode 100644
-index 0000000..3bdf6a6
---- /dev/null
-+++ b/src/apps/legacy/features/search/utils/libraryScopes.ts
-@@ -0,0 +1,43 @@
-+import type { BaseItemDto } from '@jellyfin/sdk/lib/generated-client/models/base-item-dto';
-+import { BaseItemKind } from '@jellyfin/sdk/lib/generated-client/models/base-item-kind';
-+import { CollectionType } from '@jellyfin/sdk/lib/generated-client/models/collection-type';
-+
-+export interface SearchLibraryScopes {
-+    ownedMovies: string[];
-+    ownedShows: string[];
-+    venomMovies: string[];
-+    venomShows: string[];
-+}
-+
-+const normalName = (name: string) => name.trim().replace(/\s+/g, ' ').toLocaleLowerCase('en-US');
-+const validId = (id?: string | null): id is string => !!id && /^[0-9a-f]{32}$/i.test(id);
-+const nonMovieViews = new Set(['collections', 'playlists', 'live tv', 'music', 'photos', 'home videos', 'books', 'audiobooks']);
-+type ScopeName = keyof SearchLibraryScopes;
-+
-+const scopesForView = (view: BaseItemDto): ScopeName[] => {
-+    const name = normalName(view.Name || '');
-+    if (name.startsWith('venom ')) {
-+        if (view.CollectionType === CollectionType.Movies && name === 'venom movies') return ['venomMovies'];
-+        if (view.CollectionType === CollectionType.Tvshows && (name === 'venom series' || name === 'venom shows')) return ['venomShows'];
-+        return [];
-+    }
-+    if (view.CollectionType === CollectionType.Movies) return ['ownedMovies'];
-+    if (view.CollectionType === CollectionType.Tvshows) return ['ownedShows'];
-+    // Mixed media libraries (including Shoko Anime) have no collection type.
-+    if (!view.CollectionType && !nonMovieViews.has(name) && (view.Type === BaseItemKind.CollectionFolder || view.Type === BaseItemKind.UserView)) {
-+        return ['ownedMovies', 'ownedShows'];
-+    }
-+    return [];
-+};
-+
-+/** User views are already permission-filtered by Jellyfin. Unknown Venom views are excluded. */
-+export const classifySearchLibraries = (views?: BaseItemDto[]): SearchLibraryScopes => {
-+    const scopes: SearchLibraryScopes = {
-+        ownedMovies: [], ownedShows: [], venomMovies: [], venomShows: []
-+    };
-+    for (const view of views || []) {
-+        if (!validId(view.Id) || !view.Name) continue;
-+        for (const scope of scopesForView(view)) scopes[scope].push(view.Id);
-+    }
-+    return scopes;
-+};
-
++    'Venom Shows — Not HD'
+ ];
 diff --git a/src/apps/legacy/features/search/api/fetchScopedMedia.ts b/src/apps/legacy/features/search/api/fetchScopedMedia.ts
 new file mode 100644
 index 0000000..5109c31
@@ -221,7 +195,6 @@ index 0000000..5109c31
 +        return { type: group.type, title: group.title, items: [...items.values()] };
 +    }));
 +};
-
 diff --git a/src/apps/legacy/features/search/api/fetchScopedMedia.test.ts b/src/apps/legacy/features/search/api/fetchScopedMedia.test.ts
 new file mode 100644
 index 0000000..a2e5ebd
@@ -292,4 +265,52 @@ index 0000000..a2e5ebd
 +        expect(groups.every(group => group.items.length === 0)).toBe(true);
 +    });
 +});
-
+diff --git a/src/apps/legacy/features/search/utils/libraryScopes.ts b/src/apps/legacy/features/search/utils/libraryScopes.ts
+new file mode 100644
+index 0000000..3bdf6a6
+--- /dev/null
++++ b/src/apps/legacy/features/search/utils/libraryScopes.ts
+@@ -0,0 +1,43 @@
++import type { BaseItemDto } from '@jellyfin/sdk/lib/generated-client/models/base-item-dto';
++import { BaseItemKind } from '@jellyfin/sdk/lib/generated-client/models/base-item-kind';
++import { CollectionType } from '@jellyfin/sdk/lib/generated-client/models/collection-type';
++
++export interface SearchLibraryScopes {
++    ownedMovies: string[];
++    ownedShows: string[];
++    venomMovies: string[];
++    venomShows: string[];
++}
++
++const normalName = (name: string) => name.trim().replace(/\s+/g, ' ').toLocaleLowerCase('en-US');
++const validId = (id?: string | null): id is string => !!id && /^[0-9a-f]{32}$/i.test(id);
++const nonMovieViews = new Set(['collections', 'playlists', 'live tv', 'music', 'photos', 'home videos', 'books', 'audiobooks']);
++type ScopeName = keyof SearchLibraryScopes;
++
++const scopesForView = (view: BaseItemDto): ScopeName[] => {
++    const name = normalName(view.Name || '');
++    if (name.startsWith('venom ')) {
++        if (view.CollectionType === CollectionType.Movies && name === 'venom movies') return ['venomMovies'];
++        if (view.CollectionType === CollectionType.Tvshows && (name === 'venom series' || name === 'venom shows')) return ['venomShows'];
++        return [];
++    }
++    if (view.CollectionType === CollectionType.Movies) return ['ownedMovies'];
++    if (view.CollectionType === CollectionType.Tvshows) return ['ownedShows'];
++    // Mixed media libraries (including Shoko Anime) have no collection type.
++    if (!view.CollectionType && !nonMovieViews.has(name) && (view.Type === BaseItemKind.CollectionFolder || view.Type === BaseItemKind.UserView)) {
++        return ['ownedMovies', 'ownedShows'];
++    }
++    return [];
++};
++
++/** User views are already permission-filtered by Jellyfin. Unknown Venom views are excluded. */
++export const classifySearchLibraries = (views?: BaseItemDto[]): SearchLibraryScopes => {
++    const scopes: SearchLibraryScopes = {
++        ownedMovies: [], ownedShows: [], venomMovies: [], venomShows: []
++    };
++    for (const view of views || []) {
++        if (!validId(view.Id) || !view.Name) continue;
++        for (const scope of scopesForView(view)) scopes[scope].push(view.Id);
++    }
++    return scopes;
++};

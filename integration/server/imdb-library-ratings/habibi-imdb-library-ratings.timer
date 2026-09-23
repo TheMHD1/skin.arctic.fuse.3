@@ -1,0 +1,11 @@
+[Unit]
+Description=Refresh owned-library IMDb ratings every six hours
+
+[Timer]
+OnCalendar=*-*-* 03,09,15,21:00:00 UTC
+RandomizedDelaySec=30min
+Persistent=true
+Unit=habibi-imdb-library-ratings.service
+
+[Install]
+WantedBy=timers.target

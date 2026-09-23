@@ -7,9 +7,11 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 FORK = HERE.parents[2]
 SOURCES = {
-    'home/client.py': FORK/'integration/plugin.video.habibi.resume/client.py',
+    # R7 remains an exact historical recovery cohort. Newer Home/rating work
+    # ships through the separate search-priority overlay.
+    'home/client.py': HERE/'baseline-r7/client.py',
     'home/search.py': FORK/'integration/plugin.video.habibi.resume/search.py',
-    'home/default.py': FORK/'integration/plugin.video.habibi.resume/default.py',
+    'home/default.py': HERE/'baseline-r7/default.py',
     'home/service.py': FORK/'integration/plugin.video.habibi.resume/service.py',
     'skin/search_path.xml': FORK/'shortcuts/generator/data/setup/search_path.xml',
     'skin/searchwidgets.json': FORK/'shortcuts/skinvariables-shortcut-searchwidgets.json',

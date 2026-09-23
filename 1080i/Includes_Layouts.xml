@@ -2107,6 +2107,7 @@
                     <include condition="!$PARAM[selected] + $PARAM[indicator]" content="Object_Indicator">
                         <param name="affix">$PARAM[affix]</param>
                         <param name="listitem">$PARAM[listitem]</param>
+                        <param name="poster_rating">!String.IsEmpty($VAR[Label_Poster_Rating])</param>
                     </include>
                     <include content="Object_SelectBox" condition="$PARAM[selected]">
                         <param name="affix">$PARAM[affix]</param>
@@ -2114,6 +2115,7 @@
                         <param name="indicator">$PARAM[indicator]</param>
                         <param name="focusbounce">true</param>
                     </include>
+                    <include content="Object_PosterRating" />
                 </control>
 
             </control>

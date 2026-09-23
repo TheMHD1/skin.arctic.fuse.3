@@ -24,10 +24,13 @@ class ReleaseTests(unittest.TestCase):
           'addons/plugin.video.habibi.resume/client.py':HERE/'baseline-r6/client.py',
           'addons/plugin.video.habibi.resume/default.py':HERE/'baseline-r6/default.py',
           'addons/skin.arctic.fuse.3/shortcuts/generator/data/setup/search_path.xml':HERE/'baseline-r6/search_path.xml',
-          installer.SEARCH_SKIN:FORK/'1080i/Includes_Search.xml',
+          installer.SEARCH_SKIN:HERE/'baseline-r6/Includes_Search.xml',
         }
         for relative,source_path in copies.items():
-            target=self.root/relative;target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(source_path,target)
+            target=self.root/relative;target.parent.mkdir(parents=True,exist_ok=True)
+            if relative==installer.SEARCH_SKIN:
+                data=source_path.read_bytes();self.assertEqual(data[-1:],b'\n');target.write_bytes(data[:-1])
+            else:shutil.copy2(source_path,target)
         home=self.root/'addons/plugin.video.habibi.resume';shutil.copy2(self.payload/'search.py',home/'search.py')
         http=self.root/'addons/plugin.video.jellyfin/jellyfin_kodi/jellyfin/http.py';http.parent.mkdir(parents=True);shutil.copy2(self.payload/'jellyfin/http.py',http)
         venom=self.root/'addons/plugin.video.venom.tv'

@@ -15,6 +15,12 @@ MANIFEST = ROOT / "integration/release/source-manifest.json"
 EXTRA = {
     ".gitignore", ".gitattributes", ".github/workflows/integration.yml", "addon.xml", "LICENSE.txt", "README.md", "AGENTS.md",
     "1080i/Includes_Search.xml", "shortcuts/generator/data/setup/search_path.xml",
+    "1080i/Includes_Labels.xml", "1080i/Includes_Layouts.xml", "1080i/Includes_Objects.xml",
+    "shortcuts/generator/data/base/search_selector.xml",
+    "shortcuts/generator/data/base/search_selector_wall.xml",
+    "shortcuts/generator/data/base/search_selector_venom.xml",
+    "shortcuts/generator/data/base/search_selector_wall_venom.xml",
+    "shortcuts/skinvariables-generator.json",
     "shortcuts/skinvariables-shortcut-searchwidgets.json",
 }
 
@@ -49,7 +55,7 @@ def write():
         raise SystemExit("Review and stage sources before recording them:\n" + "\n".join(pending))
     payload = {
         "schema": 1,
-        "release": "2026-09-23-library-experience-r7",
+        "release": "2026-09-23-library-home-ratings",
         "meaning": "Reviewed source bytes, not a runtime credential/settings backup or proof of deployment",
         "status": {
             "local_kodi_r6": "deployed-and-accepted",
@@ -58,6 +64,9 @@ def write():
             "remote_kodi_r7": "not-deployed",
             "jellyfin_nextup": "deployed-26-account-readonly-audit-passed",
             "web_search": "deployed-mobile-browser-verified",
+            "web_library_home": "deployed-owned-only-order-and-favorites-browser-verified",
+            "imdb_ratings": "deployed-optional-fail-open-201-of-202-distinct-ids",
+            "kodi_search_ratings": "source-tested-deployment-pending",
             "request_ready": "timer-deployed-no-real-completion-delivery-yet",
             "remote_original_p7": "pending",
             "coreelec_update": "held-not-authorized",

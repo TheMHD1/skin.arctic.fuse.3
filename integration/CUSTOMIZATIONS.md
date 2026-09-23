@@ -24,6 +24,12 @@ a redacted inventory, not importable configuration.
 
 ## Deployment state at the September 22 acceptance point
 
+The subsequent [September 23 Home/ratings release](HOME-RATINGS-2026-09-23.md)
+adds library-only Favorites/Top Rated Web rows, genuine optional IMDb scores,
+and paired Web/Enhanced search priority (owned → Discover → Venom). Its new
+features use a small plugin and client overlays, not additional server core
+changes or custom native APKs.
+
 The subsequent September 22–23 library-experience rollout is documented in
 [LIBRARY-EXPERIENCE-2026-09-22.md](LIBRARY-EXPERIENCE-2026-09-22.md). Local Kodi
 is now R7 for Home/search, with the R6 playback/transport cohort retained.

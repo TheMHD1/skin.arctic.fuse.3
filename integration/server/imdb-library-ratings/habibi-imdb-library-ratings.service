@@ -1,0 +1,20 @@
+[Unit]
+Description=Refresh IMDb ratings for owned Jellyfin library IDs
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# Docker host deployment: existing private API key/config belong to root.
+# For native Jellyfin, use a dedicated account with explicit key/output access.
+User=root
+Group=root
+EnvironmentFile=/etc/habibi/imdb-library-ratings.env
+ExecStart=/usr/bin/python3 /opt/habibi/imdb-library-ratings/update.py --jellyfin-url ${JELLYFIN_URL} --jellyfin-key-file ${JELLYFIN_KEY_FILE} --output-dir ${OUTPUT_DIR}
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+CapabilityBoundingSet=
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+ReadWritePaths=/data/config/jellyfin/data/plugins/configurations/library-experience

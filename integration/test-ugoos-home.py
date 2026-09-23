@@ -131,4 +131,25 @@ client.set_favorite('a'*32,True)
 client.set_favorite('a'*32,False)
 assert requests==[('Users/u/FavoriteItems/'+'a'*32,{'method':'POST'}),
                   ('Users/u/FavoriteItems/'+'a'*32,{'method':'DELETE'})]
+
+# Ratings are one bounded authenticated page request, omit episodes/duplicates,
+# validate provenance independently, and fail open on an unavailable companion.
+ratings_client=Client(server)
+rating_calls=[]
+def rating_get(path,**params):
+    rating_calls.append((path,params))
+    return {'items':{
+        'a'*32:{'imdb':{'rating':8.2,'votes':1234},'community':7.7},
+        'b'*32:{'imdb':{'rating':99,'votes':-1},'community':0},
+    }}
+ratings_client.get=rating_get
+ratings=ratings_client.ratings([
+    {'Id':'a'*32,'Type':'Movie'}, {'Id':'a'*32,'Type':'Movie'},
+    {'Id':'b'*32,'Type':'Series'}, {'Id':'c'*32,'Type':'Episode'},
+])
+assert ratings=={'a'*32:{'imdb':{'rating':8.2,'votes':1234},'community':7.7}}
+assert rating_calls==[('Habibi/LibraryExperience/Ratings',
+                      {'timeout':2,'ids':'a'*32+','+'b'*32})]
+ratings_client.get=lambda *a,**k:(_ for _ in ()).throw(TimeoutError())
+assert ratings_client.ratings([{'Id':'a'*32,'Type':'Movie'}])=={}
 print('PASS: authoritative playback rank, scoped recent merge, grouped latest shows, view isolation, paging and mutations')

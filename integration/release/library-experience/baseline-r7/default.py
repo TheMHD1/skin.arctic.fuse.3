@@ -61,7 +61,6 @@ def main():
             items = search(client, query, kind, start, scope=scope)
         else:
             items = client.listing(mode, params.get('series'), start)
-        ratings = client.ratings(items)
         rows = []
         for item in items:
             kind = item.get('Type')
@@ -79,15 +78,6 @@ def main():
             info.setMediaType('tvshow' if kind == 'Series' else kind.lower())
             info.setPlot(item.get('Overview', ''))
             info.setYear(item.get('ProductionYear', 0))
-            card_ratings = ratings.get(item.get('Id'), {})
-            imdb_rating = card_ratings.get('imdb')
-            community_rating = card_ratings.get('community')
-            if imdb_rating:
-                info.setRating(imdb_rating['rating'], imdb_rating['votes'], 'imdb', True)
-                li.setProperty('Habibi.Rating.IMDb', '{:.1f}'.format(imdb_rating['rating']))
-            if community_rating:
-                info.setRating(community_rating, 0, 'community', not imdb_rating)
-                li.setProperty('Habibi.Rating.Community', '{:.1f}'.format(community_rating))
             if kind == 'Episode':
                 info.setTvShowTitle(item.get('SeriesName', ''))
                 info.setSeason(item.get('ParentIndexNumber', 0))

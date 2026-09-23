@@ -260,6 +260,28 @@
         </definition>
     </include>
 
+    <include name="Object_PosterRating">
+        <definition>
+            <control type="group">
+                <right>12</right>
+                <bottom>12</bottom>
+                <width>132</width>
+                <height>40</height>
+                <visible>[String.IsEqual(ListItem.DBType,movie) | String.IsEqual(ListItem.DBType,tvshow)] + !String.IsEmpty($VAR[Label_Poster_Rating])</visible>
+                <control type="image">
+                    <texture border="18" colordiffuse="e6333333">common/box.png</texture>
+                </control>
+                <control type="label">
+                    <font>font_hint_bold</font>
+                    <align>center</align>
+                    <aligny>center</aligny>
+                    <textcolor>panel_fg_100</textcolor>
+                    <label>$VAR[Label_Poster_Rating]</label>
+                </control>
+            </control>
+        </definition>
+    </include>
+
     <include name="Object_AlphabetLetter_Label">
         <param name="textcolor_fo">main_fg_100</param>
         <param name="textcolor_nf">main_fg_30</param>
@@ -1024,7 +1046,8 @@
         <definition>
             <control type="group">
                 <nested />
-                <centerbottom>0</centerbottom>
+                <include content="Object_CenterBottom" condition="!$PARAM[poster_rating]"><param name="centerbottom">0</param></include>
+                <include content="Object_Bottom" condition="$PARAM[poster_rating]"><param name="bottom">52</param></include>
                 <right>25</right>
                 <width>64</width>
                 <height>64</height>

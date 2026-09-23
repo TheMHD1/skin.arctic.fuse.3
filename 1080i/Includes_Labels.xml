@@ -915,6 +915,17 @@
         <value>——</value>
     </variable>
 
+    <!-- A named rating is only labelled when its provenance is explicit. The
+         plain rating fallback deliberately remains provider-neutral. -->
+    <variable name="Label_Poster_Rating">
+        <value condition="!String.IsEmpty(ListItem.Property(Habibi.Rating.IMDb))">$INFO[ListItem.Property(Habibi.Rating.IMDb),IMDb ]</value>
+        <value condition="!String.IsEmpty(ListItem.Rating(imdb))">$INFO[ListItem.Rating(imdb),IMDb ]</value>
+        <value condition="!String.IsEmpty(ListItem.Rating(tmdb))">$INFO[ListItem.Rating(tmdb),TMDb ]</value>
+        <value condition="!String.IsEmpty(ListItem.Property(tmdb_id)) + !String.IsEmpty(ListItem.Rating)">$INFO[ListItem.Rating,TMDb ]</value>
+        <value condition="!String.IsEmpty(ListItem.Property(Habibi.Rating.Community))">$INFO[ListItem.Property(Habibi.Rating.Community),★ ]</value>
+        <value condition="!String.IsEmpty(ListItem.Rating)">$INFO[ListItem.Rating,★ ]</value>
+    </variable>
+
     <variable name="Label_MediaList_Details_LeftLabel">
         <value condition="String.IsEqual(ListItem.DBType,tvshow) | String.IsEqual(ListItem.DBType,season)">$INFO[ListItem.Episode,, $LOCALIZE[20453]]</value>
         <value>$INFO[ListItem.Premiered]</value>

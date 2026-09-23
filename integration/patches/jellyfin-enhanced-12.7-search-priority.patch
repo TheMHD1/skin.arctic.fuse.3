@@ -1,0 +1,54 @@
+diff --git a/Jellyfin.Plugin.JellyfinEnhanced/js/jellyseerr/ui/ui-results.js b/Jellyfin.Plugin.JellyfinEnhanced/js/jellyseerr/ui/ui-results.js
+index e3ccbf0..b853e06 100644
+--- a/Jellyfin.Plugin.JellyfinEnhanced/js/jellyseerr/ui/ui-results.js
++++ b/Jellyfin.Plugin.JellyfinEnhanced/js/jellyseerr/ui/ui-results.js
+@@ -220,6 +220,7 @@
+         const sectionToInject = createJellyseerrSection(results, isJellyseerrOnlyMode, isJellyseerrActive, jellyseerrUserFound);
+ 
+         const primaryCardTypes = ['movie', 'series'];
++        const secondarySelector = '[data-habibi-catalogue="venom"]';
+ 
+         /**
+          * Finds the last Movies/Shows section in the search results, identified
+@@ -230,8 +231,7 @@
+         function findLastPrimarySection() {
+             const allSections = Array.from(searchPage.querySelectorAll('.verticalSection:not(.jellyseerr-section)'));
+             for (let i = allSections.length - 1; i >= 0; i--) {
+-                const cardType = allSections[i].querySelector('[data-type]')?.dataset.type?.toLowerCase();
+-                if (cardType && primaryCardTypes.includes(cardType)) {
++                if (isPrimarySection(allSections[i])) {
+                     return allSections[i];
+                 }
+             }
+@@ -247,6 +247,7 @@
+          */
+         function isPrimarySection(el) {
+             if (!el || !el.classList?.contains('verticalSection')) return false;
++            if (el.matches(secondarySelector)) return false;
+             const cardType = el.querySelector('[data-type]')?.dataset.type?.toLowerCase();
+             return !!cardType && primaryCardTypes.includes(cardType);
+         }
+@@ -298,12 +299,22 @@
+ 
+             const lastPrimary = findLastPrimarySection();
+             if (lastPrimary) {
+-                if (!isPrimarySection(sectionToInject.previousElementSibling)) {
++                if (sectionToInject.previousElementSibling !== lastPrimary) {
+                     lastPrimary.after(sectionToInject);
+                 }
+                 return true;
+             }
+ 
++            // Provider-only results still belong below Discover. Only move our
++            // own section; React retains ownership of native result rows.
++            const firstSecondary = searchPage.querySelector(secondarySelector);
++            if (firstSecondary) {
++                if (sectionToInject.nextElementSibling !== firstSecondary) {
++                    firstSecondary.before(sectionToInject);
++                }
++                return true;
++            }
++
+             const resultsContainer = searchPage.querySelector('.searchResults, [class*="searchResults"], .padded-top.padded-bottom-page');
+             if (resultsContainer) {
+                 if (sectionToInject.parentElement !== resultsContainer || resultsContainer.lastElementChild !== sectionToInject) {
