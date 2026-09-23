@@ -10,7 +10,7 @@ still depends on private deployment state.
 
 | Component | Reviewed version | Notes |
 | --- | --- | --- |
-| CoreELEC / Kodi | CoreELEC 22 / Kodi 22 | An OS update is deliberately held; do not infer a safe firmware update from addon acceptance. |
+| CoreELEC / Kodi | CoreELEC 22 nightly 20260922 / Kodi 22 BETA2 | Local AM9 hybrid update completed September 23; [verified two-partition procedure](COREELEC-HYBRID-UPDATE-2026-09-23.md). Future firmware updates still require separate authorization and review. |
 | Arctic Fuse 3 | 3.3.1 on accepted devices | Reviewed upstream 3.3.1 source plus `patches/arctic-3.3.1-habibi.patch`; the repository root remains a legacy 3.2.19 baseline. |
 | Jellyfin for Kodi | 2.2.0+py3 | Apply only the consolidated 2.2 patch stack. |
 | Home companion | 1.1.0 | Server-backed Home, search, favourites and episode navigation. |
@@ -47,8 +47,10 @@ a claim that every R7 UI interaction was physically repeated.
 - The remote-house r6 Venom overlay is built and regression-tested but has not
   been installed or physically accepted there. It deliberately retains
   Jellyfin HTTPS playback, no local PVR dependency and Native mode disabled.
-- A CoreELEC update was verified separately but remains held. The addon release
-  does not authorize an OS update, reboot or boot-media change.
+- At that R6 acceptance point, a CoreELEC update was verified separately but
+  held. The owner subsequently authorized and completed the
+  [September 23 hybrid update](COREELEC-HYBRID-UPDATE-2026-09-23.md).
+  Addon acceptance alone still does not authorize future firmware changes.
 - Server-side exact-403 input retry is a bounded mitigation with local fixture
   proof. It is not proof that a provider will recover from every rejection.
 - Remote original-P7 delivery is not part of r6. It still requires a distinct

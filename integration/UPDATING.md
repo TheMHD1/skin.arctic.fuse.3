@@ -17,7 +17,9 @@ and perform the reviewed version/source/manifest/idle/backup/rollback workflow;
 both the local-PVR and remote-Jellyfin cohorts.
 
 The local/LAN r6 cohort is installed and physically accepted. The remote-house
-r6 overlay is built and tested but not deployed. A CoreELEC update remains held.
+r6 overlay is built and tested but not deployed. The separately authorized
+[September 23 CoreELEC hybrid update](COREELEC-HYBRID-UPDATE-2026-09-23.md)
+is complete on the local AM9; this does not authorize future firmware updates.
 The portable release is an **exact-cohort addon update**, not a blank-device
 bootstrap, firmware updater or general Dispatcharr installer. Generated payloads,
 real profiles, credentials and rollback archives never belong in Git.
@@ -113,6 +115,11 @@ fix, verified rollback state and Kodi category-outage recovery. Rebase those
 version-specific patches when updating their upstream components.
 
 ## AM9 hybrid boot prerequisite (September 18 repair)
+
+Use the [September 23 verified update runbook](COREELEC-HYBRID-UPDATE-2026-09-23.md)
+for the current target, preflight/backup/read-back guards, final synchronization
+and recovery procedure. Review a future release rather than substituting its
+filename into the old exact-device script. Keep manual updates enabled.
 
 The AM9 boots its kernel from SD while `/flash` and `/storage` may resolve to
 SSD. **Do not use unattended CoreELEC updates on this arrangement.** Before

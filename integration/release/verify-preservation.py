@@ -70,7 +70,7 @@ def write():
             "kodi_search_ratings": "deployed-device-api-30-ratings-55ms-physical-badge-visual-pending",
             "request_ready": "timer-deployed-no-real-completion-delivery-yet",
             "remote_original_p7": "pending",
-            "coreelec_update": "held-not-authorized",
+            "coreelec_update": "local-am9-nightly-20260922-hybrid-verified-two-boots-physical-av-pending",
             "provider_403_retry": "deployed-fixture-tested-not-live-recovery-proven",
             "dovi_companion_provenance": "known-gap-not-fixed",
         },
