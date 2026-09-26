@@ -1,0 +1,11 @@
+[Unit]
+Description=Run bounded subtitle publication retries without library scans
+
+[Timer]
+OnBootSec=30s
+OnUnitInactiveSec=30s
+AccuracySec=1s
+Unit=subtitle-jellyfin-publication.service
+
+[Install]
+WantedBy=timers.target

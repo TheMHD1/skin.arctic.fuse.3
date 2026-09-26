@@ -1,0 +1,9 @@
+[Unit]
+Description=Watch durable exact ARR import events
+
+[Path]
+DirectoryNotEmpty=/data/media/compatibility/.dovi-import-queue
+Unit=dovi-import-fast.service
+
+[Install]
+WantedBy=multi-user.target

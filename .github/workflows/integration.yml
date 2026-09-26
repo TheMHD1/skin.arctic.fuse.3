@@ -13,6 +13,14 @@ jobs:
       - run: python integration/check.py
       - run: python integration/check-catchup.py
       - run: python integration/server/dovi/test_dovi_reconciler.py
+      - run: python integration/server/dovi/test_fast_import.py
+      - run: python integration/server/subtitle-publication/subtitle-publication-tests.py
+      - run: python integration/server/publication-e2e/test_harness.py
+      - run: python -m unittest discover -s integration/server/arr-request-search -p 'test_*.py'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test integration/server/seerr-request-privacy/test_privacy.js
       - run: bash -n integration/server/dovi/dovi-process-queue-20260922.sh
       - run: python integration/release/verify-preservation.py
       - run: python integration/release/test-preservation.py

@@ -42,9 +42,9 @@ COMPAT_ROOT="/data/media/compatibility/dovi-p8"
 LOG="$DIR/fel-to-p8.log"
 MARGIN_PCT=110                   # generic free-space margin
 SCRATCH_PCT=160                  # NVMe scratch needs ~1.5x source (two HEVC essences)
-JF="http://192.168.2.172:8096"
+JF="${JELLYFIN_URL:-http://jellyfin:8096}"
 JK="[REDACTED: runtime Jellyfin API token]"
-NTFY_URL="http://100.79.178.109:8090"; NTFY_TOPIC="habibi-alerts"
+NTFY_URL="${NTFY_URL:-http://ntfy:8090}"; NTFY_TOPIC="${NTFY_TOPIC:-media-alerts}"
 LOG_MAX=5242880                  # trim log when it exceeds ~5MB
 mkdir -p "$DIR" "$HDD_SCRATCH" "$COMPAT_ROOT/movies" "$COMPAT_ROOT/shows"
 log(){ printf '%s %s\n' "$(date -Is)" "$*" >> "$LOG"; }
@@ -113,24 +113,13 @@ decode_smoke(){ # file, position seconds; video + first audio (if present)
 }
 pop_done(){ grep -vxF -- "$1" "$WQ" > "$WQ.tmp" 2>/dev/null; mv -f "$WQ.tmp" "$WQ" 2>/dev/null || true; }
 
-jf_refresh(){   # $1 = absolute file path (Jellyfin stores the identical /data/media/... path)
-  local F="$1" id
-  id=$(curl -s -G -m 25 "$JF/Items" -H "Authorization: MediaBrowser Token=\"$JK\"" \
-        --data-urlencode "recursive=true" --data-urlencode "includeItemTypes=Movie,Episode" \
-        --data-urlencode "fields=Path" --data-urlencode "enableTotalRecordCount=false" \
-        --data-urlencode "enableImages=false" 2>/dev/null \
-        | jq -r --arg p "$F" '.Items[]? | select(.Path==$p) | .Id' 2>/dev/null | head -1)
-  if [ -n "$id" ]; then
-    curl -s -m 25 -X POST "$JF/Items/$id/Refresh" -H "Authorization: MediaBrowser Token=\"$JK\"" --get \
-      --data-urlencode "metadataRefreshMode=FullRefresh" --data-urlencode "imageRefreshMode=None" \
-      --data-urlencode "replaceAllMetadata=false" --data-urlencode "replaceAllImages=false" >/dev/null 2>&1
-    log "jellyfin re-probe queued (item $id): $(basename "$F")"
+companion_publish(){
+  local result
+  result=$(python3 "$DIR/dovi-import-fast.py" --config "$DIR/fast-import.json" --companion-ready "$1" 2>/dev/null)
+  if [ "$?" = 0 ]; then
+    log "companion publication handoff: $result"
   else
-    local ESC; ESC=$(printf '%s' "$F" | sed 's/\\/\\\\/g; s/"/\\"/g')
-    curl -s -m 15 -X POST "$JF/Library/Media/Updated" -H "Authorization: MediaBrowser Token=\"$JK\"" \
-      -H "Content-Type: application/json" \
-      --data "{\"Updates\":[{\"Path\":\"$ESC\",\"UpdateType\":\"Modified\"}]}" >/dev/null 2>&1
-    log "jellyfin item not found; sent Media/Updated: $(basename "$F")"
+    log "companion publication handoff unavailable; periodic repair retained"
   fi
 }
 
@@ -282,7 +271,7 @@ while IFS= read -r FILE; do
          # The compatibility view owns Jellyfin delivery.  Trigger its atomic
          # relink immediately; its service then notifies Jellyfin using the
          # unchanged canonical item path.
-         touch /data/media/compatibility/.dovi-reconcile.trigger
+         companion_publish "$FILE"
          converted=$((converted+1))
     else
          log "ERROR compatibility publish failed, master untouched: $FILE"; rm -f "$TMPOUT" 2>/dev/null; failed=$((failed+1)); ntfy "ERROR compatibility publish failed: $(basename "$FILE")"

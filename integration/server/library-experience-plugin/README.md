@@ -1,18 +1,91 @@
 # Library Experience Maintenance plugin
 
-This plugin provides two narrow, administrator-only repair operations for
-Jellyfin 12.1:
+This plugin provides two narrow, administrator-only date repair operations for
+Jellyfin 12.1, plus the separate scoped discovery operation below:
 
 - atomically change only `BaseItems.DateCreated` for an exact local Movie or
   Episode ID, path and prior UTC timestamp;
 - after an Episode batch, recompute `DateLastMediaAdded` for at most 500 exact
   Series IDs from their current, dated, non-virtual local Episode rows.
 
-It does not run a metadata refresh, call metadata savers, write NFO files,
+The date repair operations do not run a metadata refresh, call metadata savers, write NFO files,
 change watch history, scan a library, or accept arbitrary paths or SQL. The
 in-memory item/Series field is changed only after the database transaction
 commits. Season does not support `DateLastMediaAdded` in Jellyfin 12.1, so the
 derived refresh deliberately updates Series only.
+
+## Single-title discovery (1.2.0)
+
+Status: deployed September 26, plugin 1.2.0.0 reports Active. All 38 plugin
+tests passed. The [isolated real-server acceptance](../publication-e2e/ACCEPTANCE.md)
+also passed new Movie/Series indexing, duplicate identity, provider conflict,
+authorization and no-global-scan assertions. Production recovery verified exact
+playable episode sources; it did not exercise physical client playback.
+The new administrator-only endpoint discovers exactly one title directory:
+
+```http
+POST /Habibi/LibraryExperience/DiscoverTitle
+Content-Type: application/json
+
+{
+  "libraryId": "<existing CollectionFolder GUID>",
+  "expectedParentPath": "<exact Jellyfin logical physical-root path>",
+  "directoryName": "<one existing direct-child directory basename>",
+  "kind": "Series",
+  "providerIds": {"Tmdb": "12345", "Tvdb": "67890", "Imdb": "tt1234567"}
+}
+```
+
+`kind` is `Series` or `Movie`; `providerIds` is optional. Caller-supplied IDs
+must already have been verified against the owning Arr record and path. Only
+bounded numeric TMDb/TVDB IDs and an IMDb `tt...` ID are accepted; no provider
+URL is accepted. Unknown keys and malformed values return 400. The plugin does
+not guess an identity from a title supplied by the caller.
+
+The selected CollectionFolder must own both the exact physical path and the
+native physical-parent GUID. The parent is derived with `FindByPath`; arbitrary
+root paths, mixed content types, traversal, separator-containing directory names,
+missing directories and symlink title directories are refused. Use the logical
+path visible inside Jellyfin, not a host compatibility-view path. A full native
+library scan or a queued/active refresh of the selected physical/library root
+returns 409 for bounded caller retry; this endpoint
+never cancels that scan or triggers another full scan.
+
+Stock `ResolvePath` reads only the requested directory; its native item ID is
+retained. `CreateItems` adds only that item under the existing parent, then
+`QueueRefresh` queues only the title item. No parent `ValidateChildren`, root
+refresh, `Library/Media/Updated`, direct SQL or server-core patch is used.
+Series child validation naturally visits that series' seasons/episodes. Movie
+resolution may use the native file path inside its directory. Verified provider
+IDs seed a newly created item's missing IDs before its metadata refresh; existing
+IDs are never overwritten. Identity/type/parent conflicts return 409.
+
+Retries, including after process restart, locate the stable native resolved ID
+and do not create a duplicate. A short process-wide semaphore refuses concurrent
+discovery with 409 rather than racing creation. HTTP 202 returns
+`{"ItemId":"<native GUID>","Queued":true,"Created":true}` (Created is false for
+an existing title). This confirms queuing, not completed indexing: the publisher
+must poll exact native Items/episodes and playback sources before recording success.
+The installed serializer uses PascalCase; callers accept PascalCase and camelCase.
+Queue failure after creation is recoverable by the same request; it must not
+invoke a whole-library fallback. Normal metadata provider/saver behavior for this
+one title still applies, unlike the date-repair operations.
+
+Why a plugin is needed: Jellyfin 12.1's `Library/Media/Updated` ignores
+`UpdateType`, passes every path into the native watcher, and climbs to the
+nearest already indexed ancestor. For a completely new title this can be the
+physical library root. Its default folder refresh recursively validates that
+root's titles. An exact notification path therefore does not guarantee an
+item-only scan. Existing titles can use native `Items/{id}/Refresh`; new titles
+use this endpoint when whole-library traversal is prohibited.
+
+The controller uses the existing `RequiresElevation` policy and exact 12.1
+assembly guard. Build and run all plugin tests using the pinned procedure below;
+deploy the 1.2.0 DLL and matching metadata together, preserving other plugin
+features. Rollback restores the prior compatible plugin and restarts Jellyfin.
+Already indexed items remain ordinary native library items; do not restore the
+database to undo a plugin deployment. Record live acceptance and private backup
+location separately. New image/API versions require rebuild and scope/auth tests.
 
 ## User-scoped local ratings bridge (1.1.0)
 
@@ -90,7 +163,8 @@ guards including database type/virtual drift, local-file rejection, elevation
 policy, Series derived-date update and plugin lifecycle metadata. The deployed
 1.0.0 build passed eleven tests; the 1.1.0 suite adds ratings parsing, cached
 freshness, current-user context, permission-query and rejection coverage (17 tests
-total).
+total). The deployed 1.2.0 suite contains 38 tests, adding single-title scope,
+physical-parent ownership, provider identity, authorization and duplicate safety.
 
 Deploy only `Jellyfin.Plugin.LibraryExperience.dll` and `meta.json` from
 `bin/Release/net10.0/` to a dedicated plugin directory. Do not copy its

@@ -1,0 +1,13 @@
+[Unit]
+Description=Publish due Dolby Vision view changes to Jellyfin
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/data/config/_dovi/publication.env
+ExecStart=/data/config/_dovi/dovi-library-view.py --apply --notify-jellyfin --notify-only
+Nice=15
+TimeoutStartSec=5min
+StandardOutput=journal
+StandardError=journal

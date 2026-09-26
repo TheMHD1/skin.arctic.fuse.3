@@ -1,0 +1,11 @@
+[Unit]
+Description=Retry and coalesce Jellyfin publication without media scans
+
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec=30s
+AccuracySec=1s
+Unit=dovi-library-notify.service
+
+[Install]
+WantedBy=timers.target

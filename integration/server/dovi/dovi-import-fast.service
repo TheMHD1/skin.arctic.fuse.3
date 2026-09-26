@@ -1,0 +1,13 @@
+[Unit]
+Description=Publish exact ARR imports through the validated Dolby Vision view
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+UMask=0077
+ExecStart=/usr/bin/python3 /data/config/_dovi/dovi-import-fast.py --config /data/config/_dovi/fast-import.json
+TimeoutStartSec=15min
+Nice=5
+StandardOutput=journal
+StandardError=journal

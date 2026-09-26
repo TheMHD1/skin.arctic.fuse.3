@@ -2,6 +2,30 @@
 
 ## Current release authority
 
+The [September 26 import/request repairs](IMPORT-REQUEST-REPAIRS-2026-09-26.md)
+record native naming/indexer/permission changes, bounded request-search recovery
+and the Seerr request-privacy overlay. Seerr's compiled overlay is exact-version
+pinned and startup guarded: review/rebuild it before changing the image. Do not
+remove its guard or readonly mounts merely to make a new version start.
+
+The same record covers the deployed exact-import and subtitle publishers. Keep
+their queues/databases, private keys, timers and volume mappings persistent;
+do not replace them with the sanitized converter reference or copy private
+runtime configuration into Git. A bind-mounted individual ARR hook file requires
+container remount/recreation after atomic replacement: check the in-container
+hash, not only the host file. The subtitle timer retains its existing Bazarr
+Docker execution context and must not be duplicated under a new unit name.
+
+Library Experience 1.2 uses an exact Jellyfin 12.1 assembly guard. Before upgrading
+Jellyfin, build against the candidate's reviewed source, run all plugin and worker
+regressions, then run the [isolated publication fixture](server/publication-e2e/README.md)
+against the actual candidate image/plugin. Confirm new Movie/Episode discovery,
+duplicate identity, provider conflicts, replaced served subtitles and unchanged
+global scan state. Rebase the guard only after acceptance; do not silently fall
+back to a whole-library scan. Keep the prior image/plugin and private worker
+backups for rollback. Existing native library items remain usable if discovery
+is temporarily unavailable; bounded pending jobs retain their error evidence.
+
 For the library-only Home rows, IMDb bridge/updater and revised search priority,
 apply the paired, version-pinned components in
 [HOME-RATINGS-2026-09-23.md](HOME-RATINGS-2026-09-23.md). Web alone is insufficient

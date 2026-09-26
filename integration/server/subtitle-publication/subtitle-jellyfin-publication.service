@@ -1,0 +1,14 @@
+[Unit]
+Description=Publish due provider and managed subtitles to exact Jellyfin items
+After=docker.service network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/docker exec bazarr timeout --foreground -s TERM -k 10 210 python3 /config/scripts/subtitle-raw-arrival.py work --limit 2 --root /config/scripts
+ExecStart=/usr/bin/docker exec bazarr timeout --foreground -s TERM -k 10 120 python3 /config/scripts/subtitle-publication-queue.py work --limit 1 --root /config/scripts
+Nice=15
+IOSchedulingClass=idle
+TimeoutStartSec=360
+StandardOutput=journal
+StandardError=journal

@@ -1,0 +1,13 @@
+[Unit]
+Description=Recover dropped approved TV season searches through supported APIs
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+UMask=0077
+ExecStart=/usr/bin/python3 /data/config/arr-request-search/worker.py --config /data/config/arr-request-search/config.json --apply
+TimeoutStartSec=5min
+Nice=15
+StandardOutput=journal
+StandardError=journal

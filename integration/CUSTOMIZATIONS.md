@@ -108,9 +108,27 @@ rollback record with the private deployment.
   private deployment artifacts, not reconstructed by this directory.
 - `server/library-experience-plugin/` and `server/library-dates/`: narrowly
   guarded import-date maintenance, derived Series dates and resumable journal.
+  Plugin 1.2 also provides administrator-only single-title discovery without
+  a whole-library scan. Deployed September 26 with exact Jellyfin 12.1 ABI guard.
 - `server/request-ready/`: durable requester-specific readiness notifications
   and the version-checked repair of the existing Seerr webhook encoding.
 - `server/arr-maintenance/`: bounded generic manual-import recovery and audit.
+  Its native identity-naming helper carries provider IDs into future title
+  folders without renaming existing media.
+  Its Seerr selection helper restores only verified existing Movies/Shows
+  availability scopes and guards the 3.4.1 mutating-GET API trap. Native library
+  settings persist; the ordinary Seerr metadata scan owns availability updates.
+- `server/arr-request-search/`: external, journalled recovery of approved TV
+  season searches dropped during burst requests. Uses supported APIs, exact
+  identity/monitoring checks, active-work exclusions and one uncertain-safe
+  attempt per request/season. Deployed September 26; no live recovery was
+  needed by its first run because the eligible episodes were already imported.
+- `server/seerr-request-privacy/`: exact Seerr 3.4.1 response/count overlay,
+  paired with native per-user permissions, to restrict request records to their
+  requester except privileged accounts. Deployed and API-verified September 26.
+  Its startup pins intentionally require review/rebuild before Seerr upgrades;
+  ordinary image recreation retains the read-only mounts. This is not a
+  Jellyfin server-core patch or a custom client application.
 - `web-navigation/search-jellyfin-web-12.1.patch`: permission-scoped owned and
   secondary provider search rows; see its README and bundle installer.
 - `server/dovi/`: portable source and tests for the P7-to-P8.1 reconciliation
@@ -119,6 +137,18 @@ rollback record with the private deployment.
   Python hashes. The sanitized worker is evidence/reference source and is not
   runnable as-is; use its documented dry-run/review process and never treat it
   as a production queue worker.
+  September 26 adds a deployed exact-file import queue, companion-completion
+  handoff, separate durable publication database, bounded history recovery and
+  finite tapered retries. ACK requires native indexed playable paths, not 2xx.
+- `server/subtitle-publication/`: provider-arrival and managed AI publication
+  with exact-item refresh, atomic compatibility sidecar replacement, served-SRT
+  verification and finite durable retries. Deployed September 26; retired
+  legacy whole-library-scan and global scan pause/resume calls. Reference helper
+  snapshots are not a replacement for private model/GPU configuration.
+- `server/publication-e2e/`: isolated real Jellyfin Movie/Episode/subtitle
+  acceptance fixture, including duplicate/conflict/auth and no-global-scan
+  assertions. Eleven checks plus four harness safety tests passed September 26;
+  it is not a client/GPU/new-downloader acceptance test.
 
 The server directories preserve reviewable code; they do not claim that a new
 server can be reproduced without its private configuration and data. The colour

@@ -1,0 +1,11 @@
+[Unit]
+Description=Repair missed ARR import hooks and retry due exact imports
+
+[Timer]
+OnBootSec=30s
+OnUnitInactiveSec=30s
+AccuracySec=1s
+Unit=dovi-import-fast.service
+
+[Install]
+WantedBy=timers.target

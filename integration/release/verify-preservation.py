@@ -55,7 +55,7 @@ def write():
         raise SystemExit("Review and stage sources before recording them:\n" + "\n".join(pending))
     payload = {
         "schema": 1,
-        "release": "2026-09-23-library-home-ratings",
+        "release": "2026-09-26-scoped-import-subtitle-publication",
         "meaning": "Reviewed source bytes, not a runtime credential/settings backup or proof of deployment",
         "status": {
             "local_kodi_r6": "deployed-and-accepted",
@@ -69,6 +69,11 @@ def write():
             "imdb_ratings": "deployed-optional-fail-open-201-of-202-distinct-ids",
             "kodi_search_ratings": "deployed-device-api-30-ratings-55ms-physical-badge-visual-pending",
             "request_ready": "timer-deployed-no-real-completion-delivery-yet",
+            "scoped_import_publication": "deployed-live-indexing-and-isolated-real-jellyfin-e2e-passed",
+            "subtitle_publication": "deployed-live-provider-replay-and-managed-verification-passed",
+            "library_discovery_plugin": "1.2-deployed-active-exact-jellyfin-12.1-guard",
+            "arr_request_search": "deployed-unit-tested-no-live-dropped-search-recovery-needed",
+            "seerr_request_privacy": "3.4.1-deployed-owner-and-ordinary-user-api-verified",
             "remote_original_p7": "pending",
             "coreelec_update": "local-am9-nightly-20260922-hybrid-verified-two-boots-physical-av-pending",
             "provider_403_retry": "deployed-fixture-tested-not-live-recovery-proven",
