@@ -62,9 +62,9 @@ def _rules(existing, table, parent, tokens):
 
 def render_nat(config, existing):
     validate(config)
-    hook = ['-i', 'tailscale0', '-s', config['client_ipv4'] + '/32',
-            '-d', config['overlay_ipv4'] + '/32', '-p', 'tcp', '-m', 'tcp', '--dport', PORT,
-            '-j', NAT_CHAIN]
+    # iptables-save canonicalizes source/destination before the interface.
+    # Match its real output so periodic reconciliation removes exact old hooks.
+    hook = nat_hooks(config)[0][1]
     lines = ['*nat', ':' + NAT_CHAIN + ' - [0:0]', '-F ' + NAT_CHAIN]
     lines += _rules(existing, 'nat', 'PREROUTING', hook)
     lines += ['-A ' + NAT_CHAIN + ' -p tcp -m tcp -j DNAT --to-destination ' + config['backend_ipv4'] + ':' + PORT,
@@ -105,8 +105,8 @@ def render_remove(existing, table, chain, hooks):
 
 
 def nat_hooks(config):
-    return [('PREROUTING', ['-i', 'tailscale0', '-s', config['client_ipv4'] + '/32',
-                             '-d', config['overlay_ipv4'] + '/32', '-p', 'tcp',
+    return [('PREROUTING', ['-s', config['client_ipv4'] + '/32',
+                             '-d', config['overlay_ipv4'] + '/32', '-i', 'tailscale0', '-p', 'tcp',
                              '-m', 'tcp', '--dport', PORT, '-j', NAT_CHAIN])]
 
 

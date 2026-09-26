@@ -13,7 +13,7 @@ CONFIG = {'bridge_hostname': 'example-bridge', 'client_ipv4': '100.64.0.10',
 class MediaForwardTests(unittest.TestCase):
     def test_nat_is_exact_tcp_tuple_and_preserves_source(self):
         text = media_forward.render_nat(CONFIG, '')
-        self.assertIn('-i tailscale0 -s 100.64.0.10/32 -d 100.64.0.20/32 -p tcp -m tcp --dport 2049', text)
+        self.assertIn('-s 100.64.0.10/32 -d 100.64.0.20/32 -i tailscale0 -p tcp -m tcp --dport 2049', text)
         self.assertIn('DNAT --to-destination 192.168.42.10:2049', text)
         self.assertNotIn('SNAT', text)
         self.assertNotIn('MASQUERADE', text)
@@ -48,6 +48,16 @@ class MediaForwardTests(unittest.TestCase):
         text = media_forward.render_filter(CONFIG, old)
         self.assertEqual(text.count('-D INPUT -i tailscale0 -p tcp -m tcp --dport 2049 -j AM9NFS_INPUT'), 2)
         self.assertNotIn('-D INPUT -j ts-input', text)
+
+    def test_nat_reconcile_matches_actual_legacy_save_order(self):
+        hook = '-s 100.64.0.10/32 -d 100.64.0.20/32 -i tailscale0 -p tcp -m tcp --dport 2049 -j AM9NFS_DNAT'
+        existing = ('-A PREROUTING '+hook+'\n')*5+'-A PREROUTING -j DOCKER\n'
+        plan = media_forward.render_nat(CONFIG, existing)
+        self.assertEqual(plan.count('-D PREROUTING '+hook),5)
+        self.assertEqual(plan.count('-I PREROUTING 1 '+hook),1)
+        self.assertNotIn('-D PREROUTING -j DOCKER',plan)
+        rollback = media_forward.render_remove(existing,'nat',media_forward.NAT_CHAIN,media_forward.nat_hooks(CONFIG))
+        self.assertEqual(rollback.count('-D PREROUTING '+hook),5)
 
     def test_removal_keeps_unrelated_rules(self):
         old = (':AM9NFS_INPUT - [0:0]\n-A INPUT -j ts-input\n'
