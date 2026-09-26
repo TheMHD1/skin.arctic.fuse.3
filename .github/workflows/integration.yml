@@ -26,6 +26,10 @@ jobs:
       - run: python integration/release/test-preservation.py
       - run: python integration/device-policy/always-awake/test_policy.py
       - run: python integration/device-backup/test_policy.py
+      - run: python -m unittest discover -s integration/device-policy/private-tailnet
+      - run: python integration/remote-native-originals/test_remote_native_originals.py
+      - run: python integration/release/remote-originals/build.py --output "$RUNNER_TEMP/remote-originals-payload"
+      - run: python integration/release/remote-originals/test_release.py "$RUNNER_TEMP/remote-originals-payload"
       - run: python integration/release/kodi/build.py --output "$RUNNER_TEMP/habibi-payload"
       - run: python integration/release/kodi/test_release.py "$RUNNER_TEMP/habibi-payload"
       - run: python integration/release/handoff/test_profile.py

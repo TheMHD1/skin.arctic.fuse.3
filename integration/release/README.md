@@ -1,5 +1,9 @@
 # Portable September 22 source release
 
+The later optional [remote-originals layer](remote-originals/README.md) adds
+restricted-network P7 selection after the complete remote parity chain. It is
+separate from the local Native branch in the historical R6 builder below.
+
 For the subsequent local R7 Home/search rollout, use
 [`library-experience/README.md`](library-experience/README.md). The original R6
 builder below intentionally uses preserved historical inputs in

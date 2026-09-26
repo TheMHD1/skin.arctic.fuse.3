@@ -1,0 +1,11 @@
+[Unit]
+Description=Verify current P7/P8 stream layouts for opt-in remote originals
+RequiresMountsFor=/data/media/compatibility/dovi-p8 /data/media/compatibility/jellyfin-view
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /data/config/_dovi/remote-native/manifest.py --scan-companions --output /data/media/compatibility/_remote-native/verified-p7-v1.json --report /data/config/_dovi/remote-native/rejections.private.json
+Nice=10
+IOSchedulingClass=idle
+TimeoutStartSec=15min
+UMask=0077

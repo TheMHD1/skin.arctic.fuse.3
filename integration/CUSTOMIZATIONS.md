@@ -24,6 +24,13 @@ a redacted inventory, not importable configuration.
 
 ## Deployment state at the September 22 acceptance point
 
+The subsequent [remote private-access/original-P7 layer](release/remote-originals/README.md)
+adds restricted Tailscale SSH and opt-in layout-gated original-file delivery to
+the remote device, preserving global addon mode and HTTPS fallback. It supersedes
+the historical remote-P7-not-implemented statements below. Headless selection
+and transport acceptance is distinct from onsite Bell/HDMI/FEL acceptance; the
+companion video-provenance limitation remains explicitly documented.
+
 The later [September 26 remote-house catch-up](REMOTE-AM9-PARITY-2026-09-26.md)
 supersedes the historical remote-not-deployed statements below. It preserves
 the remote HTTPS cohort and records its separate headless/physical acceptance
@@ -70,6 +77,14 @@ rollback record with the private deployment.
 ## Source map
 
 ### Arctic, Kodi and client integrations
+
+- `device-policy/private-tailnet/`: exact-peer appliance firewall, reviewed
+  CoreELEC addon settings-format startup fix, manual-update policy, and the
+  LAN-preserving server-side NFS bridge. No public SSH/NFS port is opened.
+- `remote-native-originals/` and `release/remote-originals/`: bounded periodic
+  P7/P8 layout manifest and opt-in remote Kodi selector with exact-cohort build,
+  regression, install and rollback guidance. The shared converter and global
+  Native setting remain unchanged.
 
 - `device-policy/always-awake/`: local AM9 persistent settings for ignoring TV
   standby while leaving CEC remote control enabled; independent TV power and

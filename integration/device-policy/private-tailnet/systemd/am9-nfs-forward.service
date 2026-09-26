@@ -1,0 +1,8 @@
+[Unit]
+Description=Reassert the reviewed exact-peer AM9 NFS bridge
+Wants=network-online.target
+After=network-online.target nfs-server.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /usr/local/lib/am9-nfs-forward.py --config /etc/am9-nfs-forward/profile.json --reconcile

@@ -1,0 +1,10 @@
+[Unit]
+Description=Periodically verify exact-peer AM9 NFS bridge ordering
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -2,6 +2,14 @@
 
 ## Current release authority
 
+For an enrolled remote AM9 with original-P7 enabled, preserve the additive
+[remote-originals layer](release/remote-originals/README.md) after the remote
+parity chain. Its explicit opt-in configuration does not enable global Native
+mode. Preserve the Tailscale node's own private identity, key-only SSH, exact
+network grants/firewall/export, addon/manual firmware pins, and the periodic
+layout manifest. Never clone another appliance's Tailscale state. Rebuild/rebase
+the exact addon startup wrapper before changing its pinned source hash.
+
 For the remote-house AM9, follow the
 [September 26 parity record](REMOTE-AM9-PARITY-2026-09-26.md), not the historical
 remote-not-deployed notes below. The guarded source chain is remote R6 bridge →
