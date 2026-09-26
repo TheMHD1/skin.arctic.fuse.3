@@ -10,7 +10,7 @@ still depends on private deployment state.
 
 | Component | Reviewed version | Notes |
 | --- | --- | --- |
-| CoreELEC / Kodi | CoreELEC 22 nightly 20260922 / Kodi 22 BETA2 | Local AM9 hybrid update completed September 23; [verified two-partition procedure](COREELEC-HYBRID-UPDATE-2026-09-23.md). Future firmware updates still require separate authorization and review. |
+| CoreELEC / Kodi | CoreELEC 22 nightly 20260922 local / 20260926 remote; Kodi 22 BETA2 | Local AM9 uses the [verified hybrid procedure](COREELEC-HYBRID-UPDATE-2026-09-23.md); the [remote standalone-SD update](REMOTE-AM9-PARITY-2026-09-26.md) was separately authorized. Future firmware updates still require review. |
 | Arctic Fuse 3 | 3.3.1 on accepted devices | Reviewed upstream 3.3.1 source plus `patches/arctic-3.3.1-habibi.patch`; the repository root remains a legacy 3.2.19 baseline. |
 | Jellyfin for Kodi | 2.2.0+py3 | Apply only the consolidated 2.2 patch stack. |
 | Home companion | 1.1.0 | Server-backed Home, search, favourites and episode navigation. |
@@ -23,6 +23,12 @@ Implicit addon defaults belong to these versions. `settings-reference.json` is
 a redacted inventory, not importable configuration.
 
 ## Deployment state at the September 22 acceptance point
+
+The later [September 26 remote-house catch-up](REMOTE-AM9-PARITY-2026-09-26.md)
+supersedes the historical remote-not-deployed statements below. It preserves
+the remote HTTPS cohort and records its separate headless/physical acceptance
+limits. It does not turn the original local hybrid device into the newer
+standalone-SD cohort or implement remote original-P7 transport.
 
 The subsequent [September 23 Home/ratings release](HOME-RATINGS-2026-09-23.md)
 adds library-only Favorites/Top Rated Web rows, genuine optional IMDb scores,

@@ -1,12 +1,14 @@
 """Guarded local Kodi overlay for search priority and poster ratings."""
 import argparse
 import hashlib
+import ipaddress
 import importlib.util
 import json
 import sys
 import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from urllib.parse import urlparse
 
 HERE=Path(__file__).resolve().parent
 
@@ -57,6 +59,15 @@ BASE_HASHES={
  LAYOUTS:'b09595f1c7a76f7e2bc9800ec81adc7181b3145c9eac620790a9008135c3ff8e',
 }
 BASE_MANIFEST_HASH='a121f12b16028fb79e44258f7395ea88c937a3e5fcfc3183e6fffab8db180300'
+# Remote HTTPS R7 is an independently pinned continuation of the remote R6
+# Home cohort.  It intentionally keeps the remote marker and add-on playback
+# policy; these source hashes do not authorize a local/NFS profile.
+REMOTE_BASE_HASHES={
+ **BASE_HASHES,
+ GENERATED:'573e388dead0fcfc2dceae9c184bd60e8802fa94f8059a5d18e4a0076688b692',
+}
+REMOTE_BASE_MANIFEST_HASH='fdc083bd7c3dcfe87195fff9cbde4354cdca6c2379f774c1fa7fd89274afb61b'
+REMOTE_MARKER='4d3f886ca60726528b56a11e2271605a146d04d29c7fa63add90891011bc240b'
 # Skin Variables rewrites indentation after Kodi startup. This one exact byte
 # variant was compared recursively with the reviewed generated output: tags,
 # attributes, nonblank text, child order, IDs, routes and GUIDs are identical.
@@ -65,8 +76,14 @@ OUTPUT_TRANSFORMS={
  SEARCH:('4a2d97a40009ed74fb49852723bb1ca13242cb222b006887ff103dd838aa49d5',generated.transform_search),
  GENERATED:('01e96f52d53ffd7b57088b0a52136fbeca50bdbba367bb1698b2ba4f8697fa0f',generated.transform_generated),
  LABELS:('3709fe666115bfbb47baa75deafe202b7e92eeb725cfb5ce28772dc331f48206',generated.transform_labels),
- OBJECTS:('15d224e74f8fbcba188f25051ef5922581b09e79ff263cd8ebbbc2b727e44fd2',generated.transform_objects),
+ OBJECTS:('8c214f38a01d2c0dfcba797b543c0437f1ea292385b42706002fcb2155071846',generated.transform_objects),
  LAYOUTS:('80e41db0843dd82c75c8e5faf186ae79cd4453a243685d0f695c7be5966e6cb9',generated.transform_layouts),
+}
+OLD_OBJECTS_OUTPUT='15d224e74f8fbcba188f25051ef5922581b09e79ff263cd8ebbbc2b727e44fd2'
+# Both cohorts have the R6 search-first static selector before this step.
+# Keep the remote transform map explicit for future independently reviewed ports.
+REMOTE_OUTPUT_TRANSFORMS={
+ **OUTPUT_TRANSFORMS,
 }
 
 
@@ -85,8 +102,34 @@ def payloads(stage):
     return result
 
 
+def require_remote_transport(root, read, expected_host):
+    settings={entry.get('id'):(entry.text or '').strip()
+              for entry in ET.fromstring(read(root/'userdata/addon_data/plugin.video.jellyfin/settings.xml')).findall('setting')
+              if entry.get('id')}
+    transaction.require(settings.get('playFromStream')=='true'
+                        and settings.get('playFromTranscode')=='false'
+                        and settings.get('useDirectPaths')=='0'
+                        and settings.get('sslverify')=='true',
+                        'Remote profile must remain HTTPS add-on playback')
+    servers=json.loads(read(root/'userdata/addon_data/plugin.video.jellyfin/data.json')).get('Servers') or []
+    transaction.require(len(servers)==1 and isinstance(servers[0],dict),
+                        'Remote Jellyfin server identity is invalid')
+    server=servers[0]
+    transaction.require(server.get('paths') in (None,{}),'Remote profile cannot carry native paths')
+    parsed=urlparse(server.get('address') or '')
+    transaction.require(parsed.scheme=='https' and parsed.hostname==expected_host
+                        and not parsed.username and not parsed.password
+                        and not parsed.query and not parsed.fragment and parsed.path in ('','/'),
+                        'Remote profile requires its approved HTTPS Jellyfin address')
+    try:address=ipaddress.ip_address(parsed.hostname)
+    except ValueError:return
+    transaction.require(not (address.is_private or address.is_loopback or address.is_link_local),
+                        'Remote profile cannot use a private Jellyfin address')
+
+
 def build_changes(root,stage,profile):
-    transaction.require(profile['variant']=='local','This exact source cohort is local only')
+    remote=profile['variant']=='remote'
+    transaction.require(profile['variant'] in ('local','remote'),'Unknown source cohort')
     expected={}
     def read(path):
         if path not in expected:expected[path]=path.read_bytes() if path.exists() else None
@@ -101,40 +144,66 @@ def build_changes(root,stage,profile):
                             'Unreviewed addon version: '+name)
         transaction.require(record.get('versions',{}).get(name)==version,
                             'Manifest version mismatch: '+name)
+    marker=root/'userdata/addon_data/plugin.video.venom.tv/remote-native.json'
+    if remote:
+        transaction.require(read(marker) is not None and sha(read(marker))==REMOTE_MARKER,
+                            'Remote marker differs from the reviewed HTTPS cohort')
+        require_remote_transport(root,read,profile.get('remote_public_host'))
+    else:
+        transaction.require(read(marker) is None,'Local profile unexpectedly has the remote marker')
+    base_hashes=REMOTE_BASE_HASHES if remote else BASE_HASHES
+    base_manifest_hash=REMOTE_BASE_MANIFEST_HASH if remote else BASE_MANIFEST_HASH
+    output_transforms=REMOTE_OUTPUT_TRANSFORMS if remote else OUTPUT_TRANSFORMS
     bundle=payloads(stage)
-    paths=set(BASE_HASHES)|{TARGETS['skin/search_selector_venom.xml'],
+    paths=set(base_hashes)|{TARGETS['skin/search_selector_venom.xml'],
                             TARGETS['skin/search_selector_wall_venom.xml']}
     current={relative:(sha(read(root/relative)) if read(root/relative) is not None else None)
              for relative in paths}
     output={TARGETS[name]:digest for name,digest in build.OUTPUTS.items()}
-    output.update({name:value[0] for name,value in OUTPUT_TRANSFORMS.items()})
-    baseline=all(current.get(name)==digest for name,digest in BASE_HASHES.items()) and all(
-        current.get(name) is None for name in paths-set(BASE_HASHES))
+    output.update({name:value[0] for name,value in output_transforms.items()})
+    baseline=all(current.get(name)==digest for name,digest in base_hashes.items()) and all(
+        current.get(name) is None for name in paths-set(base_hashes))
     installed=all(current.get(name)==digest or
+                  (name==OBJECTS and current.get(name)==OLD_OBJECTS_OUTPUT) or
                   (name==GENERATED and current.get(name)==REBUILT_GENERATED_HASH)
                   for name,digest in output.items())
     transaction.require(baseline or installed,'Unreviewed or partial search/rating cohort')
     if baseline:
-        transaction.require(sha(manifest_source)==BASE_MANIFEST_HASH,
+        transaction.require(sha(manifest_source)==base_manifest_hash,
                             'Baseline integrity manifest is not the reviewed R7 snapshot')
         for relative in (TARGETS['home/client.py'],TARGETS['home/default.py'],SEARCH,GENERATED):
-            transaction.require(record['files'].get(relative)==BASE_HASHES[relative],
+            # The historical remote R6 manifest did not own its static search
+            # include.  Its exact current bytes remain a required guard here;
+            # the R7 transaction adds only the files it actually replaces.
+            expected_record={base_hashes[relative]}
+            if remote and relative==SEARCH:
+                expected_record.add(None)
+            transaction.require(record['files'].get(relative) in expected_record,
                                 'Baseline source/manifest drift: '+relative)
     else:
         for relative,digest in output.items():
             accepted={digest}
+            if relative==OBJECTS and current.get(relative)==OLD_OBJECTS_OUTPUT:
+                accepted.add(OLD_OBJECTS_OUTPUT)
             if relative==GENERATED and current.get(relative)==REBUILT_GENERATED_HASH:
                 accepted.add(REBUILT_GENERATED_HASH)
             transaction.require(record['files'].get(relative) in accepted,
                                 'Installed source/manifest drift: '+relative)
     changes={root/TARGETS[name]:data for name,data in bundle.items()}
     if baseline:
-        for relative,(digest,fn) in OUTPUT_TRANSFORMS.items():
+        for relative,(digest,fn) in output_transforms.items():
             data=fn(read(root/relative))
             transaction.require(sha(data)==digest,'Unexpected transformed output: '+relative)
             changes[root/relative]=data
     else:
-        for relative in OUTPUT_TRANSFORMS:changes[root/relative]=read(root/relative)
+        for relative in output_transforms:
+            if relative==OBJECTS and current.get(relative)==OLD_OBJECTS_OUTPUT:
+                repaired=generated.upgrade_objects(read(root/relative))
+                transaction.require(sha(repaired)==output[OBJECTS],
+                                    'Unexpected repaired poster indicator output')
+                changes[root/relative]=repaired
+            else:
+                changes[root/relative]=read(root/relative)
     for path,data in changes.items():record['files'][str(path.relative_to(root))]=sha(data)
     changes[manifest]=(json.dumps(record,indent=2)+'\n').encode()
     return transaction.Plan({path:data for path,data in changes.items() if read(path)!=data},expected)

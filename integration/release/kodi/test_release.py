@@ -78,6 +78,26 @@ class ReleaseTests(unittest.TestCase):
         path=Path(self.temp.name)/'profile.json';path.write_text(json.dumps({**self.profile,'token':'no'}))
         with self.assertRaisesRegex(RuntimeError,'unknown/missing'):installer.load_profile(path)
 
+    def test_remote_profile_requires_canonical_public_host_and_local_rejects_it(self):
+        path=Path(self.temp.name)/'remote-profile.json'
+        remote={**self.profile,'variant':'remote','native_paths':{},
+                'remote_public_host':'jellyfin.example.test'}
+        path.write_text(json.dumps(remote))
+        self.assertEqual(installer.load_profile(path)['remote_public_host'],'jellyfin.example.test')
+        path.write_text(json.dumps({**remote,'remote_public_host':'HTTPS://JELLYFIN.EXAMPLE.TEST'}))
+        with self.assertRaisesRegex(RuntimeError,'canonical public hostname'):installer.load_profile(path)
+        path.write_text(json.dumps({**self.profile,'remote_public_host':'jellyfin.example.test'}))
+        with self.assertRaisesRegex(RuntimeError,'Local profile'):installer.load_profile(path)
+
+    def test_remote_unowned_bridge_is_exact_not_a_manifest_bypass(self):
+        for relative,digest in installer.REMOTE_UNTRACKED_BASE.items():
+            args=[relative,digest,None,installer.REMOTE_UNTRACKED_MANIFEST,True]
+            self.assertTrue(installer.reviewed_untracked_remote(*args))
+            for index,bad in [(0,'addons/unreviewed/file.py'),(1,'0'*64),
+                              (2,'0'*64),(3,'0'*64),(4,False)]:
+                changed=list(args);changed[index]=bad
+                self.assertFalse(installer.reviewed_untracked_remote(*changed))
+
     def test_keyboard_interrupt_rolls_back_written_file(self):
         root=Path(self.temp.name)/'transaction';root.mkdir();target=root/'file';target.write_bytes(b'old')
         plan=transaction.Plan({target:b'new'},{target:b'old'});starts=0

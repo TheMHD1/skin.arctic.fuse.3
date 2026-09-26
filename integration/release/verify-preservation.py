@@ -55,13 +55,15 @@ def write():
         raise SystemExit("Review and stage sources before recording them:\n" + "\n".join(pending))
     payload = {
         "schema": 1,
-        "release": "2026-09-26-scoped-import-subtitle-publication",
+        "release": "2026-09-26-remote-am9-parity-and-publication",
         "meaning": "Reviewed source bytes, not a runtime credential/settings backup or proof of deployment",
         "status": {
             "local_kodi_r6": "deployed-and-accepted",
             "local_kodi_r7": "deployed-source-and-live-api-accepted",
-            "remote_kodi_r6": "source-tested-not-deployed",
-            "remote_kodi_r7": "not-deployed",
+            "remote_kodi_r6": "deployed-headless-https-and-category-api-accepted-physical-playback-pending",
+            "remote_kodi_r7": "deployed-headless-home-search-ratings-and-ordering-accepted",
+            "remote_kodi_rating_default": "deployed-two-file-repair-clean-startup-idempotent",
+            "remote_backup_policy": "deployed-preserves-bundled-dependency-source",
             "jellyfin_nextup": "deployed-26-account-readonly-audit-passed",
             "web_search": "deployed-mobile-browser-verified",
             "web_library_home": "deployed-owned-only-favorites-recently-watched-and-top-rated-browser-verified",
@@ -76,6 +78,7 @@ def write():
             "seerr_request_privacy": "3.4.1-deployed-owner-and-ordinary-user-api-verified",
             "remote_original_p7": "pending",
             "coreelec_update": "local-am9-nightly-20260922-hybrid-verified-two-boots-physical-av-pending",
+            "remote_coreelec_update": "standalone-sd-nightly-20260926-boot-payload-and-dolby-load-verified-physical-av-pending",
             "provider_403_retry": "deployed-fixture-tested-not-live-recovery-proven",
             "dovi_companion_provenance": "known-gap-not-fixed",
         },

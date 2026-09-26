@@ -2,6 +2,16 @@
 
 ## Current release authority
 
+For the remote-house AM9, follow the
+[September 26 parity record](REMOTE-AM9-PARITY-2026-09-26.md), not the historical
+remote-not-deployed notes below. The guarded source chain is remote R6 bridge →
+remote R7 Home/search → search/ratings; use the fake-only
+`release/kodi/profile.remote.example.json` to construct a private device profile.
+Its expected HTTPS hostname is explicit. Preserve the remote marker, verified
+TLS and disabled Native mode. The standalone SD CoreELEC20260926 update is a
+separate operation from the local AM9's hybrid20260922 procedure; never exchange
+their UUIDs, boot-layout scripts or account configuration.
+
 The [September 26 import/request repairs](IMPORT-REQUEST-REPAIRS-2026-09-26.md)
 record native naming/indexer/permission changes, bounded request-search recovery
 and the Seerr request-privacy overlay. Seerr's compiled overlay is exact-version

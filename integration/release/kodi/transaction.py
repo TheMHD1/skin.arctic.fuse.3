@@ -6,6 +6,12 @@ import subprocess
 import time
 from pathlib import Path
 
+# CoreELEC's Kodi unit may consume its normal 30-second stop grace while an
+# update dialog is unwinding.  Keep the caller alive long enough to observe the
+# completed stop; this is not permission to write until the post-stop snapshot
+# validates.
+SYSTEMCTL_TIMEOUT = 45
+
 class Plan(dict):
     def __init__(self,changes,expected):super().__init__(changes);self.expected=expected
 
@@ -60,17 +66,17 @@ def deploy(root,plan,backup,run=subprocess.run,idle_check=idle,wait_ready=ready,
     ],indent=2))
     validate();idle_check();written=[]
     try:
-        run(['systemctl','stop','kodi'],check=True,timeout=30);validate()
+        run(['systemctl','stop','kodi'],check=True,timeout=SYSTEMCTL_TIMEOUT);validate()
         for path,payload in plan.items():written.append(path);write(path,payload,originals[path][1])
-        run(['systemctl','start','kodi'],check=True,timeout=30);wait_ready()
+        run(['systemctl','start','kodi'],check=True,timeout=SYSTEMCTL_TIMEOUT);wait_ready()
     except (Exception,KeyboardInterrupt) as failure:
         try:
-            run(['systemctl','stop','kodi'],check=False,timeout=30)
+            run(['systemctl','stop','kodi'],check=False,timeout=SYSTEMCTL_TIMEOUT)
             for path in reversed(written):
                 payload,mode=originals[path]
                 if payload is None:path.unlink(missing_ok=True)
                 else:atomic_write(path,payload,mode)
-            run(['systemctl','start','kodi'],check=True,timeout=30);wait_ready()
+            run(['systemctl','start','kodi'],check=True,timeout=SYSTEMCTL_TIMEOUT);wait_ready()
         except Exception as recovery:
             raise RuntimeError('Deployment/recovery failed; inspect '+str(backup)) from recovery
         raise RuntimeError('Deployment failed; originals restored; backup '+str(backup)) from failure

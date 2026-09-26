@@ -1,0 +1,9 @@
+{
+  "name": "example-remote-am9",
+  "variant": "remote",
+  "hostnames": ["example-remote-am9"],
+  "mac": "02:00:00:00:00:01",
+  "jellyfin_user_id": "00000000000000000000000000000000",
+  "native_paths": {},
+  "remote_public_host": "jellyfin.example.test"
+}

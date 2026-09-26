@@ -1,6 +1,6 @@
 # Kodi search priority and poster ratings overlay
 
-This exact-cohort overlay updates the local Arctic Fuse 3.3.1 installation
+This exact-cohort overlay updates reviewed local or remote Arctic Fuse 3.3.1 installations
 after the R7 library-experience release. It preserves the four existing search
 routes, container IDs and Skin Variables GUIDs while presenting them as:
 
@@ -21,6 +21,11 @@ one authenticated request for at most 100 visible Movie/Series IDs to
 `/Habibi/LibraryExperience/Ratings`; it times out after two seconds and fails
 open. It never labels Jellyfin `CommunityRating` as IMDb and never fabricates a
 zero score.
+
+The rating indicator defaults `poster_rating` to false for non-poster callers.
+The September26 correction also accepts the one known previous Objects output
+hash with its matching manifest, replacing only Objects and the manifest. It
+checks the repaired output hash and is idempotent; unknown XML is not patched.
 
 Build from a clean committed fork:
 
@@ -64,3 +69,9 @@ CoreELEC download prompt was cancelled per the firmware hold. This is live sourc
 API acceptance, not a claim of physical viewing-distance badge inspection or
 remote-house deployment. See `../../HOME-RATINGS-2026-09-23.md` for the paired
 server/Web release and native-client boundaries.
+
+Remote AM9 support follows the guarded R6 bridge and remote R7 Home/search
+overlay before this payload. Use the remote profile example, which binds the
+approved public HTTPS hostname and forbids native paths/direct playback. Source
+support is not a claim of live remote acceptance; see
+[the remote parity record](../../REMOTE-AM9-PARITY-2026-09-26.md) for that boundary.

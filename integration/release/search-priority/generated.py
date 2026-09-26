@@ -76,11 +76,21 @@ def transform_objects(data):
     data = _replace_once(data, b'    <include name="Object_AlphabetLetter_Label">',
                          RATING_OBJECT+b'    <include name="Object_AlphabetLetter_Label">',
                          'poster rating object')
+    data = _replace_once(data, b'''    <include name="Object_Indicator">\n        <param name="affix" />''',
+                         b'''    <include name="Object_Indicator">\n        <param name="poster_rating">false</param>\n        <param name="affix" />''',
+                         'poster indicator default')
     return _replace_once(
         data,
         b'''                <nested />\n                <centerbottom>0</centerbottom>\n                <right>25</right>''',
         b'''                <nested />\n                <include content="Object_CenterBottom" condition="!$PARAM[poster_rating]"><param name="centerbottom">0</param></include>\n                <include content="Object_Bottom" condition="$PARAM[poster_rating]"><param name="bottom">52</param></include>\n                <right>25</right>''',
         'poster indicator position')
+
+
+def upgrade_objects(data):
+    """Repair the first rating-overlay output without accepting arbitrary drift."""
+    return _replace_once(data, b'''    <include name="Object_Indicator">\n        <param name="affix" />''',
+                         b'''    <include name="Object_Indicator">\n        <param name="poster_rating">false</param>\n        <param name="affix" />''',
+                         'installed poster indicator default')
 
 
 def transform_layouts(data):

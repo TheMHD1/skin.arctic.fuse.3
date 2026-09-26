@@ -5,6 +5,15 @@ This is a commissioning reference, not a firmware image or a one-click installer
 Never import the redacted settings JSON as Kodi settings. See
 [CUSTOMIZATIONS.md](CUSTOMIZATIONS.md) for the current feature/status inventory.
 
+For the current remote-house build, the
+[September 26 catch-up record](REMOTE-AM9-PARITY-2026-09-26.md) supersedes the
+historical remote-not-installed/firmware-held statements below. Preserve its
+separate HTTPS route and standalone SD storage. The September26
+[import/subtitle publication repairs](IMPORT-REQUEST-REPAIRS-2026-09-26.md)
+also supersede the older full-reconciliation notification timings in this guide:
+exact imports and subtitles now have targeted, verified, finite-retry publishers.
+Do not install duplicate server workers on a client.
+
 The accepted local/LAN device and the remote-house device are intentionally
 different cohorts. The local r6 cohort has physical search, native-original and
 IPTV handoff acceptance. The remote r6 overlay is source-tested but not installed;

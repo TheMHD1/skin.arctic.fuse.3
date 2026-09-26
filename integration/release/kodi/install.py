@@ -60,6 +60,19 @@ TOUCHED_OUTPUT={
  'addons/skin.arctic.fuse.3/shortcuts/generator/data/setup/search_path.xml':'5edb7d411bd5bbbcd5d045b694355879fb023a0019c7f6baf1850ef4b056b9e5',
  'addons/plugin.video.jellyfin/jellyfin_kodi/jellyfin/http.py':'cc8223016710bbeaae86034428f8b35d0d7fa376a11886f017ed297530bd6005',
 }
+# One recorded remote baseline predates ownership of this generated search-path
+# source in its integrity manifest.  It may cross this bridge only when the
+# manifest is the separately verified remote base and these exact bytes are
+# still present; the R6 transaction records the replacement immediately.
+REMOTE_UNTRACKED_BASE={
+ 'addons/skin.arctic.fuse.3/shortcuts/generator/data/setup/search_path.xml':'fee6f922930de8115cac3339629a35b2d022e87dc286706eaf81a353ac984ef2',
+ 'addons/plugin.video.jellyfin/jellyfin_kodi/jellyfin/http.py':'d3fde303945807303a4399a98ec3cf3fe40481c599152e1d2d31a0b407fa0aad',
+}
+REMOTE_UNTRACKED_MANIFEST='258f4ce9efbe374a650a76e24aeda979c5f17a18e29654caf23a73616695c47c'
+REMOTE_R6_OUTPUT={
+ 'addons/plugin.video.habibi.resume/client.py':'1aaf8ec5a327f6f09c10a842de36c9eabfd2d4378b54d83fe1598b481aad31cd',
+ 'addons/skin.arctic.fuse.3/shortcuts/generator/data/setup/search_path.xml':'d819c566ae13c982f201f2d702fc9c755672c42778e220a227be750bd173ef48',
+}
 SEARCH_SKIN='addons/skin.arctic.fuse.3/1080i/Includes_Search.xml'
 SEARCH_BASE={'27bf4f29b0f333c867f06dd2e0ec17999a836cff7fc948a25cb97edc1333304d',
              '270a52601721c96489a244727206634443d2b07f77001e0a7cea8bae95ea2f92'}
@@ -70,11 +83,17 @@ def sha(data):return hashlib.sha256(data).hexdigest()
 def require(value,message):transaction.require(value,message)
 def load_profile(path):
     data=json.loads(Path(path).read_text());required={'name','variant','hostnames','mac','jellyfin_user_id','native_paths'}
-    require(set(data)==required,'Private profile has unknown/missing fields')
+    allowed=required|{'remote_public_host'}
+    require(required.issubset(data) and set(data)<=allowed,'Private profile has unknown/missing fields')
     require(data['variant'] in ('local','remote'),'Profile variant must be local or remote')
     require(isinstance(data['hostnames'],list) and data['hostnames'],'Profile needs allowed hostnames')
     require(isinstance(data['native_paths'],dict),'native_paths must be an object')
-    if data['variant']=='remote':require(data['native_paths']=={},'Remote profile cannot carry native paths')
+    if data['variant']=='remote':
+        require(data['native_paths']=={},'Remote profile cannot carry native paths')
+        host=data.get('remote_public_host')
+        require(isinstance(host,str) and host==host.lower() and re.fullmatch(r'[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?',host or '') is not None,
+                'Remote profile requires a canonical public hostname')
+    else:require('remote_public_host' not in data,'Local profile cannot carry a remote public hostname')
     return data
 
 def payloads(stage):
@@ -97,6 +116,12 @@ def search_default(data):
 def settings(data):
     return {x.get('id'):(x.text or '').strip() for x in ET.fromstring(data).findall('setting') if x.get('id')}
 
+def reviewed_untracked_remote(relative,digest,recorded,manifest_digest,remote):
+    """Only the exact historical remote manifest may adopt its two unowned inputs."""
+    return (remote and relative in REMOTE_UNTRACKED_BASE
+            and digest==REMOTE_UNTRACKED_BASE[relative] and recorded is None
+            and manifest_digest==REMOTE_UNTRACKED_MANIFEST)
+
 def build_changes(root,stage,profile):
     expected={};changes={}
     def read(path):
@@ -109,10 +134,14 @@ def build_changes(root,stage,profile):
         addon=ET.fromstring(read(root/'addons'/name/'addon.xml'))
         require(addon.get('id')==name and addon.get('version')==version,'Unreviewed addon version: '+name)
         require(record['versions'].get(name)==version,'Manifest version mismatch: '+name)
+    remote=profile['variant']=='remote'
     def verify_touched(path):
         relative=str(path.relative_to(root));digest=sha(read(path))
-        require(digest in TOUCHED[relative],'Unreviewed whole-file source: '+relative)
-        require(record['files'].get(relative)==digest,'Source/manifest drift: '+relative)
+        require(digest in TOUCHED[relative] or (remote and REMOTE_R6_OUTPUT.get(relative)==digest),
+                'Unreviewed whole-file source: '+relative)
+        untracked=reviewed_untracked_remote(relative,digest,record['files'].get(relative),
+                                           sha(read(manifest)),remote)
+        require(record['files'].get(relative)==digest or untracked,'Source/manifest drift: '+relative)
     def replace(path,old,new):
         text=changes.get(path,read(path).decode())
         relative=str(path.relative_to(root))
@@ -146,7 +175,6 @@ def build_changes(root,stage,profile):
     else:require(recorded_skin in (None,sha(skin_source)),'Search skin baseline/manifest drift')
     changes[skin]=skin_output
     venom=root/'addons/plugin.video.venom.tv';marker=root/'userdata/addon_data/plugin.video.venom.tv/remote-native.json'
-    remote=profile['variant']=='remote'
     require((read(marker) is not None and sha(read(marker))==REMOTE_MARKER) if remote else read(marker) is None,'Remote marker/profile mismatch')
     cohorts=(REMOTE_BASE,REMOTE_R3,REMOTE_R5,REMOTE_OUT) if remote else (VENOM_BASE,VENOM_R3,VENOM_R5,VENOM_OUT)
     names=cohorts[0];current={n:sha(read(venom/n)) if read(venom/n) is not None else None for n in names};require(current in cohorts,'Unreviewed Venom cohort')

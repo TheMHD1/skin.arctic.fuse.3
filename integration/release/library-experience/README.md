@@ -16,14 +16,21 @@ not needed by this exact installer and must only run while idle.
 Local deployment passed on September 23: all nine paths were updated, Kodi
 restarted, authenticated server access resumed, and a second no-write plan
 reported zero changes. Installed-source/API checks verified watch-activity
-ordering and server-backed Home rows. The remote cohort is not deployed;
-no firmware update or Dolby Vision policy change was part of this transaction.
+ordering and server-backed Home rows. Remote AM9 support uses the separately
+guarded R6 bridge first, then this overlay; live device acceptance is recorded
+in [the remote parity record](../../REMOTE-AM9-PARITY-2026-09-26.md), not inferred from source tests. No
+firmware update or Dolby Vision policy change is part of this transaction.
 
 Build from a committed clean fork:
 
 ```sh
 python3 integration/release/library-experience/build.py --output /tmp/library-payload
 ```
+
+Remote profiles use `../kodi/profile.remote.example.json`, require an exact
+remote marker, verified TLS, an approved public HTTPS host and no native paths.
+They must first receive the reviewed R6 bridge; never force this R7 overlay over
+an earlier remote manifest or a local/NFS source cohort.
 
 Copy this directory and the sibling `kodi/` directory while preserving their
 `release/library-experience` and `release/kodi` layout, plus the payload and a

@@ -185,6 +185,41 @@ class InstallerTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError,'Hardware identity'):
             installer.live_plan(self.root,self.stage,wrong,host,mac)
 
+    def test_remote_r6_cohort_requires_marker_and_can_only_follow_its_exact_baseline(self):
+        # Remote starts without the search helper and must never be treated as
+        # the local/NFS baseline merely because the add-on versions match.
+        search=self.root/installer.TARGETS['home/search.py']
+        search.unlink()
+        record=json.loads(self.manifest.read_text())
+        record['files'].pop(installer.TARGETS['home/search.py'],None)
+        self.manifest.write_text(json.dumps(record,indent=2)+'\n')
+        remote_base=dict(self.base)
+        remote_base[installer.TARGETS['home/search.py']]=None
+        marker=self.root/'userdata/addon_data/plugin.video.venom.tv/remote-native.json'
+        marker.parent.mkdir(parents=True,exist_ok=True)
+        marker.write_text('{"remote":true}\n')
+        jellyfin=self.root/'userdata/addon_data/plugin.video.jellyfin'
+        jellyfin.mkdir(parents=True,exist_ok=True)
+        (jellyfin/'settings.xml').write_text(
+            '<settings><setting id="playFromStream">true</setting>'
+            '<setting id="playFromTranscode">false</setting>'
+            '<setting id="useDirectPaths">0</setting><setting id="sslverify">true</setting></settings>')
+        (jellyfin/'data.json').write_text(json.dumps({'Servers':[{
+            'address':'https://jellyfin.example.test','paths':None}]}))
+        remote_marker=sha(marker.read_bytes())
+        with mock.patch.object(installer,'REMOTE_BASE_HASHES',remote_base), \
+             mock.patch.object(installer,'REMOTE_BASE_MANIFEST_HASH',sha(self.manifest.read_bytes())), \
+             mock.patch.object(installer,'REMOTE_MARKER',remote_marker):
+            remote={'variant':'remote','remote_public_host':'jellyfin.example.test'}
+            plan=installer.build_changes(self.root,self.stage,remote)
+            self.assertIn(search,plan)
+            installer.transaction.deploy(self.root,plan,self.temp/'remote-before',
+                                         run=mock.Mock(),wait_ready=mock.Mock(),idle_check=mock.Mock())
+            self.assertFalse(installer.build_changes(self.root,self.stage,remote))
+            marker.write_text('{"remote":false}\n')
+            with self.assertRaisesRegex(RuntimeError,'Remote marker'):
+                installer.build_changes(self.root,self.stage,remote)
+
 
 if __name__=='__main__':
     unittest.main()

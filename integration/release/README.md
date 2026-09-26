@@ -65,9 +65,12 @@ manually before retrying. `SIGTERM` is not claimed as guaranteed recovery.
 After success, run `rebuild.py` through Kodi and complete physical search,
 TLS, IPTV switching, direct-play, seek/resume, subtitle, audio and HDR checks.
 
-Remote output is built and tested but is not evidence that an offline remote
-device was deployed. The profile selects local versus remote behavior; the
-installer never creates, removes, or copies the private remote marker.
+Remote output is supported through the exact R6 bridge followed by the remote
+R7 and search-priority overlays. It is not evidence that a remote device was
+deployed or physically accepted; see [the remote parity record](../REMOTE-AM9-PARITY-2026-09-26.md). Use
+`kodi/profile.remote.example.json`: it binds an approved public HTTPS hostname,
+requires verified TLS/no native paths, and the installer never creates,
+removes, or copies the private remote marker.
 
 ## Deliberate remaining boundaries
 

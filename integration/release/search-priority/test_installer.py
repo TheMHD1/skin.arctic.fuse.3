@@ -35,7 +35,7 @@ class OverlayTests(unittest.TestCase):
             install.SEARCH:b'''<includes><include name="Search_Switcher_Items">\n        <item><property name="guid">discover</property></item>\n        <include>skinvariables-searchwidgets-selector</include></include><include name="Search_Switcher_Wall_Items">\n        <item><property name="guid">discover</property></item>\n        <include>skinvariables-searchwidgets-wall-selector</include></include></includes>''',
             install.GENERATED:('<?xml version="1.0"?><includes>'+selector('skinvariables-searchwidgets-selector')+selector('skinvariables-searchwidgets-wall-selector')+'</includes>').encode(),
             install.LABELS:b'''<includes>\n    <variable name="Label_MediaList_Details_LeftLabel"><value>x</value></variable></includes>''',
-            install.OBJECTS:b'''<includes>\n    <include name="Object_AlphabetLetter_Label"></include><include name="Object_Indicator"><definition><control type="group">\n                <nested />\n                <centerbottom>0</centerbottom>\n                <right>25</right></control></definition></include></includes>''',
+            install.OBJECTS:b'''<includes>\n    <include name="Object_AlphabetLetter_Label"></include>\n    <include name="Object_Indicator">\n        <param name="affix" /><definition><control type="group">\n                <nested />\n                <centerbottom>0</centerbottom>\n                <right>25</right></control></definition></include></includes>''',
             install.LAYOUTS:b'''<includes><include name="Layout_Poster"><definition><control type="group"><control type="group">                    <include condition="!$PARAM[selected] + $PARAM[indicator]" content="Object_Indicator">\n                        <param name="affix">$PARAM[affix]</param>\n                        <param name="listitem">$PARAM[listitem]</param>\n                    </include>                    <include content="Object_SelectBox" condition="$PARAM[selected]">\n                        <param name="focusbounce">true</param>\n                    </include>\n                </control>\n\n            </control>\n\n        </definition>\n    </include>\n\n    <include name="Layout_Reviews"></include></includes>''',
         }
 
@@ -61,6 +61,8 @@ class OverlayTests(unittest.TestCase):
         self.assertNotIn('IMDb $INFO[ListItem.Property(Habibi.Rating.Community)',labels)
         for name,fn in ((install.OBJECTS,generated.transform_objects),(install.LAYOUTS,generated.transform_layouts)):
             ET.fromstring(fn(data[name]))
+        objects=generated.transform_objects(data[install.OBJECTS])
+        self.assertIn(b'<param name="poster_rating">false</param>',objects)
 
     def test_exact_cohort_plan_reapply_and_drift_rejection(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -86,6 +88,26 @@ class OverlayTests(unittest.TestCase):
                 self.assertTrue(plan)
                 for path,data in plan.items():path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(data)
                 self.assertFalse(install.build_changes(root,stage,{'variant':'local'}))
+                # The first deployed rating overlay omitted poster_rating for
+                # generic Object_Indicator callers.  Its exact known output
+                # upgrades only the object and manifest, then becomes stable.
+                objects=root/install.OBJECTS
+                corrected=objects.read_bytes()
+                old=corrected.replace(b'        <param name="poster_rating">false</param>\n',b'',1)
+                self.assertNotEqual(old,corrected)
+                objects.write_bytes(old)
+                record=json.loads(manifest.read_text())
+                record['files'][install.OBJECTS]=sha(old)
+                manifest.write_text(json.dumps(record,indent=2)+'\n')
+                with mock.patch.object(install,'OLD_OBJECTS_OUTPUT',sha(old)):
+                    migration=install.build_changes(root,stage,{'variant':'local'})
+                    self.assertEqual(set(migration),{objects,manifest})
+                    self.assertEqual(migration[objects],corrected)
+                    with mock.patch.object(install.generated,'upgrade_objects',return_value=b'bad'):
+                        with self.assertRaisesRegex(RuntimeError,'Unexpected repaired'):
+                            install.build_changes(root,stage,{'variant':'local'})
+                    for path,data in migration.items():path.write_bytes(data)
+                    self.assertFalse(install.build_changes(root,stage,{'variant':'local'}))
                 generated_path=root/install.GENERATED
                 rebuilt=generated_path.read_bytes().replace(b'</includes>',b'    \n</includes>')
                 self.assertNotEqual(sha(rebuilt),transforms[install.GENERATED][0])
@@ -100,6 +122,24 @@ class OverlayTests(unittest.TestCase):
                     generated_path.write_bytes(rebuilt+b'\n')
                     with self.assertRaisesRegex(RuntimeError,'Unreviewed or partial'):
                         install.build_changes(root,stage,{'variant':'local'})
+
+    def test_remote_transport_guard_requires_public_https_and_no_native_paths(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory)
+            data=root/'userdata/addon_data/plugin.video.jellyfin'
+            data.mkdir(parents=True)
+            settings=data/'settings.xml'
+            settings.write_text('<settings><setting id="playFromStream">true</setting>'
+                                '<setting id="playFromTranscode">false</setting>'
+                                '<setting id="useDirectPaths">0</setting><setting id="sslverify">true</setting></settings>')
+            state=data/'data.json'
+            state.write_text(json.dumps({'Servers':[{'address':'https://jellyfin.example.test','paths':None}]}))
+            reads={path:path.read_bytes() for path in (settings,state)}
+            install.require_remote_transport(root,reads.__getitem__,'jellyfin.example.test')
+            state.write_text(json.dumps({'Servers':[{'address':'http://192.168.1.2','paths':{}}]}))
+            reads[state]=state.read_bytes()
+            with self.assertRaisesRegex(RuntimeError,'HTTPS'):
+                install.require_remote_transport(root,reads.__getitem__,'jellyfin.example.test')
 
 
 if __name__=='__main__':unittest.main()
