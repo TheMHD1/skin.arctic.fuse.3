@@ -10,7 +10,7 @@ still depends on private deployment state.
 
 | Component | Reviewed version | Notes |
 | --- | --- | --- |
-| CoreELEC / Kodi | CoreELEC 22 nightly 20260922 local / 20260926 remote; Kodi 22 BETA2 | Local AM9 uses the [verified hybrid procedure](COREELEC-HYBRID-UPDATE-2026-09-23.md); the [remote standalone-SD update](REMOTE-AM9-PARITY-2026-09-26.md) was separately authorized. Future firmware updates still require review. |
+| CoreELEC / Kodi | CoreELEC22 nightly20260922 / Kodi22Beta2 local; nightly20260929 / Kodi22RC1 remote | Local AM9 uses the [verified hybrid procedure](COREELEC-HYBRID-UPDATE-2026-09-23.md); the [remote standalone-SD update](REMOTE-AM9-UPDATE-2026-09-30.md) preserved the custom cohort and passed headless checks. Future firmware updates still require review. |
 | Arctic Fuse 3 | 3.3.1 on accepted devices | Reviewed upstream 3.3.1 source plus `patches/arctic-3.3.1-habibi.patch`; the repository root remains a legacy 3.2.19 baseline. |
 | Jellyfin for Kodi | 2.2.0+py3 | Apply only the consolidated 2.2 patch stack. |
 | Home companion | 1.1.0 | Server-backed Home, search, favourites and episode navigation. |

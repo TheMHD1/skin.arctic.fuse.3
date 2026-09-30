@@ -9,6 +9,11 @@ Reviewed cohort: CoreELEC22 Amlogic-no aarch64 nightly20260926, official reposit
 `service.tailscale`22.0.12.9, Tailscale1.102.4. Install through Kodi's matching
 official repository. Never reuse another appliance's Tailscale state or host key.
 
+Revalidated after the [September30 OS-only update](../../REMOTE-AM9-UPDATE-2026-09-30.md)
+to nightly20260929 / Kodi22RC1: same repository, loader, addon/startup source,
+policy and identity. The wrapper remains necessary; actual post-reboot SSH,
+private preferences, HTTPS and original-file reads passed.
+
 ## Files and deployment
 
 - `firewall.py` → `/storage/.config/am9-tailnet-firewall.py`.
