@@ -10,7 +10,7 @@ still depends on private deployment state.
 
 | Component | Reviewed version | Notes |
 | --- | --- | --- |
-| CoreELEC / Kodi | CoreELEC22 nightly20260922 / Kodi22Beta2 local; nightly20260929 / Kodi22RC1 remote | Local AM9 uses the [verified hybrid procedure](COREELEC-HYBRID-UPDATE-2026-09-23.md); the [remote standalone-SD update](REMOTE-AM9-UPDATE-2026-09-30.md) preserved the custom cohort and passed headless checks. Future firmware updates still require review. |
+| CoreELEC / Kodi | CoreELEC22 nightly20260922 / Kodi22Beta2 local; nightly20261001 / Kodi22RC1 remote | Local AM9 uses the [verified hybrid procedure](COREELEC-HYBRID-UPDATE-2026-09-23.md); the [October 1 remote update](REMOTE-AM9-UPDATE-2026-10-01.md) adds actual keyboard/screenshot verification and targeted UI repairs. Future firmware updates still require review. |
 | Arctic Fuse 3 | 3.3.1 on accepted devices | Reviewed upstream 3.3.1 source plus `patches/arctic-3.3.1-habibi.patch`; the repository root remains a legacy 3.2.19 baseline. |
 | Jellyfin for Kodi | 2.2.0+py3 | Apply only the consolidated 2.2 patch stack. |
 | Home companion | 1.1.0 | Server-backed Home, search, favourites and episode navigation. |
@@ -75,6 +75,11 @@ backup paths are intentionally omitted. Keep the corresponding acceptance and
 rollback record with the private deployment.
 
 ## Source map
+
+- `release/ui-reliability/`: October 1 additive remote-only repairs for Venom's
+  asynchronous grid focus and hidden-window playback lifecycle, valid Arctic
+  rating predicates, and bounded owned-library Discover matching. Preserve this
+  layer after the existing remote-originals/search-priority chain.
 
 ### Arctic, Kodi and client integrations
 

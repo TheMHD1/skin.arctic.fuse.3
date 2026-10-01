@@ -154,6 +154,7 @@ class RemoteTests(unittest.TestCase):
         b,mod,cat,kodi,gui,job=self.window('live');applied=[];discarded=[];calls=[]
         class Network:
             def discard_pending(self):discarded.append(True)
+            def close(self):pass
             def poll(self):return (7,'stale category',['stale'],None,.2)
             def poll_critical(self):return None
         b.network=Network();b.jobs=queue.Queue();b.busy=False;b.network_busy=True
@@ -164,7 +165,7 @@ class RemoteTests(unittest.TestCase):
             calls.append((method,params));return {}
         mod['Browser'].open_selected.__globals__['rpc']=rpc
         b.open_selected()
-        self.assertEqual(b.request_generation,8);self.assertEqual(discarded,[True])
+        self.assertEqual(b.request_generation,8+int(b.closed));self.assertEqual(discarded,[True])
         self.assertEqual(calls,[('Player.Open',{'item':{'file':'plugin://plugin.video.jellyfin/?mode=play&id='+'a'*32}})])
         b.shared=None;b.process()
         self.assertEqual(applied,[]);self.assertFalse(b.network_busy)

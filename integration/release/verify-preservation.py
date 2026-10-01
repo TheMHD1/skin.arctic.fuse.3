@@ -55,7 +55,7 @@ def write():
         raise SystemExit("Review and stage sources before recording them:\n" + "\n".join(pending))
     payload = {
         "schema": 1,
-        "release": "2026-09-30-remote-am9-os-preservation",
+        "release": "2026-10-01-remote-am9-ui-reliability",
         "meaning": "Reviewed source bytes, not a runtime credential/settings backup or proof of deployment",
         "status": {
             "local_kodi_r6": "deployed-and-accepted",
@@ -79,7 +79,8 @@ def write():
             "remote_original_p7": "deployed-layout-gated-movie-and-episode-selection-byte-reads-accepted-onsite-av-wan-pending",
             "remote_private_access": "restricted-tailnet-key-only-ssh-and-private-nfs-deployed-restart-verified",
             "coreelec_update": "local-am9-nightly-20260922-hybrid-verified-two-boots-physical-av-pending",
-            "remote_coreelec_update": "standalone-sd-nightly-20260929-kodi22rc1-boot-custom-cohort-and-remote-routes-verified-physical-av-deferred",
+            "remote_coreelec_update": "standalone-sd-nightly-20261001-kodi22rc1-payload-and-preservation-verified",
+            "remote_ui_reliability": "deployed-on-screen-keyboard-search-and-rating-badges-verified-bounded-iptv-playback",
             "provider_403_retry": "deployed-fixture-tested-not-live-recovery-proven",
             "dovi_companion_provenance": "known-gap-not-fixed",
         },

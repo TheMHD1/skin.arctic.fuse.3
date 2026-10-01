@@ -2,11 +2,13 @@
 
 ## Current release authority
 
-The remote standalone-SD appliance is now on reviewed nightly20260929 / Kodi22RC1.
-Follow the [September30 preservation/acceptance record](REMOTE-AM9-UPDATE-2026-09-30.md)
-for the OS layer; the September26 addon/private-access chain below is unchanged.
+The remote standalone-SD appliance is now on reviewed nightly20261001 / Kodi22RC1.
+Follow the [October1 preservation/acceptance record](REMOTE-AM9-UPDATE-2026-10-01.md)
+for the OS layer. Preserve the additive [UI reliability repair](release/ui-reliability/README.md)
+after the September26 addon/private-access chain below.
 This does not update the original local hybrid box or authorize unattended
-future updates. The owner deferred HDMI testing; headless checks are not AV proof.
+future updates. October1 includes actual search keyboard/screenshots and bounded
+IPTV device playback; it is not exhaustive HDMI/audio/FEL acceptance.
 
 For an enrolled remote AM9 with original-P7 enabled, preserve the additive
 [remote-originals layer](release/remote-originals/README.md) after the remote
