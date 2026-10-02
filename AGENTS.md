@@ -26,6 +26,14 @@ For work in this repository:
 6. Within the user's authorized repository workflow, commit and push the reviewed
    changes before claiming they are preserved on GitHub. State explicitly if
    they remain local or publishing is blocked.
+7. The original/local AM9's maintained repairs are the shared baseline for other
+   AM9 builds. Derive remote source from that baseline plus reviewed, minimal
+   account/network/transport or hardware-specific overlays; do not invent an
+   independent reduced repair stack. Account for every applicable baseline fix
+   in the other build. For new generic fixes, record applicability and deployment
+   state for both cohorts, including any correction the original device still
+   needs. Addon-version equality alone is not repair parity. Never copy private
+   identities, boot layouts or local-only PVR paths to satisfy this requirement.
 
 The root skin tree is the older 3.2.19 baseline. Current 3.3.1 integration uses
 version-specific source patches and guarded overlays; do not simply bump the

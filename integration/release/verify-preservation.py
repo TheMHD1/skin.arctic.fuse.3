@@ -82,6 +82,7 @@ def write():
             "remote_coreelec_update": "standalone-sd-nightly-20261001-kodi22rc1-payload-and-preservation-verified",
             "remote_ui_reliability": "deployed-on-screen-keyboard-search-and-rating-badges-verified-bounded-iptv-playback",
             "remote_ui_catchup": "saved-cohort-and-regression-tested-offline-not-deployed",
+            "remote_shared_repair_baseline": "saved-shared-source-audit-and-worker-core-parity-regression-passed-live-parity-pending",
             "remote_network_backup": "regdomain-and-connman-selection-migration-prepared-not-deployed",
             "remote_wifi_canada": "native-setting-installed-5ghz-and-playback-recovered-reboot-acceptance-pending",
             "remote_partial_title_search": "current-account-api-and-regression-verified-device-keyboard-pending",

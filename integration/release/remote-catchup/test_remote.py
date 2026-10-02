@@ -1,4 +1,5 @@
 """Clean-source remote/local contracts plus strict empty-control focus checks."""
+import ast
 import importlib.util
 from pathlib import Path
 import sys
@@ -59,6 +60,20 @@ module.LocalOverlayRegression.test_bookmark_category_waits_for_category_apply_be
 
 
 class FocusTests(module.RemoteTests):
+    def test_remote_preserves_common_worker_cancellation_and_mutation_core(self):
+        common=ast.parse((HERE.parents[1]/'plugin.video.venom.tv/browser.py').read_text())
+        remote=ast.parse((module.STAGE/'browser.py').read_text())
+        def cls(tree, name):
+            return next(n for n in tree.body if isinstance(n,ast.ClassDef) and n.name==name)
+        self.assertEqual(ast.dump(cls(common,'LatestWorker')),ast.dump(cls(remote,'LatestWorker')))
+        original={n.name:n for n in cls(common,'Browser').body if isinstance(n,ast.FunctionDef)}
+        derived={n.name:n for n in cls(remote,'Browser').body if isinstance(n,ast.FunctionDef)}
+        for name in ('process','start_network','start_critical_network','cancel_network',
+                     'request_cancelled','_final_close','apply_favorite_refresh',
+                     'cancel_live_handoff','begin_channel_playback','poll_live_handoff','render'):
+            with self.subTest(method=name):
+                self.assertEqual(ast.dump(original[name]),ast.dump(derived[name]))
+
     def strict(self, kind='movie'):
         b,mod,cat,kodi,gui,job=self.window(kind)
         b.categories=[]

@@ -21,6 +21,47 @@ settings/source hashes again before deployment. Preserve each device's own accou
 host keys, Tailscale state, Wi-Fi, network route, display calibration and library
 scopes. Never copy the original hybrid-SD/SSD boot configuration to standalone SD.
 
+## Shared repair baseline — owner requirement
+
+The original/local AM9's maintained repairs are the baseline. The remote build
+must carry every applicable repair, with only explicitly reviewed account,
+network/transport, hardware/version adjustments or genuinely new fixes. An
+independent reduced set of "remote repairs" is not acceptable. The R6 builder
+already derives both Venom variants from the same common source and patch stack;
+R7 Home/search and search-priority use the same payload for both cohorts.
+
+Saved-source comparison additionally found all seven Home companion source files
+equal, all25 request/discovery addon files equal before the October1 additive
+bridge repair, and identical Jellyfin player, library, downloader, helper/utils
+and service code. This establishes inherited playback/intro/next-episode and
+sync repairs at that saved point, not proof of current physical behaviour.
+
+| Shared repair family | Preserved implementation and remote requirement |
+| --- | --- |
+| Home/resume/latest/ratings and separated library search | Same Home companion, R7 and search-priority source; each device keeps its own account/scopes |
+| Discover/request actions, duplicate/error guards and trailers | Same maintained KodiSeerr/Arctic patch stack and trailer dependencies; authenticate per device |
+| Player, intro/segments, next episode, subtitles and sync-loop filtering | Same consolidated Jellyfin2.2 repair stack and shared player/library/downloader code; retain Up Next configuration |
+| Venom workers, cancellation, bounded cache, category-first UI and shared favourites | Common browser/shared-favourites source; remote overlay changes catalogue/playback access, not these guarantees |
+| Seeking/audio/OLED/awake behaviour | Same ±30-second keymap/helper and capability-appropriate settings; merge the device's own CEC profile and display modes |
+| Native DV/original quality | Same quality objective; local Native path versus separately approved remote manifest/private route with HTTPS fallback |
+| Backups/update preservation | Shared exclusion/root-selection policy where applicable; device-specific worker, boot media and credentials remain private |
+
+New October1–2 generic improvements (bounded owned Discover index, valid rating
+predicates/defaults, additional empty-list focus guards and explicit network
+backup coverage) are **shared candidates**, not intended permanent differences.
+Their recorded states remain: reviewed remote r2 deployed, October2 remote layer
+staged; matching local installation/rebase is not yet performed. Evaluate them
+against the local cohort and preserve a reviewed local port rather than silently
+discarding them or copying a remote installer over the local device. The remote
+browser close-before-HTTPS playback fix is transport-specific: preserve the
+local Stop/poll/Open PVR handoff that already passed local acceptance.
+
+Before declaring remote parity complete, use a current local inventory plus the
+maintained repair sources, classify each fix as identical, reviewed equivalent,
+new/shared pending, or justified device-specific, and resolve unexplained gaps.
+Test actual behaviour as well as hashes. The offline preparation does not satisfy
+that final live acceptance gate.
+
 ## Outstanding work, in execution order
 
 | Area | Current evidence/status | Live acceptance required |

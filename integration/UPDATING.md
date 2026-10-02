@@ -2,6 +2,13 @@
 
 ## Current release authority
 
+AM9 repair parity is a release requirement: retain the original/local build's
+applicable repairs in every managed AM9 and derive remote differences from the
+common source. See the [shared-baseline map](REMOTE-AM9-CATCHUP-2026-10-02.md#shared-repair-baseline--owner-requirement).
+New generic fixes must have applicability/deployment records for both cohorts;
+source/version equality does not replace physical acceptance. Preserve private
+device identities and local/remote transport safety boundaries.
+
 The [October2 remote catch-up](REMOTE-AM9-CATCHUP-2026-10-02.md) is prepared but
 not deployed while the remote appliance is offline. Its exact-source overlay
 follows UI reliability revision2; preserve the historical builders and do not

@@ -64,10 +64,13 @@ python3 integration/check.py
 ```
 
 The browser runner reconstructs common plus remote source and the prior r2 layer
-before this repair. It runs79 contracts, including strict assertions rejecting
+before this repair. It runs80 contracts, including strict assertions rejecting
 focus on empty controls. Its sole superseded historical assertion expected an
 empty bookmark grid to receive focus immediately; identity/category assertions
-remain. Installer tests cover idempotency, file ordering, final-manifest/worker
+remain. A shared-baseline regression compares the common worker, cancellation,
+favourite-mutation, rendering and local handoff method ASTs against the derived
+remote build, rejecting silent omission/divergence of those repairs. Installer
+tests cover idempotency, file ordering, final-manifest/worker
 drift and unsafe/wrong cohort rejection. The exact saved59-entry cohort also
 passed a four-file plan and pinned final-hash/idempotency check privately.
 
