@@ -199,9 +199,16 @@ Custom add-ons use manual updates so stock packages cannot silently erase the
 ports. Ordinary unmodified add-ons retain their normal update policy.
 
 Preserve the [always-awake/OLED configuration](device-policy/always-awake/README.md)
-when commissioning or upgrading the local AM9. It uses Kodi settings and a
+when commissioning or upgrading either AM9. It uses Kodi settings and a
 version-reviewed peripheral XML merge, not a replacement system image. Recheck
 CEC enum/file identity after updates; do not clone a whole peripheral profile.
+
+For generic software repairs, use [the paired AM9 release](release/shared-am9/README.md)
+and read-only inventories of both devices. Every shared change needs local and
+remote applicability, source tests and separate applied/accepted/pending status
+under one release ID. An offline box remains pending; updating the original or
+pushing Git does not update the other. Unknown sources require rebase, not a
+guard bypass. Firmware/hardware/network/account state remains device-specific.
 
 1. Confirm the last private backup succeeded. Keep the currently working addon
    sources, settings and a SQLite-consistent DB backup. Verify rollback artifacts.

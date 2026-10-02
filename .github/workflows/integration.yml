@@ -27,6 +27,9 @@ jobs:
       - run: python integration/device-policy/always-awake/test_policy.py
       - run: python integration/device-backup/test_policy.py
       - run: python integration/device-backup/test_worker_overlay.py
+      - run: python integration/device-backup/test_local_overlay.py
+      - run: python integration/release/shared-am9/test_local_browser.py
+      - run: python integration/release/shared-am9/test_release.py
       - run: python integration/release/ui-reliability/test_overlay.py
       - run: python integration/release/ui-reliability/test_remote.py
       - run: python integration/release/remote-catchup/test_remote.py

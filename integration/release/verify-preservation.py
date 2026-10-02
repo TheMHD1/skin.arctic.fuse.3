@@ -55,7 +55,7 @@ def write():
         raise SystemExit("Review and stage sources before recording them:\n" + "\n".join(pending))
     payload = {
         "schema": 1,
-        "release": "2026-10-02-remote-am9-catchup-prepared",
+        "release": "2026-10-02-shared-am9-audit-prepared",
         "meaning": "Reviewed source bytes, not a runtime credential/settings backup or proof of deployment",
         "status": {
             "local_kodi_r6": "deployed-and-accepted",
@@ -83,10 +83,14 @@ def write():
             "remote_ui_reliability": "deployed-on-screen-keyboard-search-and-rating-badges-verified-bounded-iptv-playback",
             "remote_ui_catchup": "saved-cohort-and-regression-tested-offline-not-deployed",
             "remote_shared_repair_baseline": "saved-shared-source-audit-and-worker-core-parity-regression-passed-live-parity-pending",
+            "shared_am9_release": "original55-remote59-private-cohort-plans-and-idempotency-verified-neither-deployed",
+            "shared_am9_awake": "live-original-and-saved-remote-six-settings-eight-cec-ids-match-remote-tv-off-acceptance-pending",
+            "local_backup_dependency_repair": "rooted-rsync-package-filter-and-optional-regdomain-capture-prepared-not-deployed",
             "remote_network_backup": "regdomain-and-connman-selection-migration-prepared-not-deployed",
             "remote_wifi_canada": "native-setting-installed-5ghz-and-playback-recovered-reboot-acceptance-pending",
             "remote_partial_title_search": "current-account-api-and-regression-verified-device-keyboard-pending",
             "live_tv_curated_collections": "october2-api-regression-recorded-provider-groups-present-custom-groups-absent",
+            "live_tv_collection_promotion": "october2-shrunken34-native-set-rejected-by-loss-guard-checker-fails-server-rebind-pending",
             "provider_403_retry": "deployed-fixture-tested-not-live-recovery-proven",
             "dovi_companion_provenance": "known-gap-not-fixed",
         },

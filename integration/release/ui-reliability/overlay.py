@@ -24,7 +24,7 @@ def replace(data, old, new, count=1):
     return data.replace(old, new)
 
 
-def browser(data):
+def browser(data, remote=True):
     # Keep focus on a real button while the initial category list is empty.
     data = replace(data, '        self.jobs.put(self.load_categories)\n        self.setFocusId(910)',
                    '        self.jobs.put(self.load_categories)\n        self.setFocusId(901)')
@@ -32,14 +32,20 @@ def browser(data):
     # when the asynchronous results have populated the grid, never before.
     data = replace(data, '        self.load_entries();self.setFocusId(920)\n\n    def entry_snapshot',
                    '        self.focus_grid_when_ready=True\n        self.load_entries()\n\n    def entry_snapshot')
-    data = replace(data, "                'native_offset':getattr(self,'native_offset',0)}",
+    snapshot_tail = ("                'native_offset':getattr(self,'native_offset',0)}" if remote
+                     else "                'category_name':getattr(self,'category_name','')}")
+    data = replace(data, snapshot_tail,
                    "                'focus_grid_when_ready':getattr(self,'focus_grid_when_ready',False),\n"
-                   "                'native_offset':getattr(self,'native_offset',0)}")
-    data = replace(data, '        self.render()\n\n        if snapshot.get(\'restore_grid_position\')',
+                   + snapshot_tail)
+    render_tail = ('        self.render()\n\n        if snapshot.get(\'restore_grid_position\')' if remote
+                   else '        self.render()\n\n    def render(self):')
+    after_focus = ("\n\n        if snapshot.get('restore_grid_position')" if remote
+                   else '\n\n    def render(self):')
+    data = replace(data, render_tail,
                    "        self.render()\n        if snapshot.get('focus_grid_when_ready'):\n"
                    "            self.focus_grid_when_ready=False\n"
                    "            if self.visible_entries and self.getFocusId() in (910,920):\n"
-                   "                self.setFocusId(920)\n\n        if snapshot.get('restore_grid_position')")
+                   "                self.setFocusId(920)" + after_focus)
     # Back while loading cancels the queued grid, including its focus request.
     data = replace(data, "            else:self.close()\n        elif action.getId()",
                    "            elif getattr(self,'network_busy',False) and self.category is not None:\n"
@@ -49,7 +55,8 @@ def browser(data):
     data = replace(data, "        self.open_pending=None\n        self.page=0;self.query='';self.stack=[];self.scope=None;self.category=None;self.selected_category_index=0",
                    "        self.open_pending=None\n        self.focus_grid_when_ready=False\n"
                    "        self.page=0;self.query='';self.stack=[];self.scope=None;self.category=None;self.selected_category_index=0")
-    return playback_lifecycle(data)
+    # The shared focus repairs do not replace local Stop/poll/Open PVR handoff.
+    return playback_lifecycle(data) if remote else data
 
 
 def playback_lifecycle(data):

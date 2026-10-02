@@ -62,3 +62,19 @@ to their original appliance; never copy Tailscale state/host keys between device
 
 The private worker, destination, host identity, archives and credentials never
 belong in this repository.
+
+## Original rsync worker audit
+
+The October2 live-original audit found the same broad directory-name hazard in
+its separate shell worker: `--exclude='packages/'` applies at arbitrary depths.
+`local_overlay.py` roots the cache exclusion to `--exclude='/packages/'`, keeping
+bundled `urllib3/packages` source. It also adds an optional copy of this device's
+regulatory hint, while retaining the already-selected ConnMan state, private
+destination, SQLite consistency, status and boot-critical backup logic.
+
+The worker is whole-file SHA-256 guarded and remains private. The correction is
+included in the [shared AM9 plan](../release/shared-am9/README.md), prepared but
+not installed. `test_local_overlay.py` uses actual rsync filter semantics to
+verify that the download cache is omitted and bundled dependency packages remain.
+Do not transplant the remote Python worker onto the local mirror or point both
+devices at the same backup destination. Verify a new snapshot after deployment.

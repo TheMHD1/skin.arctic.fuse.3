@@ -34,6 +34,11 @@ For work in this repository:
    state for both cohorts, including any correction the original device still
    needs. Addon-version equality alone is not repair parity. Never copy private
    identities, boot layouts or local-only PVR paths to satisfy this requirement.
+8. New generic AM9 fixes must have both profiles accounted for in the shared
+   release/audit workflow. Use one paired release ID, separate private profiles
+   and per-device pending/applied/accepted records. Test both transport cohorts;
+   an offline member stays pending. Never infer automatic delivery from a Git
+   push or install a resident updater without a separately reviewed rollout.
 
 The root skin tree is the older 3.2.19 baseline. Current 3.3.1 integration uses
 version-specific source patches and guarded overlays; do not simply bump the

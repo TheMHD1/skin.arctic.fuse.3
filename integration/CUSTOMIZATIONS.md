@@ -76,6 +76,12 @@ rollback record with the private deployment.
 
 ## Source map
 
+- `release/shared-am9/`: October2 paired release and read-only parity auditor.
+  Common generic fixes are derived for both profiles, with separate account,
+  hardware and transport guards. Original55/remote59 private fixture plans pass;
+  **neither new device layer is deployed**. The awake/OLED policy was present in
+  both live-original and saved-remote settings, not an omitted transfer. Server
+  curated-group identity/promotion regressions remain separate pending work.
 - `release/remote-catchup/`: October2 staged-only empty-list focus and network
   snapshot-root repair after remote UI reliability revision2. The appliance was
   offline; [remaining acceptance/parity items](REMOTE-AM9-CATCHUP-2026-10-02.md)

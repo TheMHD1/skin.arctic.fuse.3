@@ -100,6 +100,19 @@ values through JSON-RPC after restarting Kodi. Do not replace unrelated settings
 or another box's network/profile data. This policy never requires restoring boot
 files, flashing Android or changing SD/SSD storage identifiers.
 
+## Both device profiles
+
+The October2 parity audit read all six settings and the eight intended CEC IDs
+live from the original box. They still match this policy. The remote October1
+private archive also contains the same settings and CEC overrides. Therefore
+the saved build did not omit this repair. The remote box was offline during the
+audit: current RPC readback, verification of its actual peripheral XML load,
+and its own physical TV-off/on reachability test remain pending. The original
+TV-cycle acceptance above does not prove the remote HDMI/CEC chain behaves alike.
+The [shared AM9 auditor](../../release/shared-am9/README.md) checks the portable
+settings and override values; neither file equality nor SSH availability alone
+proves the TV-standby path. Preserve each adapter's identity and other settings.
+
 ## Sources
 
 - [Reviewed CoreELEC Kodi peripheral defaults](https://github.com/CoreELEC/xbmc/blob/3de1f35efd63b69ad2e6cd0bb8d6f637c9d92f4d/system/peripherals.xml)

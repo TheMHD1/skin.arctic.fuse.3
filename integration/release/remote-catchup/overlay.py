@@ -10,7 +10,7 @@ def replace(source, old, new):
     return source.replace(old, new)
 
 
-def browser(source):
+def browser(source, remote=True):
     source = replace(source,
         '            if self.category is None:\n                self.setFocusId(910)',
         '            if self.category is None:\n                self.setFocusId(910 if self.categories else 901)')
@@ -42,16 +42,18 @@ def browser(source):
         '            self.focus_grid_when_ready=True\n'
         '            self.setFocusId(910 if self.categories else 901)\n'
         '        self.entries=[];self.visible_entries=[];self.getControl(920).reset()')
-    source = replace(source,
-        "        if snapshot.get('restore_grid_position') is not None:",
-        "        if self.visible_entries and snapshot.get('restore_grid_position') is not None:")
+    if remote:
+        source = replace(source,
+            "        if snapshot.get('restore_grid_position') is not None:",
+            "        if self.visible_entries and snapshot.get('restore_grid_position') is not None:")
     source = replace(source,
         "                self.kind={901:'live',902:'movie',903:'series',904:'favorites'}[control];self.load_categories();self.setFocusId(910)",
         "                self.kind={901:'live',902:'movie',903:'series',904:'favorites'}[control]\n"
         '                self.setFocusId(control);self.load_categories()')
+    offset = 'self.native_offset=0;' if remote else ''
     source = replace(source,
-        "                self.query=query.strip();self.page=0;self.native_offset=0;self.load_entries();self.setFocusId(920)",
-        "                self.query=query.strip();self.page=0;self.native_offset=0\n"
+        "                self.query=query.strip();self.page=0;" + offset + "self.load_entries();self.setFocusId(920)",
+        "                self.query=query.strip();self.page=0;" + offset.rstrip(';') + "\n"
         '                self.focus_grid_when_ready=True\n'
         '                self.setFocusId(910 if self.categories else 901);self.load_entries()')
     compile(source, 'remote-browser', 'exec')

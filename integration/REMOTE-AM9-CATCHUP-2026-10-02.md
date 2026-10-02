@@ -50,9 +50,9 @@ New October1–2 generic improvements (bounded owned Discover index, valid ratin
 predicates/defaults, additional empty-list focus guards and explicit network
 backup coverage) are **shared candidates**, not intended permanent differences.
 Their recorded states remain: reviewed remote r2 deployed, October2 remote layer
-staged; matching local installation/rebase is not yet performed. Evaluate them
-against the local cohort and preserve a reviewed local port rather than silently
-discarding them or copying a remote installer over the local device. The remote
+staged; the later [shared AM9 audit/release](release/shared-am9/README.md) now
+provides a reviewed local port and paired guarded plans. Exact original55 and
+remote59 private fixtures pass; neither paired layer has been deployed. The remote
 browser close-before-HTTPS playback fix is transport-specific: preserve the
 local Stop/poll/Open PVR handoff that already passed local acceptance.
 
@@ -90,3 +90,11 @@ box is online. Keep credentials, raw logs, screenshots, real profiles and recove
 archives in the private operations record. After each acceptance, record its
 timestamp, installed source hashes, rollback location, exact test and result.
 Update this checklist rather than marking a whole area fixed from one RPC success.
+
+The later October2 round confirmed the awake policy's six settings and eight
+CEC overrides match in the live original and saved remote configurations. This
+is not a missing transfer; remote live load/TV-cycle verification is still needed.
+Both accounts still have zero curated server collections. A promotion attempt
+shrinks the native set to34 channels, triggering the publisher's200-channel
+minimum and a failed channel-checker result. Retain that loss guard until full
+exact identity rebinding is repaired; do not publish the shrunken set as success.

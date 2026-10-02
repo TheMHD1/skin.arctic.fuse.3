@@ -14,6 +14,13 @@ also supersede the older full-reconciliation notification timings in this guide:
 exact imports and subtitles now have targeted, verified, finite-retry publishers.
 Do not install duplicate server workers on a client.
 
+The [October2 shared AM9 release](release/shared-am9/README.md) is the current
+parity-audit/update entry point. Both profiles inherit the same repair baseline,
+with reviewed local/remote transport and private identity differences. Its new
+paired repair plans are tested but not deployed. The always-awake/black-screen
+policy is present in the saved remote settings; its live TV-off acceptance still
+needs checking. Do not treat matching addon versions as repair parity.
+
 The accepted local/LAN device and the remote-house device are intentionally
 different cohorts. The local r6 cohort has physical search, native-original and
 IPTV handoff acceptance. The remote r6 overlay is source-tested but not installed;

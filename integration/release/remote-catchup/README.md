@@ -78,3 +78,9 @@ Live acceptance still requires cold launch, section switching, category OK,
 search/empty results, series return, Back during loading, real channel switching,
 Stop→reopen, VOD/episode playback and a verified private snapshot. See the
 [remaining-issues checklist](../../REMOTE-AM9-CATCHUP-2026-10-02.md).
+
+For ongoing two-device maintenance, prefer the later
+[paired release](../shared-am9/README.md). Its local port calls the same generic
+empty-focus transformer with `remote=False`, without remote paging/restoration
+fields or playback changes. Default remote output hashes remain unchanged.
+The installer here still targets only the reviewed remote cohort.

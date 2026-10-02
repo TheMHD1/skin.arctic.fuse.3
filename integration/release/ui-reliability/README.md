@@ -75,3 +75,9 @@ Discover and real playback. An API list or successful Player.Open is not proof
 of video playback. The owner-authorized October 1 remote device deployment and
 acceptance are recorded in `../../REMOTE-AM9-UPDATE-2026-10-01.md`; this layer has
 not been deployed to the original local-PVR appliance.
+
+The later [shared AM9 release](../shared-am9/README.md) derives a guarded local
+port using this same bridge/rating code and `browser(..., remote=False)` for
+generic focus repairs only. It preserves the original local playback handoff;
+the remote default output hashes are unchanged. That paired port is staged,
+not installed. The installer in this directory remains remote-only.

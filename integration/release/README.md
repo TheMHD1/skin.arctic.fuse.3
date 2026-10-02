@@ -1,5 +1,10 @@
 # Portable September 22 source release
 
+For current original/remote parity maintenance, use
+[the shared AM9 release and audit](shared-am9/README.md). It keeps the historical
+builders below unchanged and adds one paired release ID with guarded per-device
+plans. The October2 prepared release has not been installed on either box.
+
 The later optional [remote-originals layer](remote-originals/README.md) adds
 restricted-network P7 selection after the complete remote parity chain. It is
 separate from the local Native branch in the historical R6 builder below.
