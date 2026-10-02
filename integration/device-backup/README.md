@@ -34,5 +34,31 @@ SHA256 `ff651f4ca1a6afb963868dc0a962064236b5c9c726a04b9425e43916fb3cb7f2`.
 Confirm the actual Kodi SlyGuy/trailer import succeeds afterward. Revert using
 the private changed-file backup, not another device's profile.
 
-This module preserves the exclusion policy only. The private worker, destination,
-host identity, archives and credentials never belong in this repository.
+## October 2 network-recovery catch-up
+
+`SNAPSHOT_ROOTS` also selects `.cache/regdomain.conf` and `.cache/connman`.
+The previous private worker selected only hostname and Tailscale state from
+`.cache`: its daily archive therefore did not preserve the successful Canadian
+radio hint or the appliance's ConnMan Wi-Fi credentials/provisioning. The earlier
+claim that storing provisioning in ConnMan automatically put it in snapshots
+was incorrect for that worker's selected roots.
+
+`worker_overlay.py` replaces only the reviewed import and literal root list.
+Before applying, bind the private worker to its reviewed full-file SHA-256 and
+retain a private copy. Install the new policy first, then the worker. Identity,
+idle check, SQLite online copies, permissions, destination and retention remain
+unchanged. Unknown/duplicate anchors fail closed. The additive remote installer
+in `../release/remote-catchup/` includes this migration with source guards and
+rollback. It is prepared and tested against a saved cohort, **not yet deployed**
+to the offline appliance as of October2.
+
+Run both `test_policy.py` and `test_worker_overlay.py`. After deployment run one
+normal idle snapshot; verify its member list includes the regulatory file and
+the intended device's ConnMan provisioning/settings, alongside dependency source,
+Tailscale state and consistent databases. Copy it off-device and verify its
+checksum. An existing timer alone does not establish successful new backup coverage.
+Archives contain secrets and remain private. Restore network credentials only
+to their original appliance; never copy Tailscale state/host keys between devices.
+
+The private worker, destination, host identity, archives and credentials never
+belong in this repository.

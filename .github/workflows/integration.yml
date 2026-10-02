@@ -26,6 +26,11 @@ jobs:
       - run: python integration/release/test-preservation.py
       - run: python integration/device-policy/always-awake/test_policy.py
       - run: python integration/device-backup/test_policy.py
+      - run: python integration/device-backup/test_worker_overlay.py
+      - run: python integration/release/ui-reliability/test_overlay.py
+      - run: python integration/release/ui-reliability/test_remote.py
+      - run: python integration/release/remote-catchup/test_remote.py
+      - run: python integration/release/remote-catchup/test_installer.py
       - run: python -m unittest discover -s integration/device-policy/private-tailnet
       - run: python integration/remote-native-originals/test_remote_native_originals.py
       - run: python integration/release/remote-originals/build.py --output "$RUNNER_TEMP/remote-originals-payload"

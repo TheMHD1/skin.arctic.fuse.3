@@ -1,6 +1,13 @@
 """Exclude only known Kodi caches, never identically named addon source trees."""
 from pathlib import PurePosixPath
 
+# Selected /storage roots, including this appliance's own network recovery
+# state. Archives stay private; these names are not a profile to clone.
+SNAPSHOT_ROOTS = (
+    '.kodi/addons', '.kodi/userdata', '.config', '.cache/hostname',
+    '.cache/tailscale/tailscaled.state', '.cache/regdomain.conf', '.cache/connman',
+)
+
 EXCLUDED_TREES = (
     ('.kodi', 'addons', 'packages'),
     ('.kodi', 'userdata', 'Thumbnails'),

@@ -14,6 +14,39 @@ class SearchTests(unittest.TestCase):
         self.assertFalse(matches('spider man','Superman'))
         self.assertFalse(matches('','Spider-Man'))
 
+    def test_partial_title_and_leading_article_omission(self):
+        # This is an article/partial-title contract, not quite/quiet correction.
+        for query in ('Quiet Place', 'A Quiet Place', 'quiet place', 'a quiet place'):
+            self.assertTrue(matches(query, 'A Quiet Place'))
+            self.assertTrue(matches(query, 'A Quiet Place Part II'))
+        self.assertTrue(matches('Expanse', 'The Expanse'))
+        self.assertTrue(matches('Unexpected Journey', 'An Unexpected Journey'))
+        self.assertFalse(matches('Quite Place', 'A Quiet Place'))
+
+    def test_article_omission_uses_owned_server_candidates_without_catalogue_scan(self):
+        items = [{'Id':'a'*32, 'Name':'A Quiet Place', 'Type':'Movie'},
+                 {'Id':'b'*32, 'Name':'A Quiet Place Part II', 'Type':'Movie'}]
+        class Fake:
+            user='current-user'
+            def __init__(self):self.calls=[]
+            def scope_ids(self, name):
+                self.assert_scope = name
+                return ['1'*32] if name == 'movies' else []
+            def get(self, path, **params):
+                self.calls.append(params)
+                if 'Ids' in params:return {'Items':items}
+                return {'Items':items if params['SearchTerm'].casefold() in
+                        ('quiet place', 'a quiet place') else []}
+        for query in ('Quiet Place', 'A Quiet Place'):
+            fake=Fake()
+            self.assertEqual(search(fake, query), items)
+            self.assertEqual(fake.assert_scope, 'movies')
+            for params in fake.calls:
+                if 'Ids' not in params:
+                    self.assertEqual(params['ParentId'], '1'*32)
+                    self.assertIn('SearchTerm', params)
+            self.assertLessEqual(len(fake.calls), 4)
+
     def test_paginated_scope_dedupe_hydration(self):
         class Fake:
             user='own-user';scopes={'movies':['1'*32,'2'*32]}

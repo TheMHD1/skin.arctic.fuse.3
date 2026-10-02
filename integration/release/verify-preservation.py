@@ -55,7 +55,7 @@ def write():
         raise SystemExit("Review and stage sources before recording them:\n" + "\n".join(pending))
     payload = {
         "schema": 1,
-        "release": "2026-10-01-remote-am9-ui-reliability",
+        "release": "2026-10-02-remote-am9-catchup-prepared",
         "meaning": "Reviewed source bytes, not a runtime credential/settings backup or proof of deployment",
         "status": {
             "local_kodi_r6": "deployed-and-accepted",
@@ -81,6 +81,11 @@ def write():
             "coreelec_update": "local-am9-nightly-20260922-hybrid-verified-two-boots-physical-av-pending",
             "remote_coreelec_update": "standalone-sd-nightly-20261001-kodi22rc1-payload-and-preservation-verified",
             "remote_ui_reliability": "deployed-on-screen-keyboard-search-and-rating-badges-verified-bounded-iptv-playback",
+            "remote_ui_catchup": "saved-cohort-and-regression-tested-offline-not-deployed",
+            "remote_network_backup": "regdomain-and-connman-selection-migration-prepared-not-deployed",
+            "remote_wifi_canada": "native-setting-installed-5ghz-and-playback-recovered-reboot-acceptance-pending",
+            "remote_partial_title_search": "current-account-api-and-regression-verified-device-keyboard-pending",
+            "live_tv_curated_collections": "october2-api-regression-recorded-provider-groups-present-custom-groups-absent",
             "provider_403_retry": "deployed-fixture-tested-not-live-recovery-proven",
             "dovi_companion_provenance": "known-gap-not-fixed",
         },

@@ -2,6 +2,12 @@
 
 ## Current release authority
 
+The [October2 remote catch-up](REMOTE-AM9-CATCHUP-2026-10-02.md) is prepared but
+not deployed while the remote appliance is offline. Its exact-source overlay
+follows UI reliability revision2; preserve the historical builders and do not
+apply it to the local-PVR box. Keep the Canada radio policy and device-specific
+ConnMan recovery state in private snapshots after its backup migration.
+
 The remote standalone-SD appliance is now on reviewed nightly20261001 / Kodi22RC1.
 Follow the [October1 preservation/acceptance record](REMOTE-AM9-UPDATE-2026-10-01.md)
 for the OS layer. Preserve the additive [UI reliability repair](release/ui-reliability/README.md)

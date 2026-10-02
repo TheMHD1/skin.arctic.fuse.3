@@ -27,6 +27,14 @@ class BackupPolicyTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 policy.should_skip(name)
 
+    def test_network_recovery_is_selected_but_not_general_cache(self):
+        self.assertIn('.cache/regdomain.conf', policy.SNAPSHOT_ROOTS)
+        self.assertIn('.cache/connman', policy.SNAPSHOT_ROOTS)
+        self.assertNotIn('.cache', policy.SNAPSHOT_ROOTS)
+        for name in ('.cache/regdomain.conf', '.cache/connman/wifi_fixture/settings',
+                     '.cache/connman/provisioning.config'):
+            self.assertFalse(policy.should_skip(name))
+
 
 if __name__ == '__main__':
     unittest.main()

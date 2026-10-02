@@ -76,6 +76,16 @@ rollback record with the private deployment.
 
 ## Source map
 
+- `release/remote-catchup/`: October2 staged-only empty-list focus and network
+  snapshot-root repair after remote UI reliability revision2. The appliance was
+  offline; [remaining acceptance/parity items](REMOTE-AM9-CATCHUP-2026-10-02.md)
+  include entry freezes, switching, VOD, article-omission search and server
+  custom-collection disappearance. No live-deployment claim.
+- `device-policy/wifi-canada/`: supported persistent Canadian regulatory hint
+  that enabled the remote AM9's upper5GHz channels; October1 runtime playback
+  recovered, reboot acceptance pending. Include its native cache file and the
+  device's own ConnMan state using the reviewed backup-root migration.
+
 - `release/ui-reliability/`: October 1 additive remote-only repairs for Venom's
   asynchronous grid focus and hidden-window playback lifecycle, valid Arctic
   rating predicates, and bounded owned-library Discover matching. Preserve this

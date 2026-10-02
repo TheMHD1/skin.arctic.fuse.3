@@ -1,5 +1,15 @@
 # Existing-app scope — 2026-09-14
 
+## October2 remote follow-up
+
+The historical acceptance entries below are not proof that the remote box now
+passes every flow. See the [current remote checklist](REMOTE-AM9-CATCHUP-2026-10-02.md)
+for cold entry/freezing, Arctic latency, switching/Stop→reopen, VOD/series,
+search, custom groups, artwork/names and favourites. The additional empty-list
+focus repair is staged/tested only while the remote device is offline. Current
+server readback also finds curated collections absent for both accounts; this
+is recorded separately from device UI failures and requires server investigation.
+
 ## Latest: sports by discipline; duplicate HD categories removed
 
 HD-and-above companion groups are no longer generated. All sports combines the
