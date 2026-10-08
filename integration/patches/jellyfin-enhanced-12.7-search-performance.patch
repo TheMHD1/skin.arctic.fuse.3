@@ -1,0 +1,66 @@
+diff --git a/Jellyfin.Plugin.JellyfinEnhanced/js/jellyseerr/ui/ui-results.js b/Jellyfin.Plugin.JellyfinEnhanced/js/jellyseerr/ui/ui-results.js
+--- a/Jellyfin.Plugin.JellyfinEnhanced/js/jellyseerr/ui/ui-results.js
++++ b/Jellyfin.Plugin.JellyfinEnhanced/js/jellyseerr/ui/ui-results.js
+@@ -19,6 +19,7 @@
+     // render must cancel the previous one (see renderJellyseerrResults).
+     let pendingRepositionObserver = null;
+     let pendingRepositionTimeout = null;
++    let pendingRepositionFrame = null;
+ 
+     // Keep card buttons in sync when a request is made from other surfaces (e.g., more info modal)
+     function markCardRequested(tmdbId, mediaType, is4k = false) {
+@@ -214,6 +215,10 @@
+             clearTimeout(pendingRepositionTimeout);
+             pendingRepositionTimeout = null;
+         }
++        if (pendingRepositionFrame !== null) {
++            cancelAnimationFrame(pendingRepositionFrame);
++            pendingRepositionFrame = null;
++        }
+ 
+         searchPage.querySelectorAll('.jellyseerr-section').forEach(section => section.remove());
+ 
+@@ -335,16 +340,39 @@
+ 
+         positionSection();
+ 
++        function stopReposition() {
++            observer.disconnect();
++            if (pendingRepositionObserver === observer) {
++                pendingRepositionObserver = null;
++                if (pendingRepositionTimeout) clearTimeout(pendingRepositionTimeout);
++                pendingRepositionTimeout = null;
++                if (pendingRepositionFrame !== null) cancelAnimationFrame(pendingRepositionFrame);
++                pendingRepositionFrame = null;
++            }
++        }
++
+         const observer = new MutationObserver(() => {
+-            if (!sectionToInject.isConnected) {
+-                observer.disconnect();
++            if (!sectionToInject.isConnected || !searchPage.isConnected) {
++                stopReposition();
+                 return;
+             }
+-            positionSection();
++            // Metadata/badge updates may produce many mutations. Coalesce
++            // their scans without moving React-owned native result sections.
++            if (pendingRepositionFrame !== null) return;
++            pendingRepositionFrame = requestAnimationFrame(() => {
++                pendingRepositionFrame = null;
++                if (!sectionToInject.isConnected || !searchPage.isConnected) {
++                    stopReposition();
++                    return;
++                }
++                positionSection();
++            });
+         });
+         observer.observe(searchPage, { childList: true, subtree: true });
+         pendingRepositionObserver = observer;
+-        pendingRepositionTimeout = setTimeout(() => observer.disconnect(), 5000);
++        // Slow owned-library queries must not strand Discover above them.
++        // New renders and detached pages cancel earlier; no permanent watcher.
++        pendingRepositionTimeout = setTimeout(stopReposition, 30000);
+     };
+ 
+     /**

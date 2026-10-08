@@ -266,6 +266,21 @@ guard bypass. Firmware/hardware/network/account state remains device-specific.
 
 ## Remote Venom variant
 
+Use the latest [paired performance installer](release/performance/README.md)
+for the reviewed October8 cohorts. It composes earlier paired/UX changes and
+guards exact local57/remote61 outputs. Do not rerun an older installer against
+the newer manifest or bypass its drift check. Preserve the optional-read lane,
+minimal key DTOs, current-user library scope and full favourite-page artwork
+when rebasing either transport.
+
+Enhanced updates must also retain the third
+`patches/jellyfin-enhanced-12.7-search-performance.patch` after the Tabs and
+search-priority patches. Rebuild the correct runtime target and test late owned
+search results as well as immediate placement. Follow the
+[server performance runbook](server/performance/README.md) for native persistent
+query/cache settings, scoped rollback and exact plugin artifact guards; these
+do not authorize replacing Jellyfin's database or rebooting Proxmox.
+
 The remote-house marker selects a Jellyfin-account/HTTPS
 catalogue and playback route, not the private provider/PVR route. Preserve it
 when updating the common browser: rebase and test

@@ -22,6 +22,24 @@ still depends on private deployment state.
 Implicit addon defaults belong to these versions. `settings-reference.json` is
 a redacted inventory, not importable configuration.
 
+## October 8 performance follow-up
+
+The [paired performance release](release/performance/README.md)
+`am9-shared-20261008.3` adds a separate bounded optional favourite-read lane,
+minimal key DTOs and a library-only authorized Views lookup. It composes the
+preceding shared/UX repairs into one guarded idle update. Moustafa's remote61
+output is installed and UI-tested; Habibi's local57 output is prepared from the
+complete saved cohort but **not deployed**, because that appliance is unreachable.
+Their identities, network, boot layout, account and transport remain separate.
+
+The [server/Web/Proxmox runbook](server/performance/README.md) records native ARC,
+Enhanced visible-card mode and database-scoped Jellystat query-budget changes,
+plus the bounded/coalesced Enhanced search-watcher patch. No new server-core
+fork, APK, firmware update, LXC RAM increase or Proxmox reboot was needed.
+This supersedes only the affected performance/source pins; earlier AV/playback
+and physical-acceptance boundaries remain applicable. Git publication is not
+delivery to an offline box, and future fixes/updates must retain both cohorts.
+
 ## Deployment state at the September 22 acceptance point
 
 The subsequent [remote private-access/original-P7 layer](release/remote-originals/README.md)

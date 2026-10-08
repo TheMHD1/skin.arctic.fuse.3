@@ -55,7 +55,7 @@ def write():
         raise SystemExit("Review and stage sources before recording them:\n" + "\n".join(pending))
     payload = {
         "schema": 1,
-        "release": "2026-10-08-shared-am9-ux",
+        "release": "2026-10-08-shared-am9-performance",
         "meaning": "Reviewed source bytes, not a runtime credential/settings backup or proof of deployment",
         "status": {
             "local_kodi_r6": "deployed-and-accepted",
@@ -85,6 +85,11 @@ def write():
             "remote_shared_repair_baseline": "remote59-guarded-shared-layer-installed-local55-pending-physical-acceptance-partial",
             "shared_am9_release": "remote59-applied-and-idempotent-original55-prepared-not-deployed",
             "shared_am9_ux": "remote60-installed-guarded-local56-prepared-live-acceptance-in-ux-runbook",
+            "shared_am9_performance": "remote61-installed-idempotent-ui-tested-local57-prepared-not-deployed",
+            "proxmox_arc_budget": "8g-max-2g-min-live-and-module-config-running-initramfs-verified-no-host-reboot",
+            "jellystat_query_budget": "native-own-role-database-policy-applied-cleanup-0.927s-old-workers-cleared",
+            "enhanced_visible_card_tags": "native-policy-applied-home-rating-badges-preserved-whole-cache-transfer-removed",
+            "enhanced_search_watcher": "bounded-coalesced-source-patch-net10-built-active-private-config-preserved",
             "shared_am9_awake": "six-settings-eight-cec-ids-match-remote-live-load-traced-physical-tv-cycle-pending",
             "local_backup_dependency_repair": "rooted-rsync-package-filter-and-optional-regdomain-capture-prepared-not-deployed",
             "remote_network_backup": "deployed-off-device-checksum-59-sources-nine-databases-and-device-network-verified",

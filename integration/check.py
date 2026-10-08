@@ -54,4 +54,8 @@ run(sys.executable,str(HERE/'check-venom-package.py'))
 run(sys.executable,str(HERE/'device-policy/remote-startup/test_policy.py'))
 for name in ('test_browser.py','test_search.py','test_install.py'):
     run(sys.executable,str(HERE/'release/ux-round'/name))
+for name in ('test_browser.py','test_refresh.py','test_queries.py','test_install.py'):
+    run(sys.executable,str(HERE/'release/performance'/name))
+for name in ('test_arc_budget.py','test_jellyfin_policy.py','test_jellystat_policy.py','test_enhanced_install.py'):
+    run(sys.executable,str(HERE/'server/performance'/name))
 print('PASS: skin XML, clean patch application, integration regressions and compile checks')

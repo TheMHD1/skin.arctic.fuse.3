@@ -34,8 +34,10 @@ def main():
         prepare(root / 'enhanced', args.enhanced_source, ENHANCED_PIN, [
             INTEGRATION / 'patches/jellyfin-enhanced-12.7-tabs.patch',
             INTEGRATION / 'patches/jellyfin-enhanced-12.7-search-priority.patch',
+            INTEGRATION / 'patches/jellyfin-enhanced-12.7-search-performance.patch',
         ])
         run('node', str(INTEGRATION / 'web-navigation/test-search-priority.cjs'), str(root / 'enhanced'))
+        run('node', str(INTEGRATION / 'web-navigation/test-search-watcher.cjs'), str(root / 'enhanced'))
         for relative in ('src/components/homesections/sections/ownedLibrary.ts',
                          'src/apps/legacy/features/search/components/SearchResultsRow.tsx'):
             assert (root / 'web' / relative).is_file()

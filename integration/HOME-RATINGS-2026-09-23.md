@@ -48,6 +48,11 @@ Enhanced treating provider Movie/Series cards as the primary catalogue.
 2. Enhanced `daf5b10c09d017941e29a79a0a45d0ab31c34abc` (12.7): apply
    `patches/jellyfin-enhanced-12.7-tabs.patch` and
    `patches/jellyfin-enhanced-12.7-search-priority.patch`; build the net10 plugin.
+   The October8 follow-up adds
+   `patches/jellyfin-enhanced-12.7-search-performance.patch` afterward, preserving
+   priority when owned queries exceed five seconds and coalescing observer work.
+   See [server performance](server/performance/README.md) for native visible-card
+   mode, exact artifact pins and deployment/rollback acceptance.
    Deploy only `Jellyfin.Plugin.JellyfinEnhanced.dll`, preserving its private
    settings. Do not copy build dependency DLLs into the server.
 3. Build `server/library-experience-plugin/` 1.1.0 against pinned Jellyfin 12.1
