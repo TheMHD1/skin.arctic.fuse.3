@@ -18,6 +18,10 @@ import time
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
+import importlib.util
+
+_revision_spec=importlib.util.spec_from_file_location('venom_series_revisions',Path(__file__).with_name('venom-series-revisions.py'))
+series_revisions=importlib.util.module_from_spec(_revision_spec);_revision_spec.loader.exec_module(series_revisions)
 
 CONFIG=Path('/data/config/iptv-venom')
 ROOT=Path('/data/config/jellyfin/venom-catalogue')
@@ -118,6 +122,7 @@ def main():
     parser.add_argument('--max-seconds',type=int,default=2400)
     parser.add_argument('--series-limit',type=int,default=10000)
     parser.add_argument('--rewrite-sessions',action='store_true')
+    parser.add_argument('--series-id',action='append',default=[],help='Optional bounded verification subset of XC series IDs')
     args=parser.parse_args()
     CONFIG.mkdir(parents=True,exist_ok=True)
     if not enough_space():return
@@ -145,6 +150,7 @@ def main():
     started=time.monotonic()
     db=sqlite3.connect(CONFIG/'catalogue-progress.sqlite3')
     db.execute('create table if not exists series (id text primary key, refreshed real, status text, episodes integer, error text)')
+    db.execute('create table if not exists series_revision (id text primary key, revision text not null)')
     movies=api('get_vod_streams')
     cats={str(x['category_id']):x['category_name'] for x in api('get_vod_categories')}
     changed=count=errors=0
@@ -160,11 +166,17 @@ def main():
             errors+=1;log('movie_error',id=row.get('stream_id'),error=type(exc).__name__)
     log('movies_exported',movies=count,changed_files=changed,errors=errors,seconds=round(time.monotonic()-started,2))
     all_series=api('get_series')
+    try:
+        revisions=series_revisions.load()
+        log('episode_identity_revisions',series=len(revisions))
+    except Exception as exc:
+        revisions={};log('episode_identity_revision_deferred',error=type(exc).__name__)
     cats={str(x['category_id']):x['category_name'] for x in api('get_series_categories')}
     processed=episodes=0
     for row in all_series:
         if processed%20==0 and not enough_space():break
         item_id=ident(row['series_id'])
+        if args.series_id and item_id not in args.series_id:continue
         if args.canary and item_id!='5739':continue
         if time.monotonic()-started>args.max_seconds or processed>=args.series_limit:break
         # Category/title metadata does not need an episode-detail fetch. Keep it
@@ -173,17 +185,20 @@ def main():
         if directory.exists():atomic(directory/'tvshow.nfo',nfo('tvshow',row,category_names(row,cats)))
         old=db.execute('select refreshed,status from series where id=?',(item_id,)).fetchone()
         # Refresh successful series weekly, retry failures after six hours.
-        if old and not args.canary and time.time()-old[0]<(604800 if old[1]=='ok' else 21600):continue
+        known=db.execute('select revision from series_revision where id=?',(item_id,)).fetchone()
+        current=revisions.get(item_id)
+        if not series_revisions.due(old,known[0] if known else None,current,time.time(),args.canary):continue
         try:
             detail=api('get_series_info',series_id=item_id)
             directory=ROOT/'series'/('Series '+item_id)
             atomic(directory/'tvshow.nfo',nfo('tvshow',row,category_names(row,cats)))
-            total=0
+            total=0;episode_ids=[]
             for season,items in (detail.get('episodes') or {}).items():
                 season_no=int(ident(season))
                 for ep in items:
                     number=int(ident(ep.get('episode_num')))
                     ep_id=ident(ep['id']);stem='S%02dE%03d'%(season_no,number)
+                    episode_ids.append(ep_id)
                     folder=directory/('Season %02d'%season_no)
                     meta={**(ep.get('info') or {}),'title':ep.get('title') or stem}
                     atomic(folder/(stem+'.nfo'),nfo('episodedetails',meta,season=season_no,episode=number))
@@ -191,7 +206,11 @@ def main():
                     total+=1
             # Empty catalogues are retried; they may be transient provider failures.
             status='ok' if total else 'empty'
-            db.execute('insert or replace into series values (?,?,?,?,?)',(item_id,time.time(),status,total,None));db.commit()
+            db.execute('insert or replace into series values (?,?,?,?,?)',(item_id,time.time(),status,total,None))
+            # Detail fetching can refresh IDs. Store the identities actually
+            # exported, not the pre-fetch snapshot, to prevent a refresh loop.
+            if total:db.execute('insert or replace into series_revision values (?,?)',(item_id,series_revisions.revision(episode_ids)))
+            db.commit()
             processed+=1;episodes+=total
             if processed%20==0 or args.canary:log('series_progress',processed=processed,episodes=episodes,total_catalogue=len(all_series))
         except Exception as exc:

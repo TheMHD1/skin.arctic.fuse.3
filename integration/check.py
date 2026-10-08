@@ -50,12 +50,22 @@ with tempfile.TemporaryDirectory(prefix='arctic-integration-test-') as tmp:
 # not a flat temporary fixture that changes Path(__file__).parents[1]. It is
 # independent of Git history and also works in a source archive.
 for name in SOURCE_LAYOUT_TESTS:run(sys.executable,str(HERE/name),cwd=ROOT)
+run(sys.executable,str(HERE/'release/kodi/test_rpc_stream.py'))
+run(sys.executable,str(HERE/'server/test-venom-series-revisions.py'))
 run(sys.executable,str(HERE/'check-venom-package.py'))
 run(sys.executable,str(HERE/'device-policy/remote-startup/test_policy.py'))
 for name in ('test_browser.py','test_search.py','test_install.py'):
     run(sys.executable,str(HERE/'release/ux-round'/name))
 for name in ('test_browser.py','test_refresh.py','test_queries.py','test_install.py'):
     run(sys.executable,str(HERE/'release/performance'/name))
+for name in ('test_entry.py','test_install.py'):
+    run(sys.executable,str(HERE/'release/venom-entry'/name))
+for name in ('test_browser.py','test_install.py'):
+    run(sys.executable,str(HERE/'release/venom-lifecycle'/name))
+for name in ('test_worker.py','test_install.py'):
+    run(sys.executable,str(HERE/'release/library-removal'/name))
+for name in ('test_transactions.py','test_install.py'):
+    run(sys.executable,str(HERE/'release/library-transactions'/name))
 for name in ('test_arc_budget.py','test_jellyfin_policy.py','test_jellystat_policy.py','test_enhanced_install.py'):
     run(sys.executable,str(HERE/'server/performance'/name))
 print('PASS: skin XML, clean patch application, integration regressions and compile checks')

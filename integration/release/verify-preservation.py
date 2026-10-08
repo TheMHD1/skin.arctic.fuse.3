@@ -55,7 +55,7 @@ def write():
         raise SystemExit("Review and stage sources before recording them:\n" + "\n".join(pending))
     payload = {
         "schema": 1,
-        "release": "2026-10-08-shared-am9-performance",
+        "release": "2026-10-08-shared-am9-update-and-transitions",
         "meaning": "Reviewed source bytes, not a runtime credential/settings backup or proof of deployment",
         "status": {
             "local_kodi_r6": "deployed-and-accepted",
@@ -79,13 +79,18 @@ def write():
             "remote_original_p7": "deployed-layout-gated-movie-and-episode-selection-byte-reads-accepted-onsite-av-wan-pending",
             "remote_private_access": "restricted-tailnet-key-only-ssh-and-private-nfs-deployed-restart-verified",
             "coreelec_update": "local-am9-nightly-20260922-hybrid-verified-two-boots-physical-av-pending",
-            "remote_coreelec_update": "october8-inventory-existing-20261006-kodi22rc1-no-firmware-change-during-rollout",
+            "remote_coreelec_update": "20261008-nightly-installed-normal-standalone-sd-updater-kernel-system-dtb-dolby-and-policies-verified",
             "remote_ui_reliability": "deployed-on-screen-keyboard-search-and-rating-badges-verified-bounded-iptv-playback",
             "remote_ui_catchup": "deployed-zero59-file-drift-category-grid-and-stop-reopen-accepted-upstream503-one-stream",
             "remote_shared_repair_baseline": "remote59-guarded-shared-layer-installed-local55-pending-physical-acceptance-partial",
             "shared_am9_release": "remote59-applied-and-idempotent-original55-prepared-not-deployed",
             "shared_am9_ux": "remote60-installed-guarded-local56-prepared-live-acceptance-in-ux-runbook",
             "shared_am9_performance": "remote61-installed-idempotent-ui-tested-local57-prepared-not-deployed",
+            "shared_am9_venom_entry": "20261008.4-remote-real-home-entry-accepted-local-prepared-native-pvr-guards-preserved",
+            "shared_am9_venom_lifecycle": "20261008.5-final-source-remote-repeated-home-back-and-background-playback-accepted-local-prepared",
+            "shared_am9_collection_removal": "20261008.6-remote-installed-clean-startup-real-worker-regressions-both-databases-local-prepared",
+            "shared_am9_sync_transactions": "20261008.7-remote62-installed-idempotent-real-sqlite-regressions-local58-prepared-live-matrix-in-october8-record",
+            "venom_series_identity_freshness": "deployed-revision-aware-export-two-stale-series-refreshed-real-episode-to-live-accepted-remaining-catalogue-bounded-timer-in-progress",
             "proxmox_arc_budget": "8g-max-2g-min-live-and-module-config-running-initramfs-verified-no-host-reboot",
             "jellystat_query_budget": "native-own-role-database-policy-applied-cleanup-0.927s-old-workers-cleared",
             "enhanced_visible_card_tags": "native-policy-applied-home-rating-badges-preserved-whole-cache-transfer-removed",

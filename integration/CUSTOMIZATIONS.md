@@ -10,7 +10,7 @@ still depends on private deployment state.
 
 | Component | Reviewed version | Notes |
 | --- | --- | --- |
-| CoreELEC / Kodi | CoreELEC22 nightly20260922 / Kodi22Beta2 local; nightly20261006 / Kodi22RC1 remote in October8 inventory | Local AM9 uses the [verified hybrid procedure](COREELEC-HYBRID-UPDATE-2026-09-23.md); the [October 1 remote update](REMOTE-AM9-UPDATE-2026-10-01.md) is the prior controlled OS procedure. October8 changed addons/settings only. Future firmware updates still require review. |
+| CoreELEC / Kodi | CoreELEC22 nightly20260922 / Kodi22Beta2 local; nightly20261008 / Kodi22RC1 remote | Local AM9 uses the [verified hybrid procedure](COREELEC-HYBRID-UPDATE-2026-09-23.md); the [October8 remote update](REMOTE-AM9-UPDATE-2026-10-08.md) preserves the standalone-SD setup. Future firmware updates still require separate review. |
 | Arctic Fuse 3 | 3.3.1 on accepted devices | Reviewed upstream 3.3.1 source plus `patches/arctic-3.3.1-habibi.patch`; the repository root remains a legacy 3.2.19 baseline. |
 | Jellyfin for Kodi | 2.2.0+py3 | Apply only the consolidated 2.2 patch stack. |
 | Home companion | 1.1.0 | Server-backed Home, search, favourites and episode navigation. |
@@ -23,6 +23,27 @@ Implicit addon defaults belong to these versions. `settings-reference.json` is
 a redacted inventory, not importable configuration.
 
 ## October 8 performance follow-up
+
+The subsequent [Venom entry](release/venom-entry/README.md) and
+[window lifecycle](release/venom-lifecycle/README.md) layers are followed by
+the [collection removal repair](release/library-removal/README.md) and
+[short sync transactions](release/library-transactions/README.md).
+`am9-shared-20261008.7` composes the complete paired repair chain. It removes the
+native-PVR dependency only for the explicit Venom Home route and preserves Home
+navigation through Python-window teardown, including background video, prevents
+the hub from automatically reopening a departing browser, and fixes collection
+removal dispatch in Jellyfin for Kodi, releases completed sync writes before
+queue/GUI waits, and fetches collection pages before SQL writes. Latest builds
+must include these layers; a direct Browser launch is not Home-tab acceptance.
+See the [October8 OS/UX record](REMOTE-AM9-UPDATE-2026-10-08.md) for remote
+deployment/testing and the local prepared-not-deployed boundary.
+
+The same round fixed [Venom episode-ID freshness](server/VENOM-SERIES-FRESHNESS.md)
+on the server: the catalogue exporter detects identity rotation and rewrites
+links instead of relying solely on its weekly successful-series cooldown.
+This applies to the existing Kodi/Jellyfin/Moonfin server catalogue without
+rebuilding apps or modifying the Jellyfin binary. General timer repair is
+ongoing; actual sampled episode acceptance is recorded separately.
 
 The [paired performance release](release/performance/README.md)
 `am9-shared-20261008.3` adds a separate bounded optional favourite-read lane,

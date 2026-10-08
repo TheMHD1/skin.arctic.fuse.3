@@ -2,6 +2,20 @@
 
 ## Current release authority
 
+Use the latest [paired shared installer](release/library-transactions/README.md),
+which composes shared/UX/performance, Home-entry, window lifecycle and collection
+removal and short-sync-transaction repairs under one exact-cohort
+transaction. Retain local native-PVR versus remote-Jellyfin differences, private
+identities and predecessor receipts. Test actual Home-tab entry and Home return
+with background playback, not only direct script invocation. The separately
+authorized [October8 standalone-SD firmware update](REMOTE-AM9-UPDATE-2026-10-08.md)
+does not authorize unattended future nightlies or the local hybrid procedure.
+
+Preserve both [episode freshness files](server/VENOM-SERIES-FRESHNESS.md) with the
+server's existing catalogue timer/publication workflow. Test the Dispatcharr
+relation-versus-Series ID domain after an image update; a stable weekly cache
+must not retain links to rotated episode identities.
+
 The [October8 UX round](release/ux-round/README.md) follows the paired AM9 layer.
 Its single guarded installer includes any pending October2 shared writes; do not
 replay older live patch commands. Preserve the one-shot Combined-search helper
@@ -266,9 +280,9 @@ guard bypass. Firmware/hardware/network/account state remains device-specific.
 
 ## Remote Venom variant
 
-Use the latest [paired performance installer](release/performance/README.md)
-for the reviewed October8 cohorts. It composes earlier paired/UX changes and
-guards exact local57/remote61 outputs. Do not rerun an older installer against
+Use the latest [paired shared installer](release/library-transactions/README.md)
+for the reviewed October8 cohorts. It composes earlier shared/UX/performance changes and
+guards exact local58/remote62 outputs. Do not rerun an older installer against
 the newer manifest or bypass its drift check. Preserve the optional-read lane,
 minimal key DTOs, current-user library scope and full favourite-page artwork
 when rebasing either transport.
