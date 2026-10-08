@@ -49,8 +49,10 @@ retain a private copy. Install the new policy first, then the worker. Identity,
 idle check, SQLite online copies, permissions, destination and retention remain
 unchanged. Unknown/duplicate anchors fail closed. The additive remote installer
 in `../release/remote-catchup/` includes this migration with source guards and
-rollback. It is prepared and tested against a saved cohort, **not yet deployed**
-to the offline appliance as of October2.
+rollback. It was prepared against a saved cohort on October2 and installed
+through the shared release on October8. The new private snapshot was copied
+off-device: network/regulatory recovery files, Tailscale state, four bundled
+dependency sources, all59 repair hashes and nine SQLite quick checks passed.
 
 Run both `test_policy.py` and `test_worker_overlay.py`. After deployment run one
 normal idle snapshot; verify its member list includes the regulatory file and

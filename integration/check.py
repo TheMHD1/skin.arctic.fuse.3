@@ -51,4 +51,5 @@ with tempfile.TemporaryDirectory(prefix='arctic-integration-test-') as tmp:
 # independent of Git history and also works in a source archive.
 for name in SOURCE_LAYOUT_TESTS:run(sys.executable,str(HERE/name),cwd=ROOT)
 run(sys.executable,str(HERE/'check-venom-package.py'))
+run(sys.executable,str(HERE/'device-policy/remote-startup/test_policy.py'))
 print('PASS: skin XML, clean patch application, integration regressions and compile checks')

@@ -9,13 +9,17 @@ New generic fixes must have applicability/deployment records for both cohorts;
 source/version equality does not replace physical acceptance. Preserve private
 device identities and local/remote transport safety boundaries.
 
-The [October2 remote catch-up](REMOTE-AM9-CATCHUP-2026-10-02.md) is prepared but
-not deployed while the remote appliance is offline. Its exact-source overlay
+The [October2 remote catch-up](REMOTE-AM9-CATCHUP-2026-10-02.md) was deployed
+October8 through the [paired release](release/shared-am9/README.md); the original
+layer remains pending. Its exact-source overlay
 follows UI reliability revision2; preserve the historical builders and do not
 apply it to the local-PVR box. Keep the Canada radio policy and device-specific
 ConnMan recovery state in private snapshots after its backup migration.
 
-The remote standalone-SD appliance is now on reviewed nightly20261001 / Kodi22RC1.
+The October8 inventory found the remote standalone-SD appliance already running
+nightly20261006 / Kodi22RC1. No firmware update was done during that addon rollout.
+Preserve the native [remote startup setting](device-policy/remote-startup/README.md)
+for the HTTPS cohort; do not apply it to the local PVR profile blindly.
 Follow the [October1 preservation/acceptance record](REMOTE-AM9-UPDATE-2026-10-01.md)
 for the OS layer. Preserve the additive [UI reliability repair](release/ui-reliability/README.md)
 after the September26 addon/private-access chain below.

@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "release": "am9-ui-policy-20261008.1",
+  "skin": "skin.arctic.fuse.3",
+  "reviewed_skin_version": "3.3.1",
+  "profiles": {
+    "local": {},
+    "remote": {
+      "Startup.DisableWaitForLoad": true
+    }
+  }
+}

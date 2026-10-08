@@ -1,9 +1,13 @@
-# October 2 remote catch-up — staged, not deployed
+# October 2 remote catch-up
 
 This additive repair follows remote R6 → R7 → search-priority → remote-originals
 → UI reliability revision2. It is for the exact reviewed remote cohort, not a
 local-PVR overlay, blank-device installer, firmware update or userdata clone.
-The appliance was offline during preparation; no live change is claimed.
+The appliance was offline during preparation. It was installed October8 through
+the [shared release](../shared-am9/README.md#october-8-remote-deployment), with
+exact source/identity guards, an empty final plan, device UI checks and a verified
+off-device snapshot. The original/local port remains pending. Extended playback
+and physical AV acceptance are not inferred from installation.
 
 ## Source repairs
 
@@ -26,7 +30,9 @@ private worker's identity, idle policy, SQLite consistency, retention and paths.
 The title search needed no new matching algorithm: the current signed-in remote
 account returned the two owned films for both `Quiet Place` and `A Quiet Place`.
 Two new generic search regressions lock in partial-title/article omission and
-owned-library scoping. Physical on-screen verification of both queries is pending.
+owned-library scoping. Both phrases were typed in the real Kodi keyboard on
+October8; the current library returned one owned title. The selected Movies card
+and IMDb badge were also verified on screen. This is not arbitrary typo correction.
 
 ## Guarded plan and deployment
 

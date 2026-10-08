@@ -10,7 +10,7 @@ still depends on private deployment state.
 
 | Component | Reviewed version | Notes |
 | --- | --- | --- |
-| CoreELEC / Kodi | CoreELEC22 nightly20260922 / Kodi22Beta2 local; nightly20261001 / Kodi22RC1 remote | Local AM9 uses the [verified hybrid procedure](COREELEC-HYBRID-UPDATE-2026-09-23.md); the [October 1 remote update](REMOTE-AM9-UPDATE-2026-10-01.md) adds actual keyboard/screenshot verification and targeted UI repairs. Future firmware updates still require review. |
+| CoreELEC / Kodi | CoreELEC22 nightly20260922 / Kodi22Beta2 local; nightly20261006 / Kodi22RC1 remote in October8 inventory | Local AM9 uses the [verified hybrid procedure](COREELEC-HYBRID-UPDATE-2026-09-23.md); the [October 1 remote update](REMOTE-AM9-UPDATE-2026-10-01.md) is the prior controlled OS procedure. October8 changed addons/settings only. Future firmware updates still require review. |
 | Arctic Fuse 3 | 3.3.1 on accepted devices | Reviewed upstream 3.3.1 source plus `patches/arctic-3.3.1-habibi.patch`; the repository root remains a legacy 3.2.19 baseline. |
 | Jellyfin for Kodi | 2.2.0+py3 | Apply only the consolidated 2.2 patch stack. |
 | Home companion | 1.1.0 | Server-backed Home, search, favourites and episode navigation. |
@@ -79,17 +79,24 @@ rollback record with the private deployment.
 - `release/shared-am9/`: October2 paired release and read-only parity auditor.
   Common generic fixes are derived for both profiles, with separate account,
   hardware and transport guards. Original55/remote59 private fixture plans pass;
-  **neither new device layer is deployed**. The awake/OLED policy was present in
+  Remote59 installed and idempotently verified October8; original55 remains
+  pending. The [remote startup policy](device-policy/remote-startup/README.md)
+  removes the unused native-PVR wait without changing the local PVR cohort.
+  The awake/OLED policy was present in
   both live-original and saved-remote settings, not an omitted transfer. Server
-  curated-group identity/promotion regressions remain separate pending work.
-- `release/remote-catchup/`: October2 staged-only empty-list focus and network
-  snapshot-root repair after remote UI reliability revision2. The appliance was
-  offline; [remaining acceptance/parity items](REMOTE-AM9-CATCHUP-2026-10-02.md)
-  include entry freezes, switching, VOD, article-omission search and server
-  custom-collection disappearance. No live-deployment claim.
+  curated-group outage is historical: the October8 remote readback returns all37
+  curated groups, independently of the box transaction. Full playback acceptance
+  is not inferred from category availability.
+- `release/remote-catchup/`: October2 empty-list focus and network
+  snapshot-root repair after remote UI reliability revision2, installed through
+  the paired release October8. The appliance was offline during preparation;
+  [remaining acceptance/parity items](REMOTE-AM9-CATCHUP-2026-10-02.md)
+  include extended switching, VOD playback and physical hardware verification.
+  The catch-up is deployed; catalogue success
+  does not certify every stream.
 - `device-policy/wifi-canada/`: supported persistent Canadian regulatory hint
   that enabled the remote AM9's upper5GHz channels; October1 runtime playback
-  recovered, reboot acceptance pending. Include its native cache file and the
+  recovered; October8 confirmed CA/5GHz after the intervening OS boot. Include its native cache file and the
   device's own ConnMan state using the reviewed backup-root migration.
 
 - `release/ui-reliability/`: October 1 additive remote-only repairs for Venom's

@@ -5,6 +5,26 @@ search/Venom/Arctic discussion, including older speed/switching complaints. It
 does not assert that undiscovered faults are covered. The remote box is offline
 at preparation time; source tests and server API checks are not device acceptance.
 
+## October 8 update
+
+The [shared release](release/shared-am9/README.md#october-8-remote-deployment)
+is now installed on the remote box, with a fresh exact59-source inventory,
+empty final plan and a verified off-device network/dependency/database snapshot.
+The original/local box remains pending. CoreELEC20261006 was already installed;
+this rollout did not upgrade firmware. Both title queries were typed in Kodi,
+and current Home ordering/rating checks passed. The remote unused-PVR startup
+wait was removed with the documented native skin setting.
+
+Current server categories contain37 nonempty curated groups plus302 provider
+groups. The historical zero-group outage below is no longer the current result.
+Curated News category selection populated45 channels with correct grid focus;
+Movies/Series category and bounded title-grid routes passed. Stop/reopen of a
+curated channel advanced actual hardware decoder frames; another stream returned
+upstream HTTP503 and remains an availability limitation. Individual stream
+failures remain distinct from menu/source acceptance. CEC
+override loading was traced at the single install restart, but physical TV-off/on,
+intro/next-episode/subtitle and full HDMI/audio checks are still separate.
+
 ## What the saved comparison establishes
 
 Compared the September26 original-device audit with the remote October1 OS audit.
@@ -52,7 +72,8 @@ backup coverage) are **shared candidates**, not intended permanent differences.
 Their recorded states remain: reviewed remote r2 deployed, October2 remote layer
 staged; the later [shared AM9 audit/release](release/shared-am9/README.md) now
 provides a reviewed local port and paired guarded plans. Exact original55 and
-remote59 private fixtures pass; neither paired layer has been deployed. The remote
+remote59 private fixtures pass; the remote layer was installed October8 and the
+original remains pending. The remote
 browser close-before-HTTPS playback fix is transport-specific: preserve the
 local Stop/poll/Open PVR handoff that already passed local acceptance.
 

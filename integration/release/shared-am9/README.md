@@ -3,9 +3,67 @@
 Habibi and Moustafa use one maintained repair release with separate local and
 remote profiles. Shared fixes must be prepared and tested for both profiles;
 account, network, hardware calibration and playback transport are not cloned.
-The October 2 release `am9-shared-20261002.1` is **prepared, not deployed**.
+The October 2 release `am9-shared-20261002.1` was installed on the remote AM9
+on October 8. The original/local layer remains **prepared, not deployed**.
 It is an additive software/configuration repair, not a firmware image, new-box
 installer or unattended updater.
+
+## October 8 remote deployment
+
+The fresh remote inventory found CoreELEC22 nightly20261006 / Kodi22RC1 already
+installed, with the exact reviewed 59-file starting source and zero drift.
+The existing private profile passed hardware/account/transport guards. The five
+planned files were installed while idle using one Kodi stop/start; the final
+plan was empty and all 59 final hashes matched. No firmware, boot layout,
+network, account, AV calibration, shortcut or keymap changes were made.
+The boot ID stayed unchanged.
+
+The six awake/OLED settings and eight CEC overrides still match. Current enum
+labels retain Ignore/None meanings, and a bounded pathname-only trace captured
+Kodi opening its CEC override successfully during the install restart. The
+tracer detached. Canada regulatory state and 5 GHz Wi-Fi survived the intervening
+OS boot. The remote's physical TV-off/on and HDMI/audio acceptance remain separate.
+Forced screensaver activation reported ScreenSaverActive=true and DPMSActive=false;
+SSH/Kodi stayed available and Back returned to Home. This checks screen hiding,
+not a physical TV standby cycle or overnight uptime.
+
+The replacement snapshot includes the device's own ConnMan/regulatory files,
+Tailscale state, four bundled urllib3 dependency sources and nine SQLite online
+copies. Its off-device checksum, all 59 addon hashes and every database quick
+check passed. Recovery archives and profiles stay in the private operations
+record. Ordinary snapshot retention remains three files.
+
+Runtime Home/API checks confirmed newest-watch-first resume, newest-added-first
+Movie/Series rows and 30 genuine IMDb ratings. Both `A Quiet Place` and
+`Quiet Place` were submitted through the actual Kodi keyboard; the owned item
+was returned, with separate Venom rows. Arbitrary spelling correction is still
+not implemented (`quite` differs from `quiet`). The Combined dropdown can retain
+a prior selected section. Selecting Movies also passed the on-device check:
+the owned card was foregrounded with its IMDb7.5 badge. No new automatic
+selector-reset algorithm was introduced.
+
+This UI test also exposed an unused native-PVR startup wait on the remote HTTPS
+cohort. The supported [remote startup setting](../../device-policy/remote-startup/README.md)
+was applied and read back; it accounts for the local PVR cohort without disabling
+its required functionality. Search mode and source integrity stay unchanged.
+
+The current remote account receives 339 categories, including all 37 curated
+groups with no empty curated group. This supersedes the October2 server outage
+readback below; restoring those groups was not part of this box transaction.
+Curated News category OK populated 45 channels and moved focus to the grid.
+Remote Movies has 61 categories and Series has 40; each All titles route fetched
+a bounded 160-title page plus its More entry and rendered 80 grid cards.
+Repeated browser entry/exit and Stop/reopen cleared the window singleton.
+A curated channel labelled 8K actually decoded H264 1920x1080/25fps:
+first hardware frames in 6.46 s, frame counter 7→204 over 8 s,
+with zero decoder/drop errors. This is a bounded decode test, not proof of8K,
+HDR, visible HDMI quality or every provider channel. Another channel failed;
+the server's two FFmpeg attempts both received upstream HTTP503. No capacity
+failure or upstream403 was found in the bounded gateway log sample. The stream
+failure was not repaired by the navigation overlay and remains a provider/server
+availability limitation. No provider limits were changed.
+The original box was unreachable on its LAN address and
+remains pending for its own seven-file transaction.
 
 ## Audit findings
 
@@ -53,9 +111,9 @@ and [Skin Variables source](https://github.com/jurialmunkey/script.skinvariables
 match6.17.4 and2.2.5. A development branch version is not an accepted update
 artifact; no blind dependency or nightly upgrades were performed.
 
-## Shared server gaps
+## October 2 shared server gaps
 
-Both accounts currently receive302 provider categories but zero curated
+At that audit, both accounts received302 provider categories but zero curated
 collections. The old published file has37 groups and1413 IDs, none matching the
 11841 current native live-channel IDs in the earlier full readback. A new
 promotion attempt produces only7 groups/34 native channels; the publisher's
@@ -64,11 +122,12 @@ Removing that guard would publish a shrunken catalogue, not recover the requeste
 groups. Do not fix this by deleting channels, resetting favourites or manually
 renaming client rows.
 
-Next server work must rebind the full curated provider/gateway identities to
-current Jellyfin IDs using exact, unambiguous mappings, preserve user choices,
+At that audit, the required server work was to rebind the full curated provider/
+gateway identities to current Jellyfin IDs using exact, unambiguous mappings, preserve user choices,
 validate all groups and ordering, then publish atomically with rollback. Check
 both accounts and both clients afterward. This server repair is **not included**
-in this box update; its absence can still affect the visible IPTV experience.
+in this box update. The October8 readback above now finds all37 curated groups;
+do not continue reporting the historical zero-group result as current.
 
 Jellyfin12.1 and Seerr were healthy during the read-only check. Exact import,
 subtitle-publication, remote-native-manifest and request-search workers had

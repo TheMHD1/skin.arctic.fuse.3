@@ -30,8 +30,9 @@ acceptance is separate and must not interrupt a viewer merely to test it.
 This native cache file is outside the old custom snapshot worker's selected
 cache paths. The [October2 backup migration](../../device-backup/README.md)
 explicitly selects it and the device's own ConnMan configuration. That migration
-is prepared but not deployed while the remote appliance is offline; keep a
-separate private recovery copy in the meantime. Do not assume older archives
+was installed October8, and the resulting archive was verified off-device.
+That fresh boot already had country CA and5GHz receive/transmit negotiated rates
+of1080.8/960.5Mbps, without a network change during the addon rollout. Do not assume older archives
 contain this setting or the Bell provisioning file.
 For a rebuild in Canada, merge this policy alongside the existing awake/audio/
 remote-access policy. For another country, use its correct supported country code.
