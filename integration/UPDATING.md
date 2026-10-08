@@ -2,6 +2,13 @@
 
 ## Current release authority
 
+The [October8 UX round](release/ux-round/README.md) follows the paired AM9 layer.
+Its single guarded installer includes any pending October2 shared writes; do not
+replay older live patch commands. Preserve the one-shot Combined-search helper
+in the existing Home service and the generic idle-Home browser-owner cleanup.
+Use semantic menu/skin-policy inventory plus actual remote-control acceptance,
+not addon-version equality alone. Firmware remains a separate workflow.
+
 AM9 repair parity is a release requirement: retain the original/local build's
 applicable repairs in every managed AM9 and derive remote differences from the
 common source. See the [shared-baseline map](REMOTE-AM9-CATCHUP-2026-10-02.md#shared-repair-baseline--owner-requirement).

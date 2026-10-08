@@ -7,6 +7,7 @@ import argparse
 import json
 from pathlib import Path
 import install
+ux=install.module('report_ux_release',install.HERE.parent/'ux-round/install.py',install.HERE.parent/'ux-round')
 
 REQUIRED = ('plugin.video.habibi.resume', 'plugin.video.jellyfin', 'plugin.video.kodiseerr',
             'plugin.video.venom.tv', 'skin.arctic.fuse.3', 'plugin.video.themoviedb.helper',
@@ -57,6 +58,8 @@ def device(record, cohort):
     targets = ({'.kodi/'+k: v for k, v in install.LOCAL_AFTER.items()} if cohort == 'local' else REMOTE_TARGETS)
     hashes = record.get('source_hashes', {})
     repair_state = {name.removeprefix('.kodi/'): ('target-source-present' if hashes.get(name.removeprefix('.kodi/')) == digest
+                    or (name.removeprefix('.kodi/') in ux.AFTER[cohort]
+                        and hashes.get(name.removeprefix('.kodi/'))==ux.AFTER[cohort][name.removeprefix('.kodi/')])
                     else 'pending-or-unreviewed') for name, digest in targets.items()}
     rules = record.get('update_rules')
     pinned = {row[1] for row in rules or [] if len(row) >= 3 and row[2] == 1}
@@ -64,6 +67,11 @@ def device(record, cohort):
     return {'evidence': record.get('evidence', 'read-only-inventory'),
             'captured_at': record.get('captured_at', 'unknown-saved-date'),
             'installed_shared_release': record.get('shared_release', 'unknown-not-captured'),
+            'installed_ux_release':record.get('ux_release','unknown-not-captured'),
+            'ux_sources':{name:('target-source-present' if hashes.get(name)==digest else 'pending-or-unreviewed')
+                          for name,digest in ux.AFTER[cohort].items()},
+            'skin_policy':record.get('skin_policy','unknown-not-captured'),
+            'menu_contracts':record.get('menu_contracts','unknown-not-captured'),
             'live_acceptance': 'not-proven-by-inventory',
             'missing_or_disabled_tools': missing,
             'dependency_status': 'unknown' if declarations is None else 'checked',
@@ -82,7 +90,7 @@ def compare(local, remote):
     left, right = local.get('source_hashes', {}), remote.get('source_hashes', {})
     names = (set(left) | set(right)) - {'addons/plugin.video.habibi.resume/verified-build.json'}
     differences = [name for name in sorted(names) if left.get(name) != right.get(name)]
-    repair_paths = set(install.LOCAL_AFTER)
+    repair_paths = set(install.LOCAL_AFTER)|set(ux.AFTER['local'])
     return {'release': install.RELEASE, 'local': device(local, 'local'), 'remote': device(remote, 'remote'),
             'identical_common_source_files': sum(left.get(n) == right.get(n) for n in names if n in left and n in right),
             'transport_sources_to_review_against_cohort_pins': [n for n in differences if n in TRANSPORT_FILES],
@@ -90,6 +98,8 @@ def compare(local, remote):
             'unexplained_source_differences': [n for n in differences if n not in TRANSPORT_FILES | repair_paths],
             'shortcut_hashes_equal': local.get('shortcut_hashes') == remote.get('shortcut_hashes')
                 if 'shortcut_hashes' in local and 'shortcut_hashes' in remote else 'unknown',
+            'menu_contracts_equal':local.get('menu_contracts')==remote.get('menu_contracts')
+                if 'menu_contracts' in local and 'menu_contracts' in remote else 'unknown',
             'automatic_deployment': False}
 
 

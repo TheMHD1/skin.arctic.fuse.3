@@ -14,6 +14,7 @@ import socket
 import sqlite3
 import subprocess
 import xml.etree.ElementTree as ET
+from urllib.parse import urlsplit,parse_qs
 
 ROOT = Path('/storage/.kodi')
 SHARED = ('plugin.video.habibi.resume', 'plugin.video.venom.tv',
@@ -34,6 +35,25 @@ GLOBAL_SETTINGS = (
 CEC_IDS = ('standby_pc_on_tv_standby', 'standby_devices', 'activate_source',
            'wake_devices', 'cec_wake_screensaver', 'cec_standby_screensaver_mode',
            'enabled', 'standby_tv_on_pc_standby')
+SKIN_POLICY_IDS=('homeswitcher.search.mode','startup.disablewaitforload',
+                 'homeswitcher.disablesearch','homeswitcher.vertical',
+                 'homeswitcher.disablefirstwidgetfocus','search.disablediscover',
+                 'home.firstrun')
+
+def menu_contract(rows):
+    """Semantic routes only: no query text, tokens, account IDs or full URLs."""
+    if not isinstance(rows,list):return {'error':'Unknown menu structure'}
+    result=[]
+    for row in rows:
+        if not isinstance(row,dict):return {'error':'Unknown menu entry'}
+        route=urlsplit(str(row.get('path','')))
+        query=parse_qs(route.query)
+        result.append({'label':row.get('label',''),
+                       'addon':route.hostname if route.scheme=='plugin' else 'non-plugin',
+                       'mode':query.get('mode',[''])[0],
+                       'info':query.get('info',[''])[0],
+                       'target':row.get('target','') if row.get('target','') in ('','videos','music','pictures') else 'custom-target'})
+    return result
 
 
 def sha(path):
@@ -124,6 +144,12 @@ def inventory():
                 out['source_hashes'][str(path.relative_to(ROOT))] = sha(path)
     out['shortcut_hashes'] = {str(p.relative_to(ROOT)): sha(p) for p in
                              (ROOT/'userdata/addon_data/script.skinvariables/nodes').rglob('*.json')}
+    skin=settings(ROOT/'userdata/addon_data/skin.arctic.fuse.3/settings.xml')
+    out['skin_policy']={key:skin.get(key) for key in SKIN_POLICY_IDS}
+    out['menu_contracts']={}
+    for p in (ROOT/'userdata/addon_data/script.skinvariables/nodes').rglob('*.json'):
+        try:out['menu_contracts'][p.name]=menu_contract(json.loads(p.read_bytes()))
+        except (ValueError,OSError):out['menu_contracts'][p.name]={'error':'Unreadable menu'}
     manifest = ROOT/'addons/plugin.video.habibi.resume/verified-build.json'
     out['manifest_sha256'] = sha(manifest) if manifest.is_file() else None
     receipt = Path('/storage/.config/am9-shared-release.json')
@@ -135,6 +161,14 @@ def inventory():
                                      ('schema', 'release', 'cohort', 'manifest_sha256', 'acceptance')}
         except (ValueError, OSError):
             out['shared_release'] = {'error': 'Unreadable release receipt'}
+    ux_receipt=Path('/storage/.config/am9-ux-release.json')
+    out['ux_release']=None
+    if ux_receipt.is_file():
+        try:
+            value=json.loads(ux_receipt.read_bytes())
+            out['ux_release']={key:value.get(key) for key in
+                              ('schema','release','cohort','manifest_sha256','acceptance')}
+        except (ValueError,OSError):out['ux_release']={'error':'Unreadable UX receipt'}
     record = json.loads(manifest.read_text()) if manifest.is_file() else {}
     out['manifest_count'] = len(record.get('files', {}))
     out['manifest_drift'] = []

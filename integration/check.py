@@ -52,4 +52,6 @@ with tempfile.TemporaryDirectory(prefix='arctic-integration-test-') as tmp:
 for name in SOURCE_LAYOUT_TESTS:run(sys.executable,str(HERE/name),cwd=ROOT)
 run(sys.executable,str(HERE/'check-venom-package.py'))
 run(sys.executable,str(HERE/'device-policy/remote-startup/test_policy.py'))
+for name in ('test_browser.py','test_search.py','test_install.py'):
+    run(sys.executable,str(HERE/'release/ux-round'/name))
 print('PASS: skin XML, clean patch application, integration regressions and compile checks')

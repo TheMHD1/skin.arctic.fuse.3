@@ -16,6 +16,12 @@ import report
 
 
 class Tests(unittest.TestCase):
+    def test_semantic_menus_omit_urls_tokens_and_identifiers(self):
+        rows=[{'label':'Movies','path':'plugin://plugin.video.habibi.resume/?mode=searchmovies&id=private-id&token=private-token&query=private-query','target':'videos'}]
+        result=inventory.menu_contract(rows)
+        self.assertEqual(result,[{'label':'Movies','addon':'plugin.video.habibi.resume','mode':'searchmovies','info':'','target':'videos'}])
+        self.assertNotIn('private-',json.dumps(result))
+        self.assertIn('error',inventory.menu_contract({}))
     def test_both_browser_outputs_match_one_release_pins(self):
         common = HERE.parents[1]/'plugin.video.venom.tv'
         name = 'addons/plugin.video.venom.tv/browser.py'

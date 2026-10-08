@@ -76,6 +76,12 @@ rollback record with the private deployment.
 
 ## Source map
 
+- `release/ux-round/`: October8 paired Home-departure lifecycle and one-shot
+  Combined-search selection repair. Its installer composes the preceding shared
+  repair in one transaction, with both complete output manifests pinned. The
+  read-only inventory includes semantic menu routes and skin policy, not just
+  versions. See its README for per-device deployment and acceptance status.
+
 - `release/shared-am9/`: October2 paired release and read-only parity auditor.
   Common generic fixes are derived for both profiles, with separate account,
   hardware and transport guards. Original55/remote59 private fixture plans pass;

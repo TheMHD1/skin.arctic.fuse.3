@@ -55,7 +55,7 @@ def write():
         raise SystemExit("Review and stage sources before recording them:\n" + "\n".join(pending))
     payload = {
         "schema": 1,
-        "release": "2026-10-08-remote-shared-am9-deployed",
+        "release": "2026-10-08-shared-am9-ux",
         "meaning": "Reviewed source bytes, not a runtime credential/settings backup or proof of deployment",
         "status": {
             "local_kodi_r6": "deployed-and-accepted",
@@ -84,11 +84,12 @@ def write():
             "remote_ui_catchup": "deployed-zero59-file-drift-category-grid-and-stop-reopen-accepted-upstream503-one-stream",
             "remote_shared_repair_baseline": "remote59-guarded-shared-layer-installed-local55-pending-physical-acceptance-partial",
             "shared_am9_release": "remote59-applied-and-idempotent-original55-prepared-not-deployed",
+            "shared_am9_ux": "remote60-installed-guarded-local56-prepared-live-acceptance-in-ux-runbook",
             "shared_am9_awake": "six-settings-eight-cec-ids-match-remote-live-load-traced-physical-tv-cycle-pending",
             "local_backup_dependency_repair": "rooted-rsync-package-filter-and-optional-regdomain-capture-prepared-not-deployed",
             "remote_network_backup": "deployed-off-device-checksum-59-sources-nine-databases-and-device-network-verified",
             "remote_wifi_canada": "october8-fresh-boot-ca-and-5ghz-verified-without-network-change",
-            "remote_partial_title_search": "both-phrases-typed-on-device-owned-api-match-combined-selection-can-retain-prior-section",
+            "remote_partial_title_search": "typed-full-and-partial-title-owned-ui-match-final-hidden-selector-message-verified",
             "remote_startup_policy": "native-unused-pvr-wait-disabled-runtime-and-persistent-readback-ui-verified-local-pvr-not-applicable",
             "live_tv_curated_collections": "october8-remote-account-37-nonempty-curated-plus302-provider-groups-present",
             "live_tv_collection_promotion": "october2-failure-historical-current37-groups-api-present-worker-not-rechecked",
