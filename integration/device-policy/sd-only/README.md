@@ -96,6 +96,66 @@ and remote62 receipt remain separate. Shared repair source is unchanged.
 
 ## Rollback and future updates
 
+### Interrupted update recovery
+
+A clean FAT/ext4 check does not establish that the firmware files are complete.
+After the owner's first boot was interrupted on October12, the card contained
+the correct new kernel but only181,403,648 of388,501,504 bytes of the new
+`SYSTEM`. Both readonly filesystem checks passed. Keep the saved userdata;
+this failure does not require formatting or an Android firmware flash.
+
+With the appliance powered off, identify the exact card again and mount both
+partitions readonly (ext4 with `noload`). Preserve a complete off-card boot
+archive and the failed `.update` directory before writes. Verify an independent
+official package and its internal payload hashes. The reviewed October12 pins are:
+
+- Official tar SHA256: `937b5ab3986ab6ebf310dc11bd4c59f195c94507ec5872a63f6fef2ccd4c08f9`.
+- `target/KERNEL` SHA256: `64d9f8aec0f3f061d5d7415851e69220f3770f1b3ea5e0619610ada01c34839f`.
+- `target/SYSTEM` SHA256: `b6e7322f2a474c5ff604f821564c763137181b17221c8a3602917d011b073d96`.
+
+Restore a coherent `kernel.img`/`SYSTEM` pair and their official MD5 sidecars,
+not only the kernel. A payload already matching its reviewed hash needs no
+rewrite. Small files can use checked temporary-file replacement; FAT may lack
+space for a second complete `SYSTEM`, so an in-place replacement requires the
+verified independent recovery archive and stable maintenance-host power first.
+Preserve the standalone storage selector, configured DTB/`dtb.xml`, Dolby module,
+remote settings, account and complete local repair source. Verify that the
+candidate's stock AM9 device tree matches the preserved stock input before
+reusing the configured DTB. A different device tree requires separate review.
+
+The pinned upstream init detects `.update/.tmp` as a failed update, cleans the
+update files and skips installation; it does **not** restore the overwritten
+partial boot payload. After the coherent boot pair is repaired and all failed
+update entries have been independently archived/verified, retire only the exact
+reviewed failed entries. Leave one hash-verified official tar in `.update` so the
+normal updater can finish its on-device bootloader/DTB steps. Never blindly clear
+an unknown update directory, suppress compatibility checks or run the native
+bootloader script on the maintenance server.
+
+`boot_integrity.py` checks both expected boot hashes without modifying files.
+Its six regressions reject truncation, same-size corruption, mixed releases,
+missing files, links and incomplete expected hashes. Physical media/mount guards,
+settings, MD5 sidecars and updater state remain separate private deployment checks.
+
+```sh
+python3 integration/device-policy/sd-only/test_boot_integrity.py
+```
+
+Sync and unmount both partitions, repeat filesystem checks, then cold-read the
+boot pair, staged tar, device settings, shared source and database copies before
+handoff. Keep the retired SSD absent. Leave power connected throughout the next
+normal boot/update and automatic reboot. Firmware files prepared offline are
+not live OS, Kodi or HDMI acceptance. The same checks apply to the remote
+standalone-SD cohort, but do not authorize changing its media or private identity.
+
+Recovery execution and cold-read acceptance are recorded separately from the
+earlier migration receipt; the original offline snapshot remains unchanged.
+The original card's repair passed both final unmounted filesystem checks and
+cold boot-pair/MD5/tar verification. All206 operational entries still matched
+the original saved state; local58 and all14 SQLite checks passed again. All
+removable partitions were unmounted for handoff. Actual boot, native updater
+completion and Kodi/HDMI acceptance remain pending. The remote card was untouched.
+
 Keep the old SSD disconnected during SD-only use. For offline rollback, restore
 the exact card's saved boot/storage archives as a coherent pair while all
 appliance processes are stopped, and remove the newly staged tar before booting
@@ -115,3 +175,5 @@ future nightlies or replace exact-source addon rebase/regression checks.
 References: [CoreELEC updates](https://wiki.coreelec.org/coreelec:updates),
 [CoreELEC backups](https://wiki.coreelec.org/coreelec:backup),
 [reviewed October12 source](https://github.com/CoreELEC/CoreELEC/commit/a3896e23e6).
+The failed-update behavior is in the pinned
+[CoreELEC init script](https://github.com/CoreELEC/CoreELEC/blob/a3896e23e6fadbde70f03edc839d4a99dd41c54a/packages/sysutils/busybox/scripts/init).

@@ -8,6 +8,10 @@ keep the retired SSD disconnected and use the normal single-card updater for
 the separately reviewed/staged firmware; do not run historical hybrid two-copy
 staging scripts. Preserve the same local-PVR addon cohort and private identity.
 Card preparation and a staged tar are not installed firmware or live acceptance.
+After an interrupted first boot, follow the
+[interrupted SD update procedure](device-policy/sd-only/README.md#interrupted-update-recovery)
+before retrying. Clean filesystem checks alone cannot detect a truncated firmware
+payload, and the native failed-update cleanup does not restore its contents.
 
 Preserve the optional [5 GHz Wi-Fi policy](device-policy/wifi-5ghz/README.md)
 and its own private identity profile when updating the remote appliance. The

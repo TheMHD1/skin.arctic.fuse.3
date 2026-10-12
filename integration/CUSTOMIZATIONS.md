@@ -45,6 +45,15 @@ passed. First device boot and completion of the staged October12 update remain
 pending; this is offline acceptance, not Kodi/HDMI acceptance.
 This supersedes the hybrid-only hardware handoff below, not its recovery evidence.
 
+The owner subsequently interrupted the first staged update. Readonly inspection
+found a correct October12 kernel and truncated `SYSTEM`, despite clean filesystems.
+The same [SD recovery runbook](device-policy/sd-only/README.md#interrupted-update-recovery)
+now preserves the exact payload pins, failed-update marker handling, independent
+backups and six readonly boot-integrity regressions. The original card's repair
+passed cold boot-pair/MD5/tar verification, both final filesystem checks,
+original206 operational entries, local58 and all14 databases. Actual boot/native
+updater completion and UI/AV are pending; the remote card was not modified.
+
 ## October 12 original-device recovery
 
 The [local hybrid recovery record](LOCAL-AM9-RECOVERY-2026-10-12.md) distinguishes
