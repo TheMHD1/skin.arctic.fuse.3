@@ -2,6 +2,12 @@
 
 ## Current release authority
 
+For the original appliance's October 12 abrupt-power-loss recovery, follow the
+[local hybrid recovery record](LOCAL-AM9-RECOVERY-2026-10-12.md) and guarded
+[offline source installer](release/offline-recovery/README.md). An off-device
+source update or staged firmware is not actual-device acceptance. Preserve the
+local-PVR/remote-HTTPS split and each appliance's own identity and boot layout.
+
 Use the latest [paired shared installer](release/library-transactions/README.md),
 which composes shared/UX/performance, Home-entry, window lifecycle and collection
 removal and short-sync-transaction repairs under one exact-cohort

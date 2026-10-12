@@ -22,6 +22,18 @@ still depends on private deployment state.
 Implicit addon defaults belong to these versions. `settings-reference.json` is
 a redacted inventory, not importable configuration.
 
+## October 12 original-device recovery
+
+The [local hybrid recovery record](LOCAL-AM9-RECOVERY-2026-10-12.md) distinguishes
+SSD filesystem corruption and maintenance-adapter I/O failures from a firmware
+mismatch. The new [offline installer](release/offline-recovery/README.md) uses the
+same complete paired `am9-shared-20261008.7` source planner with additional exact
+maintenance-host, physical-serial, UUID and mount guards. It does not replace a
+device's account/network identity or clone remote-only playback transport.
+Independent image/database acceptance, physical media deployment, staged
+firmware and live appliance acceptance have separate records. New upstream
+Arctic versions still require an exact rebase; a stock update is not repair parity.
+
 ## October 8 performance follow-up
 
 The subsequent [Venom entry](release/venom-entry/README.md) and
