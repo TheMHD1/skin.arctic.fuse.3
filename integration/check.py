@@ -71,6 +71,7 @@ for name in ('test_transactions.py','test_install.py'):
     run(sys.executable,str(HERE/'release/library-transactions'/name))
 run(sys.executable,str(HERE/'release/offline-recovery/test_install.py'))
 run(sys.executable,'-m','unittest','discover','-s',str(HERE/'server/native-mount-recovery'))
+run(sys.executable,'-m','unittest','discover','-s',str(HERE/'server/vod-xc-head'))
 for name in ('test_arc_budget.py','test_jellyfin_policy.py','test_jellystat_policy.py','test_enhanced_install.py'):
     run(sys.executable,str(HERE/'server/performance'/name))
 print('PASS: skin XML, clean patch application, integration regressions and compile checks')

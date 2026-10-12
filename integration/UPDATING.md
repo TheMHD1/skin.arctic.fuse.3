@@ -2,6 +2,13 @@
 
 ## Current release authority
 
+Preserve/rebase the [native XC HEAD overlay](server/vod-xc-head/README.md) only
+against its exact reviewed Dispatcharr image/module. A pinned read-only module
+mount survives recreation but is not permission to carry old upstream source
+into an unreviewed image. Preserve the built-in additive
+[Arabic keyboard setting](device-policy/arabic-keyboard.json) in each device's
+own userdata; do not clone a whole profile to transfer that preference.
+
 Preserve the exact-client [native IPTV access policy](server/AM9-IPTV-ACCESS.md)
 and verified private DHCP reservation after network/server updates. A working
 account can still be denied by an outdated address allowlist; do not replace

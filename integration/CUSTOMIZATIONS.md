@@ -35,6 +35,15 @@ device-specific configuration.
 
 ## October 12 original Venom access recovery
 
+The subsequent [native XC HEAD repair](server/vod-xc-head/README.md) adds
+authenticated metadata-only movie/episode checks without reserving provider
+slots. Ten real-function regressions and live authorized/denied HEAD checks
+passed. Source/image pins, guarded deployment and rollback are preserved;
+native GET/Kodi acceptance is distinct from the owner's currently playing
+4K library episode. The [Arabic keyboard policy](device-policy/arabic-keyboard.json)
+adds the built-in layout alongside English; saved/runtime and post-reboot values
+passed on the local appliance. Remote keyboard rollout remains pending.
+
 The [native IPTV access repair](server/AM9-IPTV-ACCESS.md) corrects an exact-client
 Dispatcharr network allowlist mismatch without widening administrative access.
 The device's existing Wi-Fi reservation was verified. Actual Home entry, category

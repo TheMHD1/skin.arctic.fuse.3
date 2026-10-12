@@ -55,7 +55,7 @@ def write():
         raise SystemExit("Review and stage sources before recording them:\n" + "\n".join(pending))
     payload = {
         "schema": 1,
-        "release": "2026-10-12-am9-live-iptv-native-mounts-and-arabic-keyboard",
+        "release": "2026-10-12-am9-native-iptv-head-and-arabic-keyboard",
         "meaning": "Reviewed source bytes, not a runtime credential/settings backup or proof of deployment",
         "status": {
             "local_kodi_r6": "deployed-and-accepted",
@@ -105,6 +105,7 @@ def write():
             "local_sd_powercut_repair": "october12-live-kernel-system-hashes-empty-update-card-mounts-local58-home-and-venom-accepted-full-physical-av-pending",
             "local_venom_network_access": "exact-client-xc-streams-only-persistent-policy-repaired-existing-reservation-verified-playlist-account-pvr-home-grid-two-channels-switch-stop-home-reopen-accepted",
             "arabic_keyboard": "paired-native-policy-local-built-in-arabic-added-english-preserved-runtime-and-saved-setting-verified-remote-not-deployed-onscreen-switch-pending",
+            "native_vod_xc_head": "guarded-overlay-deployed-ten-real-function-regressions-authorized-invalid-password-missing-episode-head-and-unchanged-counter-appliance-range-get206-with65536-media-bytes-passed-full-native-kodi-ui-playback-pending-owner-playing-4k-library-copy",
             "native_media_mount_recovery": "server-deployed-eight-regressions-native-unit-validation-idempotent-readonly-mounts-nfs-and-actual-local-kodi-vfs-read-passed-host-reboot-and-remote-client-pending",
             "remote_network_backup": "deployed-off-device-checksum-59-sources-nine-databases-and-device-network-verified",
             "remote_wifi_canada": "october8-fresh-boot-ca-and-5ghz-verified-without-network-change",
