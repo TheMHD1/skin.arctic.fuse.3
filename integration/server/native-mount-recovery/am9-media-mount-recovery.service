@@ -1,0 +1,17 @@
+[Unit]
+Description=Bounded startup recovery of existing read-only AM9 media mounts
+After=zfs-mount.service
+StartLimitIntervalSec=45min
+StartLimitBurst=6
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/am9-media-mount-recovery.env
+ExecStart=/usr/bin/python3 /usr/local/sbin/am9-media-mount-recovery.py --host ${AM9_NFS_HOST}
+RemainAfterExit=yes
+Restart=on-failure
+RestartSec=5min
+TimeoutStartSec=90s
+
+[Install]
+WantedBy=multi-user.target

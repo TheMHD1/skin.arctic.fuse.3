@@ -156,6 +156,15 @@ the original saved state; local58 and all14 SQLite checks passed again. All
 removable partitions were unmounted for handoff. Actual boot, native updater
 completion and Kodi/HDMI acceptance remain pending. The remote card was untouched.
 
+Subsequent October 12 live acceptance supersedes those handoff-pending fields:
+the original appliance boots CoreELEC22 nightly20261012 / Kodi22RC1; its running
+kernel and `SYSTEM` match both pins above, `.update` is empty, and `/flash` plus
+`/storage` resolve to the card. All 58 shared source hashes match. Actual Home,
+Venom category artwork/grid, two hardware-decoded 1080p channels, switching and
+stop/Home/reopen passed. The previously missing native episode also passed a
+Kodi VFS byte read after the server's mount repair. This is not full physical
+DV/audio/HDMI acceptance or a new backup-run result; those remain separate.
+
 Keep the old SSD disconnected during SD-only use. For offline rollback, restore
 the exact card's saved boot/storage archives as a coherent pair while all
 appliance processes are stopped, and remove the newly staged tar before booting

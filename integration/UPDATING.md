@@ -2,6 +2,14 @@
 
 ## Current release authority
 
+Preserve the exact-client [native IPTV access policy](server/AM9-IPTV-ACCESS.md)
+and verified private DHCP reservation after network/server updates. A working
+account can still be denied by an outdated address allowlist; do not replace
+the custom addons or broaden access to compensate. Preserve/retest the
+[bounded native-mount recovery](server/native-mount-recovery/README.md) with the
+existing read-only exports and restricted NFS listener. These server repairs do
+not change local/remote addon source receipts or authorize cloning their profiles.
+
 For the original appliance's authorized transition away from USB SSD, follow
 the [standalone SD migration](device-policy/sd-only/README.md). Once converted,
 keep the retired SSD disconnected and use the normal single-card updater for

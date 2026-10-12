@@ -10,7 +10,7 @@ still depends on private deployment state.
 
 | Component | Reviewed version | Notes |
 | --- | --- | --- |
-| CoreELEC / Kodi | CoreELEC22 nightly20260922 / Kodi22Beta2 local; nightly20261008 / Kodi22RC1 remote | Local AM9 uses the [verified hybrid procedure](COREELEC-HYBRID-UPDATE-2026-09-23.md); the [October8 remote update](REMOTE-AM9-UPDATE-2026-10-08.md) preserves the standalone-SD setup. Future firmware updates still require separate review. |
+| CoreELEC / Kodi | CoreELEC22 nightly20261012 local; nightly20261008 remote / Kodi22RC1 | Original AM9 now uses [standalone SD](device-policy/sd-only/README.md); the [October8 remote update](REMOTE-AM9-UPDATE-2026-10-08.md) preserves its separate standalone-SD setup. Future firmware updates still require separate review. |
 | Arctic Fuse 3 | 3.3.1 on accepted devices | Reviewed upstream 3.3.1 source plus `patches/arctic-3.3.1-habibi.patch`; the repository root remains a legacy 3.2.19 baseline. |
 | Jellyfin for Kodi | 2.2.0+py3 | Apply only the consolidated 2.2 patch stack. |
 | Home companion | 1.1.0 | Server-backed Home, search, favourites and episode navigation. |
@@ -33,6 +33,19 @@ acceptance are pending. Local-cohort deployment requires its own private profile
 and remains pending; no account/transport/source parity is inferred from this
 device-specific configuration.
 
+## October 12 original Venom access recovery
+
+The [native IPTV access repair](server/AM9-IPTV-ACCESS.md) corrects an exact-client
+Dispatcharr network allowlist mismatch without widening administrative access.
+The device's existing Wi-Fi reservation was verified. Actual Home entry, category
+grid/artwork, two 1080p hardware-decoded channels, switching, stop/Home and reopen
+passed; all 58 shared source hashes still match. The remote HTTPS cohort was not
+modified. The [bounded native-mount startup recovery](server/native-mount-recovery/README.md)
+also restores skipped read-only server mounts/NFS startup; Kodi's previously
+missing episode passed an actual VFS byte read. This server policy benefits both
+native-original profiles; remote acceptance and a future host reboot remain
+separate gates. Source receipts are unchanged.
+
 ## October 12 original-device storage conversion
 
 After recovery, the owner authorized retiring the unreliable USB SSD path and
@@ -41,8 +54,10 @@ using the original card for both boot and storage. The guarded
 complete local58 repair cohort and the appliance's own userdata; it is not a
 fresh install or a remote-profile clone. Full-copy inventory, both unmounted
 filesystem checks, cold206 operational entries, local58 and all14 databases
-passed. First device boot and completion of the staged October12 update remain
-pending; this is offline acceptance, not Kodi/HDMI acceptance.
+passed. The subsequent live boot runs October12 / Kodi22RC1, both boot hashes
+match, `.update` is empty and boot/storage are on the card. Actual Kodi Home,
+Venom playback and all58 shared-source hashes passed. Physical HDMI/DV/audio
+and a new backup run remain separate acceptance checks.
 This supersedes the hybrid-only hardware handoff below, not its recovery evidence.
 
 The owner subsequently interrupted the first staged update. Readonly inspection
@@ -51,8 +66,9 @@ The same [SD recovery runbook](device-policy/sd-only/README.md#interrupted-updat
 now preserves the exact payload pins, failed-update marker handling, independent
 backups and six readonly boot-integrity regressions. The original card's repair
 passed cold boot-pair/MD5/tar verification, both final filesystem checks,
-original206 operational entries, local58 and all14 databases. Actual boot/native
-updater completion and UI/AV are pending; the remote card was not modified.
+original206 operational entries, local58 and all14 databases. The subsequent live
+October12 boot, completed staged update and bounded Kodi/Venom UI/playback checks
+passed; full physical AV acceptance remains separate. The remote card was not modified.
 
 ## October 12 original-device recovery
 
