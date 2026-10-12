@@ -60,6 +60,7 @@
     "integration/device-policy/always-awake/cec-settings.xml": "1000f83f547c1d87acec9408b3481efe94a22f3afc15d859bddb47b1bac33064",
     "integration/device-policy/always-awake/kodi-settings.json": "e230e8f86b964a80efba42a12357be3d168f4a1cfe3cc1b754bf6433ea1d506d",
     "integration/device-policy/always-awake/test_policy.py": "34f5a4e6742fa0b5e4e6fe2e3be014a2f2f58de35796b4ab572c4e9d3db35008",
+    "integration/device-policy/arabic-keyboard.json": "834a2eaf7c393927f2876607909af93464e63042544f911228316b318b5a178d",
     "integration/device-policy/private-tailnet/20-private-access.conf": "b0c7b56b0b2d4287f0c1f6ef34b9bc7c611c73d329b86bc1e87864e86695333a",
     "integration/device-policy/private-tailnet/README.md": "6c033f4f12d8b10163aa039348246082a1c60d9c4f75cc59933a8b6dc9192d34",
     "integration/device-policy/private-tailnet/firewall.py": "37f5492fd406c9b61096c9b26b0f76c72b8384fe2e28bc3e391bbc3ca337df37",
@@ -225,7 +226,7 @@
     "integration/release/venom-lifecycle/overlay.py": "5930ca900e04c63370807fe275ec523166bb28520a54aecbc133a85ddbb53184",
     "integration/release/venom-lifecycle/test_browser.py": "157af51253c39e75568c02c670f73f61f0d7692655fd28a89e90f0ed4285b4ad",
     "integration/release/venom-lifecycle/test_install.py": "a865555acc1e1ddcb7a66f6e664f0f7607eae0fbf95d049b5a9b24256573186c",
-    "integration/release/verify-preservation.py": "232a10fd4e9031db2232bbc9bc0b14dbbca5f6799077b7d2ce9a391e2d9f8180",
+    "integration/release/verify-preservation.py": "117eb5629f2584d20511bc33bbd85ac26b3ff79e9b1488e61250ab55d8355632",
     "integration/remote-native-originals/README.md": "fb3fd72c7f5ad0f0c4b8a7c9a2fb1f59cd5be5e60dbeb0582a1c3e37796be33b",
     "integration/remote-native-originals/__init__.py": "c9baba397a4abd8677cec72d051b03b342f8ede9cfa7dfd7ed040c8a6090daec",
     "integration/remote-native-originals/gate.py": "c384e6ebe3b2900d7e21c9ff4b0ec5be06bf59a3276e654f4e1c3e59a6fa7651",
@@ -483,9 +484,10 @@
     "shortcuts/skinvariables-shortcut-searchwidgets.json": "f718340a491415980f2344246ae49077e42493e663240bb5729257a325cf8e20"
   },
   "meaning": "Reviewed source bytes, not a runtime credential/settings backup or proof of deployment",
-  "release": "2026-10-12-am9-live-iptv-and-native-mount-recovery",
+  "release": "2026-10-12-am9-live-iptv-native-mounts-and-arabic-keyboard",
   "schema": 1,
   "status": {
+    "arabic_keyboard": "paired-native-policy-local-built-in-arabic-added-english-preserved-runtime-and-saved-setting-verified-remote-not-deployed-onscreen-switch-pending",
     "arr_request_search": "deployed-unit-tested-no-live-dropped-search-recovery-needed",
     "coreelec_update": "local-standalone-sd-october12-live-os-kernel-system-hashes-card-mounts-empty-update-and-local58-verified-full-physical-av-pending",
     "dovi_companion_provenance": "known-gap-not-fixed",

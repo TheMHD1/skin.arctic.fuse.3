@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "purpose": "Add the built-in Arabic keyboard without changing the interface language or replacing other keyboards",
+  "paired_policy": "am9-native-keyboards-20261012",
+  "reviewed_cohort": "CoreELEC 22 nightly20261012 / Kodi 22 RC1",
+  "setting": "locale.keyboardlayouts",
+  "required_layout": "Arabic QWERTY",
+  "upstream_prerequisite": "/usr/share/kodi/system/keyboardlayouts/arabic.xml must declare layout language Arabic and layout QWERTY",
+  "apply": [
+    "Read current value with Settings.GetSettingValue and retain a private before record",
+    "Preserve the existing ordered list and append Arabic QWERTY only if absent",
+    "Apply through Settings.SetSettingValue while Kodi is running; do not edit guisettings.xml under a running Kodi",
+    "Read back the runtime value and verify the saved locale.keyboardlayouts entry in guisettings.xml",
+    "Keep locale.language, skin/fonts, account, network and addon source receipts unchanged"
+  ],
+  "local_acceptance": {
+    "before": ["English QWERTY"],
+    "after": ["English QWERTY", "Arabic QWERTY"],
+    "native_rpc_result": true,
+    "runtime_and_saved_setting": "verified",
+    "on_screen_keyboard_switch": "not tested during requested episode playback"
+  },
+  "remote_acceptance": "Applicable additive policy; not deployed in this operation. Preserve that device's own existing layouts.",
+  "user_action": "Use the keyboard dialog's layout/language selector to switch between enabled English and Arabic layouts",
+  "updates": "Include this native setting in each device's own userdata backup and selectively merge it when provisioning a new box; no custom keyboard addon or source patch is needed",
+  "rollback": "Restore only the recorded previous ordered layout list using Settings.SetSettingValue, preserving any later user-added layouts after review"
+}
