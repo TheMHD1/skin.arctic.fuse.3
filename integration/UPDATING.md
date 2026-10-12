@@ -2,6 +2,13 @@
 
 ## Current release authority
 
+For the original appliance's authorized transition away from USB SSD, follow
+the [standalone SD migration](device-policy/sd-only/README.md). Once converted,
+keep the retired SSD disconnected and use the normal single-card updater for
+the separately reviewed/staged firmware; do not run historical hybrid two-copy
+staging scripts. Preserve the same local-PVR addon cohort and private identity.
+Card preparation and a staged tar are not installed firmware or live acceptance.
+
 Preserve the optional [5 GHz Wi-Fi policy](device-policy/wifi-5ghz/README.md)
 and its own private identity profile when updating the remote appliance. The
 paired addon receipt is unchanged. Check actual channel availability after

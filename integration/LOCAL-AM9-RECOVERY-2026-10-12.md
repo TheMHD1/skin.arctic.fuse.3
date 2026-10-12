@@ -2,6 +2,11 @@
 
 ## Scope and safety boundary
 
+The subsequent owner-approved [standalone SD conversion](device-policy/sd-only/README.md)
+replaces the hybrid hardware handoff in this historical recovery record. It
+preserves the recovered local cohort and own settings while retiring the SSD
+dependency. Do not apply the old hybrid updater to a converted standalone card.
+
 The original/local appliance failed to start after an abrupt power removal.
 Its own SD and SSD were attached to the maintenance host for recovery and
 catch-up to the complete `am9-shared-20261008.7` local-PVR source cohort.

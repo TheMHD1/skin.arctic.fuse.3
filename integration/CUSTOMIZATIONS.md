@@ -33,6 +33,18 @@ acceptance are pending. Local-cohort deployment requires its own private profile
 and remains pending; no account/transport/source parity is inferred from this
 device-specific configuration.
 
+## October 12 original-device storage conversion
+
+After recovery, the owner authorized retiring the unreliable USB SSD path and
+using the original card for both boot and storage. The guarded
+[standalone SD migration](device-policy/sd-only/README.md) preserves the
+complete local58 repair cohort and the appliance's own userdata; it is not a
+fresh install or a remote-profile clone. Full-copy inventory, both unmounted
+filesystem checks, cold206 operational entries, local58 and all14 databases
+passed. First device boot and completion of the staged October12 update remain
+pending; this is offline acceptance, not Kodi/HDMI acceptance.
+This supersedes the hybrid-only hardware handoff below, not its recovery evidence.
+
 ## October 12 original-device recovery
 
 The [local hybrid recovery record](LOCAL-AM9-RECOVERY-2026-10-12.md) distinguishes

@@ -55,7 +55,7 @@ def write():
         raise SystemExit("Review and stage sources before recording them:\n" + "\n".join(pending))
     payload = {
         "schema": 1,
-        "release": "2026-10-12-am9-recovery-and-wifi-policy",
+        "release": "2026-10-12-am9-sd-only-and-wifi-policy",
         "meaning": "Reviewed source bytes, not a runtime credential/settings backup or proof of deployment",
         "status": {
             "local_kodi_r6": "deployed-and-accepted",
@@ -78,7 +78,7 @@ def write():
             "seerr_request_privacy": "3.4.1-deployed-owner-and-ordinary-user-api-verified",
             "remote_original_p7": "deployed-layout-gated-movie-and-episode-selection-byte-reads-accepted-onsite-av-wan-pending",
             "remote_private_access": "restricted-tailnet-key-only-ssh-and-private-nfs-deployed-restart-verified",
-            "coreelec_update": "local-20260922-boot-files-preserved-after-offline-recovery-october12-upgrade-held-usb-io-unreliable",
+            "coreelec_update": "local-standalone-sd-20260922-coherent-boot-preserved-october12-normal-updater-tar-staged-live-upgrade-pending",
             "remote_coreelec_update": "20261008-nightly-installed-normal-standalone-sd-updater-kernel-system-dtb-dolby-and-policies-verified",
             "remote_ui_reliability": "deployed-on-screen-keyboard-search-and-rating-badges-verified-bounded-iptv-playback",
             "remote_ui_catchup": "deployed-zero59-file-drift-category-grid-and-stop-reopen-accepted-upstream503-one-stream",
@@ -99,6 +99,8 @@ def write():
             "local_backup_dependency_repair": "rooted-rsync-filter-and-optional-regdomain-offline-source-installed-live-backup-run-pending",
             "local_am9_filesystem_recovery": "physical-and-independent-image-filesystem-checks-passed-14-databases-checked-own-config-restored-usb-hardware-still-unreliable",
             "offline_am9_installer": "eight-regressions-passed-full-paired-planner-preserved-exact-maintenance-host-mount-uuid-serial-guard",
+            "local_sd_only_conversion": "original-card-converted-full-copy-inventory-cold206-operational-entries-local58-and14-databases-both-filesystems-verified-physical-boot-ui-av-pending",
+            "sd_only_conversion_helpers": "13-regressions-passed-private-exact-media-wrapper-and-off-card-backups-no-format-or-resident-migrator-remote-already-standalone-unchanged",
             "remote_network_backup": "deployed-off-device-checksum-59-sources-nine-databases-and-device-network-verified",
             "remote_wifi_canada": "october8-fresh-boot-ca-and-5ghz-verified-without-network-change",
             "remote_wifi_5ghz_policy": "installed-hashes-timer-and-missing-ap-fail-open-verified-5ghz-router-ap-absent-playback-and-boot-acceptance-pending",

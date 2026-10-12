@@ -55,6 +55,7 @@ run(sys.executable,str(HERE/'server/test-venom-series-revisions.py'))
 run(sys.executable,str(HERE/'check-venom-package.py'))
 run(sys.executable,str(HERE/'device-policy/remote-startup/test_policy.py'))
 run(sys.executable,str(HERE/'device-policy/wifi-5ghz/test_policy.py'))
+run(sys.executable,str(HERE/'device-policy/sd-only/test_storage.py'))
 for name in ('test_browser.py','test_search.py','test_install.py'):
     run(sys.executable,str(HERE/'release/ux-round'/name))
 for name in ('test_browser.py','test_refresh.py','test_queries.py','test_install.py'):
