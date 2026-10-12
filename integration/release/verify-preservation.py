@@ -55,7 +55,7 @@ def write():
         raise SystemExit("Review and stage sources before recording them:\n" + "\n".join(pending))
     payload = {
         "schema": 1,
-        "release": "2026-10-12-local-am9-offline-recovery",
+        "release": "2026-10-12-am9-recovery-and-wifi-policy",
         "meaning": "Reviewed source bytes, not a runtime credential/settings backup or proof of deployment",
         "status": {
             "local_kodi_r6": "deployed-and-accepted",
@@ -101,6 +101,8 @@ def write():
             "offline_am9_installer": "eight-regressions-passed-full-paired-planner-preserved-exact-maintenance-host-mount-uuid-serial-guard",
             "remote_network_backup": "deployed-off-device-checksum-59-sources-nine-databases-and-device-network-verified",
             "remote_wifi_canada": "october8-fresh-boot-ca-and-5ghz-verified-without-network-change",
+            "remote_wifi_5ghz_policy": "installed-hashes-timer-and-missing-ap-fail-open-verified-5ghz-router-ap-absent-playback-and-boot-acceptance-pending",
+            "local_wifi_5ghz_policy": "same-generic-source-available-not-deployed-own-profile-and-radio-acceptance-required",
             "remote_partial_title_search": "typed-full-and-partial-title-owned-ui-match-final-hidden-selector-message-verified",
             "remote_startup_policy": "native-unused-pvr-wait-disabled-runtime-and-persistent-readback-ui-verified-local-pvr-not-applicable",
             "live_tv_curated_collections": "october8-remote-account-37-nonempty-curated-plus302-provider-groups-present",

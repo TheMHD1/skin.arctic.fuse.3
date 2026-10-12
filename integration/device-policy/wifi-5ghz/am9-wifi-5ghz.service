@@ -1,0 +1,10 @@
+[Unit]
+Description=Identity scoped AM9 5 GHz Wi-Fi selection
+After=connman.service
+ConditionPathExists=/storage/.config/am9-wifi-5ghz.json
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /storage/.config/scripts/am9-wifi-5ghz.py --config /storage/.config/am9-wifi-5ghz.json
+TimeoutStartSec=90
+UMask=0077

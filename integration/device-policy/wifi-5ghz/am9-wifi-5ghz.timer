@@ -1,0 +1,11 @@
+[Unit]
+Description=Reapply AM9 5 GHz preference after boot and network recreation
+
+[Timer]
+OnBootSec=20
+OnUnitInactiveSec=60
+AccuracySec=5
+Unit=am9-wifi-5ghz.service
+
+[Install]
+WantedBy=timers.target

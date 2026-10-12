@@ -1,0 +1,7 @@
+{
+  "hostname": "example-am9",
+  "interface": "wlan0",
+  "mac": "02:00:00:00:00:01",
+  "country": "CA",
+  "ssid": "Example household Wi-Fi"
+}

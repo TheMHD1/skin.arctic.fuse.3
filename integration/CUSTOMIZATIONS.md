@@ -22,6 +22,17 @@ still depends on private deployment state.
 Implicit addon defaults belong to these versions. `settings-reference.json` is
 a redacted inventory, not importable configuration.
 
+## October 12 remote Wi-Fi recovery
+
+The optional [persistent 5 GHz policy](device-policy/wifi-5ghz/README.md) is
+installed on the remote AM9 after a cache-warning investigation. It fixes late
+Canadian regulatory initialization and prefers the exact household 5 GHz AP,
+with bounded scans/roaming and missing-AP recovery. Its configured 5 GHz AP is
+currently not visible, so successful roaming, sustained playback and boot
+acceptance are pending. Local-cohort deployment requires its own private profile
+and remains pending; no account/transport/source parity is inferred from this
+device-specific configuration.
+
 ## October 12 original-device recovery
 
 The [local hybrid recovery record](LOCAL-AM9-RECOVERY-2026-10-12.md) distinguishes

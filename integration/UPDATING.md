@@ -2,6 +2,13 @@
 
 ## Current release authority
 
+Preserve the optional [5 GHz Wi-Fi policy](device-policy/wifi-5ghz/README.md)
+and its own private identity profile when updating the remote appliance. The
+paired addon receipt is unchanged. Check actual channel availability after
+driver initialization, not only the global country label; a missing router AP
+must not produce permanent administrative lockout. Its local deployment and
+actual 5 GHz playback/boot acceptance are separate pending items.
+
 For the original appliance's October 12 abrupt-power-loss recovery, follow the
 [local hybrid recovery record](LOCAL-AM9-RECOVERY-2026-10-12.md) and guarded
 [offline source installer](release/offline-recovery/README.md). An off-device
