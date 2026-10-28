@@ -60,8 +60,9 @@ def write():
         "status": {
             "october28_next_episode_payload": "patched-player-now-emitted-and-hash-guarded-both-live-clients-already-match-ordinary-eof-next-accepted-stop-cancel-terminal-pending",
             "october28_artwork_publication": "ct103-source-deployed-effective-both-entrypoints-verified-existing-primary-live-no-post-pass-and-isolated12.4-real-queue-missing-primary-native-arrival-pass-live-future-import-pending",
+            "october28_reviewed_artwork_reliability": "source-reviewed-27-focused-tests-pass-exact-origin-readiness-native-primary-preservation-durable-pending-and-bounded-partial-finalization-production-deployment-pending",
             "october28_venom_image_pressure": "deployed-metadata-only-catalogue-refresh-original-poster-absence-cause-not-proven",
-            "october28_arctic3410": "candidate-semantic-rebase-full-parent-cohort-identity-and-recoverable-directory-tests-pass-local-isolated-kodi-generation-private-path-xml-selectors-and-normal-kodi-recovery-pass-remote-generation-and-paired-skin-rollout-pending",
+            "october28_arctic3410": "candidate-semantic-rebase-full-parent-cohort-identity-and-recoverable-directory-tests-pass-two-phase-private-bootstrap-45-source-tests-pass-actual-fresh-generation-local-remote-and-paired-skin-rollout-pending-prior-local-generation-pass-claim-withdrawn",
             "october28_jellyfin124": "linuxserver-all14-plugin-load-moonbase-plain-source341-tests-merged-home-search-category-native-tabs-web18-tests-and-r2-image-native-publication13-checks-pass-private-production-data-clone-migration-identity-and-exact-upstream-watchdata-harmonization-verified-blank-authenticated-browser-home-category-guide-channels-search-pass-production-rollout-populated-ui-client-playback-pending-production121-unchanged",
             "october28_enhanced1213": "candidate-priority-bounded-watcher-backend864-js5-tests-and-actual12.4-initialization-pass-production-pending",
             "october28_seerr351": "deployed-pinned-privacy-overlay-owner-twoordinary-native-route-and-existing629-request-permission-settings-continuity-and-arabic-webhook-test-pass",

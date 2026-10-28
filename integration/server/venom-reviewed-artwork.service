@@ -1,11 +1,15 @@
 [Unit]
 Description=Repair missing Venom artwork from reviewed station matches
 After=network-online.target docker.service
+StartLimitIntervalSec=2h
+StartLimitBurst=6
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/python3 /data/config/iptv-venom/venom-reviewed-artwork.py --apply --limit 1000
-ExecStartPost=/usr/bin/cp /data/config/iptv-venom/reviewed-artwork-applied.json /data/config/dispatcharr/venom-artwork-applied.json
-ExecStartPost=/usr/bin/docker exec dispatcharr python manage.py shell -c "exec(open('/data/venom-artwork-overrides.py').read())"
+EnvironmentFile=/etc/venom-reviewed-artwork.env
+ExecStartPre=/usr/bin/python3 /data/config/iptv-venom/venom-jellyfin-readiness.py --budget-seconds 60 --attempt-timeout-seconds 3 --retry-interval-seconds 3 --check-admin-origin
+ExecStart=/usr/bin/python3 /data/config/iptv-venom/venom-reviewed-artwork-run.py --limit 1000
 TimeoutStartSec=20min
 Nice=10
+Restart=on-failure
+RestartSec=10min

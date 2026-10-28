@@ -4,10 +4,10 @@ After=network-online.target docker.service
 
 [Service]
 Type=oneshot
+EnvironmentFile=/etc/venom-reviewed-artwork.env
+ExecStartPre=/usr/bin/python3 /data/config/iptv-venom/venom-jellyfin-readiness.py --budget-seconds 60 --attempt-timeout-seconds 3 --retry-interval-seconds 3 --check-admin-origin
 ExecStart=/usr/bin/python3 /data/config/iptv-venom/venom-jellyfin-clean-names.py --curated --apply --limit 2000
-ExecStart=/usr/bin/python3 /data/config/iptv-venom/venom-reviewed-artwork.py --apply --missing-only --limit 2000
-ExecStartPost=/usr/bin/cp /data/config/iptv-venom/reviewed-artwork-applied.json /data/config/dispatcharr/venom-artwork-applied.json
-ExecStartPost=/usr/bin/docker exec dispatcharr python manage.py shell -c "exec(open('/data/venom-artwork-overrides.py').read())"
+ExecStart=/usr/bin/python3 /data/config/iptv-venom/venom-reviewed-artwork-run.py --missing-only --limit 2000
 TimeoutStartSec=25min
 Nice=15
 UMask=0077
