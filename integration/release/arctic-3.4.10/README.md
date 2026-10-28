@@ -177,20 +177,30 @@ long enough for Kodi itself to discover the staged closure and create its fresh
 `Addons33.db`, then prove that exact transient unit is gone; (2) while no Kodi
 process owns that private database, verify its Piers schema and integrity and
 atomically set `installed.enabled=1, disabledReason=0` for every and only the
-audited closure row. The second transient Kodi start then dispatches only the
-noninteractive `LoadSkin(skin.arctic.fuse.3)` builtin and polls the whole
-closure. It never copies, reads, or changes the live Addons database.
+audited closure row. While that bootstrap unit is proved stopped, it also
+persists Arctic as the sole `lookandfeel.skin` selection in the disposable
+HOME's `guisettings.xml`. The second transient Kodi start therefore loads Arctic
+from its own saved setting, then verifies the whole enabled closure. It never
+copies, reads, or changes the live Addons database or live GUI settings.
 
 Runtime activation is proved by the nonce-bound script's exact
 `special://skin` mapping, not the saved `lookandfeel.skin` preference.
 Kodi's [Settings RPC](https://github.com/xbmc/xbmc/blob/master/xbmc/interfaces/json-rpc/SettingsOperations.cpp)
 and GUI skin property read that saved preference, while the
 [LoadSkin builtin](https://github.com/xbmc/xbmc/blob/master/xbmc/interfaces/builtins/SkinBuiltins.cpp)
-loads a skin directly. A real isolated October 28 probe loaded the candidate
-but safely failed a former saved-setting check because it still said Estuary.
-Normal Kodi was restored and no skin was installed. The corrected probe keeps
-the stronger in-process home/profile/skin mapping proof before generation;
-wrong or stale runtime mappings still prevent every generator call.
+loads a skin directly. The October 28 isolated probes exposed two related
+failures: a saved-setting check rejected an otherwise loaded candidate, and a
+subsequent probe passed its initial mapping proof but Arctic's startup
+`ReloadSkin` then reverted to the still-saved Estuary selection. SkinVariables
+consequently read the wrong `special://skin` and failed to parse its generator
+JSON. Both probes restored normal Kodi without installing a skin. Merely
+removing the saved-setting check was insufficient. The current source persists
+the candidate offline before the second private launch, with strict
+absence/symlink/hardlink/duplicate/old-value checks and an exclusive mode-0600,
+fsynced atomic XML replacement. It retains the stronger nonce-bound in-process
+home/profile/skin mapping proof before generation; wrong or stale runtime
+mappings still prevent every generator call. End-to-end generation with this
+correction remains pending until a fresh isolated runtime produces accepted XML.
 
 This is deliberately not a generic Kodi database editor: it rejects a missing,
 symlinked, uncheckpointed, malformed, wrong-version, or incomplete private DB;

@@ -7,6 +7,7 @@ import sys
 import tempfile
 import types
 import unittest
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from unittest import mock
 from contextlib import redirect_stdout
@@ -50,6 +51,41 @@ class FakeProcess:
 
 
 class GenerationProbeTests(unittest.TestCase):
+    def test_offline_private_skin_selection_is_atomic_scoped_and_preserves_other_nodes(self):
+        runtime = self.root / ".arctic3410-generation/select"
+        settings = runtime / ".kodi/userdata/guisettings.xml"
+        settings.parent.mkdir(parents=True)
+        settings.write_text('<settings><setting id="lookandfeel.skin">skin.estuary</setting><setting id="other">keep</setting></settings>')
+        probe.select_private_skin_offline(runtime, self.root)
+        root = ET.parse(settings).getroot()
+        self.assertEqual([n.text for n in root.findall("setting") if n.get("id") == "lookandfeel.skin"], [probe.SKIN_ID])
+        self.assertEqual([n.text for n in root.findall("setting") if n.get("id") == "other"], ["keep"])
+        for payload in (None,
+                        '<settings><setting id="lookandfeel.skin">wrong</setting></settings>',
+                        '<settings><setting id="lookandfeel.skin">skin.estuary</setting><setting id="lookandfeel.skin">skin.estuary</setting></settings>'):
+            other = self.root / ".arctic3410-generation" / ("bad" + str(len(str(payload))))
+            path = other / ".kodi/userdata/guisettings.xml"; path.parent.mkdir(parents=True)
+            if payload is not None: path.write_text(payload)
+            with self.assertRaises(RuntimeError): probe.select_private_skin_offline(other, self.root)
+        outside = self.root / "outside"; outside.mkdir()
+        with self.assertRaises(RuntimeError): probe.select_private_skin_offline(outside, self.root)
+        oversized = self.root / ".arctic3410-generation/oversized/.kodi/userdata/guisettings.xml"
+        oversized.parent.mkdir(parents=True)
+        oversized.write_bytes(b"x" * (1024 * 1024 + 1))
+        with self.assertRaises(RuntimeError):
+            probe.select_private_skin_offline(oversized.parents[2], self.root)
+
+    def test_offline_private_skin_selection_rejects_symlink_and_hardlink(self):
+        import os
+        base = self.root / ".arctic3410-generation"
+        target = self.root / "target.xml"; target.write_text('<settings><setting id="lookandfeel.skin">skin.estuary</setting></settings>')
+        for name, maker in (("sym", lambda p: p.symlink_to(target)), ("hard", lambda p: os.link(target, p))):
+            path = base / name / ".kodi/userdata/guisettings.xml"; path.parent.mkdir(parents=True); maker(path)
+            with self.assertRaises(RuntimeError): probe.select_private_skin_offline(path.parents[2], self.root)
+        live = self.root / "live-userdata"; live.mkdir()
+        runtime = base / "ancestor"; (runtime / ".kodi").mkdir(parents=True)
+        (runtime / ".kodi/userdata").symlink_to(live, target_is_directory=True)
+        with self.assertRaises(RuntimeError): probe.select_private_skin_offline(runtime, self.root)
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
@@ -363,7 +399,8 @@ class GenerationProbeTests(unittest.TestCase):
                 dependency_preflight=lambda *args: {probe.SKINVARIABLES: "h"},
                 send_path_proof=lambda run, helper: calls.append(("path-proof", str(helper))),
                 wait_for_path_proof=lambda home, nonce: {"special://home": "private"},
-                activate_private_skin=lambda rpc, addons, runner, helper: calls.append(("activate", tuple(sorted(addons)))) or sorted(addons),
+                activate_private_skin=lambda rpc, addons, *args: calls.append(("activate", tuple(sorted(addons)))) or sorted(addons),
+                select_private_skin=lambda *args: calls.append(("select-private-skin", str(args[0]))),
                 enable_private_addons=lambda home, addons: calls.append(("bootstrap-db", tuple(sorted(addons)))) or {"schema": 33, "closure_count": len(addons)},
                 evidence_writer=lambda **kwargs: calls.append(("evidence",)) or {
                     "path": "/private/evidence", "sha256": "e" * 64, "body": {},
@@ -386,8 +423,11 @@ class GenerationProbeTests(unittest.TestCase):
                               and "bootstrap" in call[1])
         bootstrap_update = calls.index(("bootstrap-db", (probe.SKIN_ID,)))
         generation_launch = calls.index(launches[1])
+        selection = next(index for index, call in enumerate(calls)
+                         if isinstance(call, tuple) and call[0] == "select-private-skin")
         self.assertLess(bootstrap_stop, bootstrap_update)
-        self.assertLess(bootstrap_update, generation_launch)
+        self.assertLess(bootstrap_update, selection)
+        self.assertLess(selection, generation_launch)
         self.assertLess(calls.index(("bootstrap-db", (probe.SKIN_ID,))), calls.index(("activate", (probe.SKIN_ID,))))
         self.assertLess(calls.index(("activate", (probe.SKIN_ID,))), calls.index(("path-proof", "/usr/bin/kodi-send")))
         # Bootstrap is stopped before its private DB transaction, then both
@@ -503,21 +543,26 @@ class GenerationProbeTests(unittest.TestCase):
             self.fail("unexpected RPC method: " + method)
 
         closure = {probe.SKIN_ID, probe.SKINVARIABLES, "plugin.video.themoviedb.helper", "script.module.infotagger"}
+        enabled.update(closure)
         builtin_calls = []
         def send_builtin(run, helper, action):
             builtin_calls.append(action)
             if action.startswith("LoadSkin("):
                 enabled.update(closure)
+        settings = runtime / ".kodi/userdata/guisettings.xml"
+        settings.parent.mkdir(parents=True, exist_ok=True)
+        settings.write_text('<settings><setting id="lookandfeel.skin">skin.arctic.fuse.3</setting></settings>')
         with mock.patch.object(probe, "_send_builtin", side_effect=send_builtin):
             self.assertEqual(probe._activate_private_skin(
-                rpc, closure, lambda *args, **kwargs: None,
-                Path("/usr/bin/kodi-send"),
+                rpc, closure, runtime,
             ), sorted(closure))
-        self.assertEqual(builtin_calls, ["LoadSkin(skin.arctic.fuse.3)"])
+        self.assertEqual(builtin_calls, [])
+        settings.write_text('<settings><setting id="lookandfeel.skin">skin.estuary</setting></settings>')
+        with self.assertRaisesRegex(RuntimeError, "private saved Arctic selection is not exact"):
+            probe._activate_private_skin(rpc, closure, runtime)
 
         with self.assertRaises(RuntimeError):
-            probe._activate_private_skin(rpc, {probe.SKINVARIABLES}, lambda *args, **kwargs: None,
-                                         Path("/usr/bin/kodi-send"))
+            probe._activate_private_skin(rpc, {probe.SKINVARIABLES}, runtime)
 
     def test_activation_rejects_never_enabled_closure(self):
         calls = []
@@ -596,6 +641,7 @@ class GenerationProbeTests(unittest.TestCase):
                     stop_owned_unit=lambda runner, unit: calls.append(("reaped", unit)),
                     enable_private_addons=lambda *args: {},
                     activate_private_skin=lambda *args: [probe.SKIN_ID],
+                    select_private_skin=lambda *args: None,
                     send_path_proof=lambda *args: None,
                     wait_for_path_proof=mock.Mock(side_effect=RuntimeError("wrong runtime skin")),
                     send_generator=lambda *args: calls.append("generator"),

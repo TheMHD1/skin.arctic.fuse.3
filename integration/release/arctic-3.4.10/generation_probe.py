@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import secrets
@@ -493,16 +494,49 @@ def enable_private_addons_offline(runtime_home: Path, addon_ids: set[str]) -> di
         raise RuntimeError("private Kodi Addons database update failed") from exc
 
 
-def _activate_private_skin(rpc, addon_ids: set[str], run, kodi_send: Path) -> list[str]:
-    """Load a pre-enabled private candidate and verify the complete closure."""
+def select_private_skin_offline(runtime_home: Path, storage_root: Path) -> None:
+    """Persist Arctic in the disposable profile; never touch live settings."""
+    storage_root = Path(storage_root).resolve()
+    raw_home = Path(runtime_home)
+    for item in (raw_home, raw_home / ".kodi", raw_home / ".kodi/userdata"):
+        if item.is_symlink():
+            raise RuntimeError("private runtime HOME has a symlinked ancestor")
+    runtime_home = raw_home.resolve()
+    allowed_parent = storage_root / ".arctic3410-generation"
+    if runtime_home.parent != allowed_parent or not runtime_home.is_dir():
+        raise RuntimeError("private runtime HOME is unsafe")
+    path = runtime_home / ".kodi/userdata/guisettings.xml"
+    if path.is_symlink() or not path.is_file() or path.stat().st_nlink != 1 or path.stat().st_size > 1024 * 1024:
+        raise RuntimeError("private guisettings.xml is missing or unsafe")
+    root = ET.fromstring(path.read_bytes())
+    rows = [node for node in root.findall("setting") if node.get("id") == "lookandfeel.skin"]
+    if len(rows) != 1 or rows[0].text != "skin.estuary":
+        raise RuntimeError("private saved skin selection is unexpected")
+    rows[0].text = SKIN_ID
+    fd = path.parent / (path.name + ".arctic3410.tmp." + secrets.token_hex(8))
+    descriptor = os.open(fd, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+    with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+        ET.ElementTree(root).write(stream, encoding="unicode", xml_declaration=False)
+        stream.flush(); os.fsync(stream.fileno())
+    fd.replace(path)
+    directory = os.open(path.parent, os.O_DIRECTORY)
+    try: os.fsync(directory)
+    finally: os.close(directory)
+    if path.is_symlink() or ET.parse(path).getroot().find("setting[@id='lookandfeel.skin']").text != SKIN_ID:
+        raise RuntimeError("private Arctic selection did not persist")
+
+
+def _activate_private_skin(rpc, addon_ids: set[str], runtime_home: Path) -> list[str]:
+    """Verify persisted private Arctic selection and enabled audited closure."""
     addon_ids = set(addon_ids)
     if not addon_ids or SKIN_ID not in addon_ids:
         raise RuntimeError("private runtime closure does not contain the candidate skin")
     for addon_id in addon_ids:
         _safe_addon_id(addon_id)
-    # LoadSkin has no approval dialog. The preceding offline DB transaction
-    # makes the candidate and exact closure available before this second start.
-    _send_builtin(run, kodi_send, "LoadSkin(" + SKIN_ID + ")")
+    path = runtime_home.resolve() / ".kodi/userdata/guisettings.xml"
+    root = ET.parse(path).getroot()
+    if [node.text for node in root.findall("setting") if node.get("id") == "lookandfeel.skin"] != [SKIN_ID]:
+        raise RuntimeError("private saved Arctic selection is not exact")
     enabled = _wait_for_private_addons_enabled(rpc, addon_ids)
     return enabled
 
@@ -733,6 +767,7 @@ def run_probe(storage_root: Path, stage: Path, profile: dict, runtime_home: Path
               send_path_proof=_send_path_proof,
               wait_for_path_proof=_wait_for_path_proof,
               activate_private_skin=_activate_private_skin,
+              select_private_skin=select_private_skin_offline,
               enable_private_addons=enable_private_addons_offline,
               evidence_writer=generation_evidence.write) -> dict:
     """Run the bounded probe; only call after an operator chooses ``--apply``."""
@@ -783,9 +818,10 @@ def run_probe(storage_root: Path, stage: Path, profile: dict, runtime_home: Path
             # starts only for phase 2; this is not an unbounded retry or a
             # timeout extension for the prior stalled enablement path.
             started = time.monotonic()
+            select_private_skin(runtime_home, storage_root)
             launcher(run, generation_unit, runtime_home, kodi_bin)
             _wait_for_rpc(START_TIMEOUT_SECONDS, rpc)
-            enabled_addons = activate_private_skin(rpc, set(receipt["addons"]), run, kodi_send)
+            enabled_addons = activate_private_skin(rpc, set(receipt["addons"]), runtime_home)
             if time.monotonic() - started > MAX_RUNTIME_SECONDS:
                 raise RuntimeError("staged Kodi startup exceeded runtime budget")
             # LoadSkin changes the running skin without changing the saved
