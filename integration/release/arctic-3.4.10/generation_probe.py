@@ -43,6 +43,10 @@ PATH_PROOF_RECEIPT_PREFIX = "arctic3410-path-proof-"
 PATH_PROOF_RECEIPT_SUFFIX = ".json"
 PATH_PROOF_TIMEOUT_SECONDS = 10
 PATH_PROOF_MAX_BYTES = 4096
+ACTIVATION_PROOF_SCHEMA = 1
+ACTIVATION_PROOF_SCRIPT = "arctic3410-activation.py"
+ACTIVATION_PROOF_RECEIPT_PREFIX = "arctic3410-activation-"
+ACTIVATION_PROOF_TIMEOUT_SECONDS = 15
 SKIN_ACTIVATION_TIMEOUT_SECONDS = 20
 REVIEWED_RESOURCES = {
     "resource.images.arctic.weather": {
@@ -295,10 +299,61 @@ os.replace(temporary, target)
     return script
 
 
+def _activation_proof_receipt(runtime_home: Path, nonce: str) -> Path:
+    if not re.fullmatch(r"[0-9a-f]{64}", nonce):
+        raise ValueError("invalid activation-proof nonce")
+    return (Path(runtime_home).resolve() / ".kodi" / "userdata"
+            / f"{ACTIVATION_PROOF_RECEIPT_PREFIX}{nonce}{PATH_PROOF_RECEIPT_SUFFIX}")
+
+
+def _write_activation_script(runtime_home: Path, nonce: str) -> Path:
+    """Write a private, nonce-bound noninteractive enable request.
+
+    Kodi's documented ``EnableAddon`` builtin deliberately presents a yes/no
+    dialog.  A private script launched through the loopback Event Server instead
+    invokes Kodi's supported in-process ``Addons.SetAddonEnabled`` API for the
+    one audited skin. Kodi resolves and enables its dependencies recursively;
+    the host independently polls every closure member afterward. This avoids
+    both GUI automation and the prior host-side synchronous TCP RPC wait.
+    """
+    receipt = _activation_proof_receipt(runtime_home, nonce)
+    script = receipt.with_name(ACTIVATION_PROOF_SCRIPT)
+    payload = {
+        "schema": ACTIVATION_PROOF_SCHEMA,
+        "nonce": nonce,
+        "receipt": receipt.name,
+        "addon": SKIN_ID,
+    }
+    source = """import json
+import os
+import xbmc
+import xbmcvfs
+
+PAYLOAD = {payload}
+request = {{"jsonrpc": "2.0", "id": 1, "method": "Addons.SetAddonEnabled",
+           "params": {{"addonid": PAYLOAD["addon"], "enabled": True}}}}
+response = json.loads(xbmc.executeJSONRPC(json.dumps(request, separators=(",", ":"))))
+if response.get("id") != 1 or response.get("result") != "OK" or "error" in response:
+    raise RuntimeError("private candidate enablement rejected")
+target = os.path.join(xbmcvfs.translatePath("special://profile"), PAYLOAD["receipt"])
+temporary = target + ".tmp"
+with open(temporary, "w", encoding="utf-8") as handle:
+    json.dump({{"schema": PAYLOAD["schema"], "nonce": PAYLOAD["nonce"],
+               "addon": PAYLOAD["addon"], "result": "OK"}}, handle,
+              sort_keys=True, separators=(",", ":"))
+    handle.flush()
+    os.fsync(handle.fileno())
+os.replace(temporary, target)
+""".format(payload=json.dumps(payload, sort_keys=True))
+    script.write_text(source, encoding="utf-8")
+    return script
+
+
 def prepare_home(storage_root: Path, stage: Path, runtime_home: Path,
                  system_addons: Path = Path("/usr/share/kodi/addons"),
                  reviewed_root: Path | None = None,
-                 path_proof_nonce: str | None = None) -> dict:
+                 path_proof_nonce: str | None = None,
+                 activation_proof_nonce: str | None = None) -> dict:
     """Create an isolated Kodi HOME and return a write receipt for its closure."""
     storage_root, stage = Path(storage_root).resolve(), Path(stage).resolve()
     runtime_home = _runtime_home(storage_root, runtime_home)
@@ -318,9 +373,10 @@ def prepare_home(storage_root: Path, stage: Path, runtime_home: Path,
     userdata = runtime_home / ".kodi" / "userdata"
     userdata.mkdir(mode=0o700)
     # A fresh Kodi Addons database discovers copied add-ons as disabled. Start
-    # on built-in Estuary, then dispatch only audited plugin/script enablement
-    # plus LoadSkin through the loopback event server. Never seed/copy the
-    # active profile's database merely to make the sandbox load a skin.
+    # on built-in Estuary; a private event-launched script later enables only
+    # the audited candidate skin through Kodi's supported in-process API. Never
+    # seed/copy the active profile's database merely to make the sandbox load a
+    # skin.
     (userdata / "guisettings.xml").write_text(
         '<settings version="2">'
         '<setting id="lookandfeel.skin">skin.estuary</setting>'
@@ -347,12 +403,15 @@ def prepare_home(storage_root: Path, stage: Path, runtime_home: Path,
         copied_inputs[str(relative)] = copied_hash
     if path_proof_nonce is not None:
         _write_path_proof_script(runtime_home, path_proof_nonce)
-    validate_minimal_home(runtime_home, set(receipt), path_proof_nonce)
+    if activation_proof_nonce is not None:
+        _write_activation_script(runtime_home, activation_proof_nonce)
+    validate_minimal_home(runtime_home, set(receipt), path_proof_nonce, activation_proof_nonce)
     return {"home": str(runtime_home), "addons": receipt, "menu_inputs": copied_inputs}
 
 
 def validate_minimal_home(runtime_home: Path, allowed_addons: set[str],
-                          path_proof_nonce: str | None = None) -> None:
+                          path_proof_nonce: str | None = None,
+                          activation_proof_nonce: str | None = None) -> None:
     """Reject any stage path outside the intentionally tiny profile surface."""
     runtime_home = Path(runtime_home).resolve()
     kodi = runtime_home / ".kodi"
@@ -361,6 +420,9 @@ def validate_minimal_home(runtime_home: Path, allowed_addons: set[str],
     if path_proof_nonce is not None:
         _path_proof_receipt(runtime_home, path_proof_nonce)
         allowed.add(Path("userdata") / PATH_PROOF_SCRIPT)
+    if activation_proof_nonce is not None:
+        _activation_proof_receipt(runtime_home, activation_proof_nonce)
+        allowed.add(Path("userdata") / ACTIVATION_PROOF_SCRIPT)
     for item in kodi.rglob("*"):
         relative = item.relative_to(kodi)
         if item.is_symlink():
@@ -417,30 +479,51 @@ def _wait_for_private_addons_enabled(rpc, addon_ids: set[str], timeout: int = 10
     raise RuntimeError("Kodi did not enable private add-ons: " + ", ".join(sorted(pending)))
 
 
-def _builtin_enableable_addons(runtime_home: Path, addon_ids: set[str]) -> list[str]:
-    """Return only audited private plugin/script IDs supported by EnableAddon."""
-    selected = []
-    for addon_id in sorted(addon_ids):
-        root = ET.fromstring((Path(runtime_home) / ".kodi/addons" / addon_id / "addon.xml").read_bytes())
-        points = {item.get("point") for item in root.findall("extension")}
-        if "xbmc.python.script" in points or "xbmc.python.pluginsource" in points:
-            selected.append(addon_id)
-    return selected
+def _validate_activation_proof_receipt(runtime_home: Path, nonce: str) -> None:
+    receipt = _activation_proof_receipt(runtime_home, nonce)
+    expected_parent = (Path(runtime_home).resolve() / ".kodi" / "userdata").resolve()
+    if receipt.parent.resolve() != expected_parent or receipt.is_symlink() or not receipt.is_file():
+        raise RuntimeError("Kodi did not create a private activation receipt")
+    if receipt.stat().st_size > PATH_PROOF_MAX_BYTES:
+        raise RuntimeError("Kodi activation receipt is too large")
+    try:
+        payload = json.loads(receipt.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise RuntimeError("Kodi activation receipt is invalid") from exc
+    expected = {"schema": ACTIVATION_PROOF_SCHEMA, "nonce": nonce,
+                "addon": SKIN_ID, "result": "OK"}
+    if payload != expected:
+        raise RuntimeError("Kodi activation receipt mismatch")
 
 
-def _activate_private_skin(rpc, addon_ids: set[str], runtime_home: Path, run, kodi_send: Path) -> list[str]:
-    """Use non-blocking Kodi event actions, never enable through its RPC thread."""
+def _wait_for_activation_proof(runtime_home: Path, nonce: str,
+                               timeout: int = ACTIVATION_PROOF_TIMEOUT_SECONDS) -> None:
+    deadline = time.monotonic() + timeout
+    last_error: Exception | None = None
+    while time.monotonic() < deadline:
+        try:
+            _validate_activation_proof_receipt(runtime_home, nonce)
+            return
+        except RuntimeError as exc:
+            last_error = exc
+        time.sleep(0.1)
+    raise RuntimeError("Kodi did not prove private candidate enablement") from last_error
+
+
+def _activate_private_skin(rpc, addon_ids: set[str], runtime_home: Path, run,
+                           kodi_send: Path, activation_nonce: str,
+                           wait_for_activation=_wait_for_activation_proof) -> list[str]:
+    """Enable once in the private Kodi process, then load and verify the skin."""
     addon_ids = set(addon_ids)
     if not addon_ids or SKIN_ID not in addon_ids:
         raise RuntimeError("private runtime closure does not contain the candidate skin")
     for addon_id in addon_ids:
         _safe_addon_id(addon_id)
-    # EnableAddon is documented for plugins/scripts; dispatch it over the event
-    # server so Kodi's GUI/addon-manager thread can complete without blocking
-    # the JSON-RPC request handler. LoadSkin is the corresponding supported
-    # skin action and resolves the candidate's remaining audited dependencies.
-    for addon_id in _builtin_enableable_addons(runtime_home, addon_ids):
-        _send_builtin(run, kodi_send, "EnableAddon(" + addon_id + ")")
+    _send_private_activation(run, kodi_send)
+    wait_for_activation(runtime_home, activation_nonce)
+    # Only LoadSkin is dispatched as a builtin: unlike EnableAddon, it has no
+    # confirmation dialog. The receipt and following poll prove the private
+    # in-process request completed before the skin is loaded.
     _send_builtin(run, kodi_send, "LoadSkin(" + SKIN_ID + ")")
     enabled = _wait_for_private_addons_enabled(rpc, addon_ids)
     return enabled
@@ -578,6 +661,10 @@ def _send_builtin(run, kodi_send: Path, action: str) -> None:
         capture_output=True, text=True)
 
 
+def _send_private_activation(run, kodi_send: Path) -> None:
+    _send_builtin(run, kodi_send, "RunScript(special://profile/" + ACTIVATION_PROOF_SCRIPT + ")")
+
+
 def _send_path_proof(run, kodi_send: Path) -> None:
     _send_builtin(run, kodi_send, "RunScript(special://profile/" + PATH_PROOF_SCRIPT + ")")
 
@@ -685,7 +772,8 @@ def run_probe(storage_root: Path, stage: Path, profile: dict, runtime_home: Path
               send_path_proof=_send_path_proof,
               wait_for_path_proof=_wait_for_path_proof,
               activate_private_skin=_activate_private_skin,
-              wait_for_active_skin=_wait_for_active_skin) -> dict:
+              wait_for_active_skin=_wait_for_active_skin,
+              wait_for_activation_proof=_wait_for_activation_proof) -> dict:
     """Run the bounded probe; only call after an operator chooses ``--apply``."""
     kodi_bin = Path(kodi_bin)
     binary_validator(kodi_bin)
@@ -702,15 +790,20 @@ def run_probe(storage_root: Path, stage: Path, profile: dict, runtime_home: Path
         dependency_preflight(storage_root, stage, system_addons, reviewed_addons_root)
         ports_validator()
         path_proof_nonce = secrets.token_hex(32)
+        activation_proof_nonce = secrets.token_hex(32)
         receipt = prepare_home(storage_root, stage, runtime_home, system_addons,
-                               reviewed_addons_root, path_proof_nonce)
+                               reviewed_addons_root, path_proof_nonce,
+                               activation_proof_nonce)
         previous_generated = clear_generated_outputs(runtime_home)
         unit = _unit_name(runtime_home)
         started = time.monotonic()
         try:
             launcher(run, unit, runtime_home, kodi_bin)
             _wait_for_rpc(START_TIMEOUT_SECONDS, rpc)
-            enabled_addons = activate_private_skin(rpc, set(receipt["addons"]), runtime_home, run, kodi_send)
+            enabled_addons = activate_private_skin(
+                rpc, set(receipt["addons"]), runtime_home, run, kodi_send,
+                activation_proof_nonce, wait_for_activation_proof,
+            )
             wait_for_active_skin(SKIN_ACTIVATION_TIMEOUT_SECONDS, rpc)
             if time.monotonic() - started > MAX_RUNTIME_SECONDS:
                 raise RuntimeError("staged Kodi startup exceeded runtime budget")

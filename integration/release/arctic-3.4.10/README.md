@@ -152,13 +152,17 @@ translated private profile path.  The host rejects stale/non-regular receipts,
 wrong nonces, unknown JSON keys, and every mapping outside the private tree.
 This replaces an unreliable debug-log heuristic without relaxing the mount
 sandbox. A new sandbox Addons database initially marks discovered copied addons
-disabled, so the probe first starts only built-in Estuary. It dispatches Kodi's
-supported `EnableAddon(id)` built-in only for audited private plugin/script
-members of the closure, then `LoadSkin(skin.arctic.fuse.3)`, through the
-loopback Event Server. It polls Kodi JSON-RPC only for the resulting enabled
-state and active skin; it never blocks that RPC handler with synchronous enable
-work, copies an Addons database, or changes a live database. The probe
-snapshots/removes only private
+disabled, so the probe first starts only built-in Estuary. The loopback Event
+Server launches a nonce-bound private activation script through `RunScript`.
+That script invokes Kodi's supported in-process `Addons.SetAddonEnabled` for
+the one audited candidate skin; Kodi resolves its dependency closure itself and
+the host then polls every closure member. This intentionally does **not** use
+the documented `EnableAddon(id)` builtin: Kodi implements that builtin with a
+yes/no GUI confirmation, so unattended event dispatch would not prove an
+enablement. Once the receipt and closure poll succeed, the host dispatches the
+noninteractive `LoadSkin(skin.arctic.fuse.3)` builtin. No live Addons database
+is copied or changed, and no host-side synchronous TCP RPC request waits for
+the enablement work. The probe snapshots/removes only private
 generated includes, requires fresh nonempty XML containing every managed
 owned/Venom selector route, then stops only its own unit. It proves the exact
 transient unit is dead before restarting normal Kodi; if that proof fails,
@@ -168,9 +172,11 @@ The October 28 `d01` local runtime attempt did **not** generate XML: synchronous
 `Addons.SetAddonEnabled` did not reply before its RPC deadline, and its delayed
 owned-unit cleanup briefly blocked normal Kodi's JSON-RPC port. Normal Kodi was
 then restored active and idle; the remote device was plan-only and was not
-applied. Neither is generation acceptance. The corrected event/builtin
-activation and exact-unit cleanup path require a fresh paired runtime probe
-before any skin transaction or physical UI acceptance. The CLI captures `kodi-send` helper
+applied. Neither is generation acceptance. The superseded `df0` event-action
+candidate is also not accepted or eligible for runtime use: source review found
+that its `EnableAddon` action prompts for a GUI confirmation. The corrected
+private-script/event-launch path and exact-unit cleanup require a fresh paired
+runtime probe before any skin transaction or physical UI acceptance. The CLI captures `kodi-send` helper
 chatter and emits one JSON receipt, with the apply result nested under `result`.
 
 Example read-only plan:

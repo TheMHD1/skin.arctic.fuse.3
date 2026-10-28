@@ -80,8 +80,10 @@ class GenerationProbeTests(unittest.TestCase):
     def test_prepare_copies_only_candidate_and_dependency_closure(self):
         runtime = self.root / ".arctic3410-generation/run-a"
         nonce = "a" * 64
+        activation_nonce = "e" * 64
         result = probe.prepare_home(self.root, self.stage, runtime, self.system,
-                                    path_proof_nonce=nonce)
+                                    path_proof_nonce=nonce,
+                                    activation_proof_nonce=activation_nonce)
         copied = result["addons"]
         self.assertEqual(set(copied), {
             probe.SKIN_ID,
@@ -100,7 +102,10 @@ class GenerationProbeTests(unittest.TestCase):
         self.assertTrue(proof_script.is_file())
         self.assertIn("xbmcvfs.translatePath", proof_script.read_text())
         self.assertIn("os.replace", proof_script.read_text())
-        probe.validate_minimal_home(runtime, set(copied), nonce)
+        activation_script = runtime / ".kodi/userdata" / probe.ACTIVATION_PROOF_SCRIPT
+        self.assertTrue(activation_script.is_file())
+        self.assertIn("Addons.SetAddonEnabled", activation_script.read_text())
+        probe.validate_minimal_home(runtime, set(copied), nonce, activation_nonce)
 
     def test_service_dependency_and_extra_stage_file_are_rejected(self):
         candidate = self.stage / "candidate/addons" / probe.SKIN_ID
@@ -203,6 +208,37 @@ class GenerationProbeTests(unittest.TestCase):
         self.assertFalse(receipt.with_name(receipt.name + ".tmp").exists())
         self.assertEqual(probe._validate_path_proof_receipt(runtime, nonce), mappings)
 
+    def test_activation_script_enables_only_candidate_and_writes_nonce_receipt(self):
+        runtime = self.root / ".arctic3410-generation/run-activation-script"
+        profile = runtime / ".kodi/userdata"
+        profile.mkdir(parents=True)
+        nonce = "e" * 64
+        script = probe._write_activation_script(runtime, nonce)
+        requested = []
+        xbmc = types.SimpleNamespace(
+            executeJSONRPC=lambda raw: requested.append(json.loads(raw)) or json.dumps({"id": 1, "result": "OK"}),
+        )
+        original_xbmc = sys.modules.get("xbmc")
+        original_xbmcvfs = sys.modules.get("xbmcvfs")
+        sys.modules["xbmc"] = xbmc
+        sys.modules["xbmcvfs"] = types.SimpleNamespace(translatePath=lambda path: str(profile))
+        try:
+            exec(compile(script.read_text(), str(script), "exec"), {})
+        finally:
+            if original_xbmc is None:
+                del sys.modules["xbmc"]
+            else:
+                sys.modules["xbmc"] = original_xbmc
+            if original_xbmcvfs is None:
+                del sys.modules["xbmcvfs"]
+            else:
+                sys.modules["xbmcvfs"] = original_xbmcvfs
+        self.assertEqual(requested, [{
+            "jsonrpc": "2.0", "id": 1, "method": "Addons.SetAddonEnabled",
+            "params": {"addonid": probe.SKIN_ID, "enabled": True},
+        }])
+        probe._validate_activation_proof_receipt(runtime, nonce)
+
     def test_reviewed_resources_are_exact_and_required_outputs_are_fresh(self):
         reviewed = Path(self.tmp.name) / "reviewed"
         weather = addon(reviewed, "resource.images.arctic.weather", "1.0.4")
@@ -273,7 +309,7 @@ class GenerationProbeTests(unittest.TestCase):
                 dependency_preflight=lambda *args: {probe.SKINVARIABLES: "h"},
                 send_path_proof=lambda run, helper: calls.append(("path-proof", str(helper))),
                 wait_for_path_proof=lambda home, nonce: {"special://home": "private"},
-                activate_private_skin=lambda rpc, addons, home, runner, helper: calls.append(("activate", tuple(sorted(addons)))) or sorted(addons),
+                activate_private_skin=lambda rpc, addons, home, runner, helper, nonce, wait: calls.append(("activate", tuple(sorted(addons)))) or sorted(addons),
                 wait_for_active_skin=lambda timeout, rpc: calls.append(("active-skin", timeout)),
             )
         finally:
@@ -316,18 +352,19 @@ class GenerationProbeTests(unittest.TestCase):
             builtin_calls.append(action)
             if action.startswith("LoadSkin("):
                 enabled.update(closure)
-        with mock.patch.object(probe, "_send_builtin", side_effect=send_builtin):
-            self.assertEqual(probe._activate_private_skin(rpc, closure, runtime, lambda *args, **kwargs: None,
-                                                          Path("/usr/bin/kodi-send")), sorted(closure))
-        self.assertEqual(builtin_calls, [
-            "EnableAddon(plugin.video.themoviedb.helper)",
-            "EnableAddon(script.skinvariables)",
-            "LoadSkin(skin.arctic.fuse.3)",
-        ])
+        with mock.patch.object(probe, "_send_private_activation") as send_activation, \
+             mock.patch.object(probe, "_send_builtin", side_effect=send_builtin):
+            self.assertEqual(probe._activate_private_skin(
+                rpc, closure, runtime, lambda *args, **kwargs: None,
+                Path("/usr/bin/kodi-send"), "f" * 64,
+                lambda home, nonce: self.assertEqual((home, nonce), (runtime, "f" * 64)),
+            ), sorted(closure))
+        send_activation.assert_called_once()
+        self.assertEqual(builtin_calls, ["LoadSkin(skin.arctic.fuse.3)"])
 
         with self.assertRaises(RuntimeError):
             probe._activate_private_skin(rpc, {probe.SKINVARIABLES}, runtime, lambda *args, **kwargs: None,
-                                         Path("/usr/bin/kodi-send"))
+                                         Path("/usr/bin/kodi-send"), "f" * 64)
 
     def test_activation_rejects_never_enabled_closure(self):
         calls = []
