@@ -114,6 +114,13 @@ class ArcticInstallTests(unittest.TestCase):
             b'  <setting id="LastIncrementalSync" default="false">'
             b'2026-10-28T12:00:00Z</setting>\n'
             b'</settings>\n')
+        self.keyboard = self.root / "userdata/peripheral_data/application_Keyboard.xml"
+        self.keyboard.parent.mkdir(parents=True, exist_ok=True)
+        self.keyboard.write_bytes(
+            b'<settings>\n'
+            b'    <setting id="appearance" value="game.controller.keyboard"/>\n'
+            b'    <setting id="last_active" value="2026-10-26T17:08:09+04:00"/>\n'
+            b'</settings>\n')
 
         self.stage = Path(self.temporary.name) / "stage"
         self.candidate = self.stage / "candidate" / install.SKIN
@@ -161,6 +168,7 @@ class ArcticInstallTests(unittest.TestCase):
             self.storage / ".cache/hostname": (self.storage / ".cache/hostname").read_bytes(),
             self.jellyfin: self.jellyfin.read_bytes(),
             self.jellyfin_settings: self.jellyfin_settings.read_bytes(),
+            self.keyboard: self.keyboard.read_bytes(),
             self.parent_absent: None,
         }
         for name in skin_entries:
@@ -380,6 +388,52 @@ class ArcticInstallTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "exact 3.3.1 state restored"):
             self.apply(wait_stopped_func=meaningful_write)
         self.assertFalse((self.root / ".arctic3410-recovery").exists())
+
+    def test_keyboard_last_active_projection_survives_stop_but_raw_cas_remains(self):
+        initial = install.plan(self.storage, self.stage, self.profile, self.guard)
+        initial_map = install.parent_expected_digests(self.storage, initial.expected)
+        initial_receipt = self.deployment().receipt_raw
+        before = self.keyboard.read_bytes()
+        changed = before.replace(
+            b"2026-10-26T17:08:09+04:00", b"2026-10-26T13:08:09+04:00")
+        self.keyboard.write_bytes(changed)
+        self.parent_expected[self.keyboard] = changed
+        refreshed = install.plan(self.storage, self.stage, self.profile, self.guard)
+        self.assertEqual(initial_map,
+                         install.parent_expected_digests(self.storage, refreshed.expected))
+        self.assertEqual(initial_receipt, self.deployment().receipt_raw)
+
+        raw_plan = install.transaction.Plan(
+            {self.nonskin: b"must-not-be-written"}, initial.expected)
+        backup = self.storage / "must-not-create-keyboard-backup"
+        with patch.object(install.transaction.subprocess, "run") as run:
+            with self.assertRaisesRegex(RuntimeError, "Source changed since planning"):
+                install.transaction.deploy(
+                    self.storage, raw_plan, backup, run=run,
+                    idle_check=lambda: None, wait_ready=lambda: None)
+            run.assert_not_called()
+        self.assertFalse(backup.exists())
+
+    def test_keyboard_projection_preserves_appearance_and_apply_accepts_timestamp(self):
+        baseline = install._keyboard_last_active_projection(self.keyboard.read_bytes())
+        meaningful = self.keyboard.read_bytes().replace(
+            b"game.controller.keyboard", b"game.controller.foreign")
+        self.assertNotEqual(baseline,
+                            install._keyboard_last_active_projection(meaningful))
+        before = self.keyboard.read_bytes()
+
+        def stop_serialization():
+            changed = before.replace(
+                b"2026-10-26T17:08:09+04:00", b"2026-10-26T13:08:09+04:00")
+            self.keyboard.write_bytes(changed)
+            self.parent_expected[self.keyboard] = changed
+
+        result, _calls = self.apply(wait_stopped_func=stop_serialization)
+        self.assertEqual(result["status"], "accepted")
+        accepted = install.installed_plan(
+            self.storage, self.stage, self.profile, self.generated,
+            self.evidence_path)
+        self.assertEqual(accepted.expected[self.keyboard], self.keyboard.read_bytes())
 
     def test_timestamp_projection_never_weakens_immediate_raw_cas(self):
         initial = install.plan(self.storage, self.stage, self.profile, self.guard)

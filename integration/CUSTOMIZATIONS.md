@@ -67,7 +67,7 @@ their complete runtime gates pass:
   and 715-file payload now guarded in schema-3 private stages. Both installed
   dependency payloads pass read-only verification. A fresh actual local isolated
   generation passed with independently validated evidence; live3.4.10 skin
-  installation and paired UI acceptance remain pending. The paired `.4`
+  installation and paired UI acceptance remain pending. The paired `.5`
   adapter preserves
   the full latest parent without rewriting historical manifests, and has
   durable protected-state recovery. An actual isolated run generated valid
@@ -84,8 +84,11 @@ their complete runtime gates pass:
   No evidence is rewritten. Fresh generation with that correction passed, but
   live resource preflight then safely rejected Jellyfin's own `DateLastAccessed`
   update before stopping Kodi. A later plan also caught the native
-  `LastIncrementalSync` cursor advancing during derivation. Receipt schema 3
-  projects only those strict runtime timestamps, retaining every other raw
+  `LastIncrementalSync` cursor advancing during derivation. The first resource
+  transaction then caught Kodi serializing its keyboard `last_active` timestamp
+  at stop; resources, database and skin remained untouched and old Kodi was
+  restored. Receipt schema 4 projects only these reviewed runtime timestamps,
+  retaining every other raw
   settings byte, credential/server field and immediate transaction guard.
   Fresh source-bound generation,
   resource installation and skin acceptance remain pending; the remote cohort
@@ -118,15 +121,17 @@ their complete runtime gates pass:
   harmonization migration was checked against the original snapshot: it reconciles
   only the expected conflicting rows to their most recent playback state. No
   library scan or production database modification was used for that check.
-  **Production upgrade is now on hold:** the actual guarded rollout detected
+  **Initial production rollback:** the actual guarded rollout detected
   an additional inherited-parental-rating regression and restored the exact
   original12.1 image/configuration. All six database continuity groups matched
   after rollback and native health passed. The upstream
   [`MigrateRatingLevels` issue #18227](https://github.com/jellyfin/jellyfin/issues/18227)
   clears inherited episode/season rating caches for items with empty own ratings.
-  Do not whitelist that difference or repeat the upgrade unchanged. Require an
-  official fix or an isolated, fully validated native rehydration/restricted-user
-  canary before another production exposure. Recovery archives remain retained;
+  The owner subsequently explicitly accepted this parental-rating difference.
+  A new guarded production rollout is running with a narrow opt-in for only
+  these inherited-cache fields on empty-own-rating items. Every other database
+  continuity comparison remains strict; no user policy is disabled. This is
+  not yet a claim of completed production acceptance. Recovery archives remain retained;
   redundant failed-upgrade working copies were removed only after independent
   hash/decompression checks. No media or photos were removed.
 - [Seerr3.5.1](server/seerr-request-privacy/candidate-3.5.1/README.md): clean

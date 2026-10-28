@@ -141,7 +141,7 @@ the evidence/stage hash, and it is rechecked at each pre-switch guard.
 Jellyfin for Kodi `2.2.0+py3` updates both `Servers[*].DateLastAccessed` in its
 canonical `data.json` when it connects and the single canonical UTC
 `LastIncrementalSync` setting in its flat `settings.xml` after a library sync.
-Receipt schema 3 therefore uses one explicit parent projection that normalizes
+Receipt schema 4 therefore uses one explicit parent projection that normalizes
 only those two reviewed runtime timestamps. The JSON projection still requires
 the exact add-on version, unique server IDs, duplicate-key-free JSON and the
 writer's exact sorted/indented UTF-8 serialization. The XML projection requires
@@ -159,6 +159,18 @@ writes preserve the receipt while meaningful drift remains fatal. Actual local
 plans exposed the incremental cursor write during the guarded derivation and
 failed before any Kodi stop or resource mutation; the correction remains
 source/test work until a fresh deployment is separately accepted per cohort.
+
+Kodi also rewrites the `last_active` value in
+`userdata/peripheral_data/application_Keyboard.xml` while stopping. The same
+durable projection now recognizes only the reviewed flat keyboard-settings
+shape and one unique, valid ISO-8601 timestamp with an explicit timezone. It
+masks only that attribute value; the setting membership, `appearance`, every
+other attribute, raw ordering, whitespace and layout remain byte-bound. Unsafe
+or ambiguous XML remains fatal, and the immediate transaction snapshot still
+uses the unmodified raw bytes. The first live resource attempt exposed this
+single-file stop serialization and safely withheld restart before dependency
+preparation; the retained intent proved that resources, database and skin were
+untouched before the old Kodi instance was restored.
 
 The directory transaction fsyncs a same-filesystem journal before copying or
 renaming, snapshots protected paths including their absence and permissions,

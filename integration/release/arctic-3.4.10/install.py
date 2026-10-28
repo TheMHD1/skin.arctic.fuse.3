@@ -44,7 +44,7 @@ latest = load("arctic3410_latest_parent", HERE.parent / "local-backup-receiver" 
 base = latest.previous
 transaction = base.transaction
 
-RELEASE = "arctic-3.4.10-paired.4"
+RELEASE = "arctic-3.4.10-paired.5"
 PARENT_RELEASE = latest.RELEASE
 SKIN = Path("addons/skin.arctic.fuse.3")
 SKIN_RELATIVE = ".kodi/addons/skin.arctic.fuse.3"
@@ -60,8 +60,8 @@ RECEIPT_PROFILE_KEY = "arctic3410_release_receipt_sha256"
 HISTORICAL_SKIN_COUNT = 16
 HISTORICAL_SKIN_SHA256 = "d3bd5dafeb9a7e25dbc894589fc8249e6d13c36aaa8a74c3db1efb193787417d"
 SHA = re.compile(r"[0-9a-f]{64}\Z")
-RECEIPT_SCHEMA = 3
-PARENT_PROJECTION = "exact-plus-jellyfin-runtime-fields-v2"
+RECEIPT_SCHEMA = 4
+PARENT_PROJECTION = "exact-plus-reviewed-runtime-fields-v3"
 JELLYFIN_CREDENTIALS_RELATIVE = (
     ".kodi/userdata/addon_data/plugin.video.jellyfin/data.json"
 )
@@ -73,6 +73,8 @@ JELLYFIN_ADDON_VERSION = "2.2.0+py3"
 MAX_JELLYFIN_CREDENTIALS_BYTES = 1024 * 1024
 MAX_JELLYFIN_SETTINGS_BYTES = 1024 * 1024
 JELLYFIN_CURSOR = "LastIncrementalSync"
+KEYBOARD_RELATIVE = ".kodi/userdata/peripheral_data/application_Keyboard.xml"
+MAX_KEYBOARD_BYTES = 64 * 1024
 ORDER_ONLY_MENU_INPUT = "userdata/addon_data/skin.arctic.fuse.3"
 ORDER_ONLY_SETTINGS = "settings.xml"
 MAX_MENU_INPUT_FILE_BYTES = 4 * 1024 * 1024
@@ -328,11 +330,75 @@ def _jellyfin_settings_projection(storage_root: Path, raw: bytes) -> str:
     return sha_bytes(b"arctic3410-jellyfin-settings-projection-v1\0" + masked)
 
 
+def _keyboard_last_active_projection(raw: bytes) -> str:
+    """Mask only Kodi's reviewed volatile keyboard ``last_active`` value."""
+    require(isinstance(raw, bytes) and 0 < len(raw) <= MAX_KEYBOARD_BYTES
+            and b"\0" not in raw, "Unsafe keyboard peripheral bytes")
+    try:
+        raw.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise ValueError("Keyboard peripheral XML is not UTF-8") from exc
+    require(b"<!" not in raw and b"<?" not in raw and b"&" not in raw,
+            "Unsafe declaration, comment, instruction or entity in keyboard peripheral XML")
+    try:
+        root = ET.fromstring(raw)
+    except ET.ParseError as exc:
+        raise ValueError("Malformed keyboard peripheral XML") from exc
+    require(root.tag == "settings" and not root.attrib
+            and (root.text is None or root.text.isspace())
+            and (root.tail is None or root.tail.isspace()) and len(root) == 2,
+            "Unexpected keyboard peripheral root")
+    appearance, active = root
+    require(appearance.tag == active.tag == "setting"
+            and not list(appearance) and not list(active)
+            and (appearance.text is None or appearance.text == "")
+            and (active.text is None or active.text == "")
+            and (appearance.tail is None or appearance.tail.isspace())
+            and (active.tail is None or active.tail.isspace())
+            and set(appearance.attrib) == {"id", "value"}
+            and appearance.attrib["id"] == "appearance"
+            and re.fullmatch(r"[A-Za-z0-9._-]+", appearance.attrib["value"])
+                is not None
+            and set(active.attrib) == {"id", "value"}
+            and active.attrib["id"] == "last_active",
+            "Unexpected keyboard peripheral settings")
+    timestamp = active.attrib["value"]
+    match = re.fullmatch(
+        r"([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2})"
+        r"(Z|[+-][0-9]{2}:[0-9]{2})", timestamp)
+    require(match is not None, "Invalid keyboard last_active timestamp")
+    try:
+        parsed = datetime.datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise ValueError("Invalid keyboard last_active timestamp") from exc
+    require(parsed.tzinfo is not None and parsed.utcoffset() is not None,
+            "Keyboard last_active lacks timezone")
+    if timestamp.endswith("Z"):
+        require(parsed.strftime("%Y-%m-%dT%H:%M:%S+00:00")
+                == timestamp[:-1] + "+00:00",
+                "Noncanonical keyboard last_active timestamp")
+        replacement = "0000-00-00T00:00:00Z"
+    else:
+        require(parsed.isoformat(timespec="seconds") == timestamp,
+                "Noncanonical keyboard last_active timestamp")
+        replacement = "0000-00-00T00:00:00+00:00"
+    encoded = timestamp.encode("ascii")
+    needle = b'<setting id="last_active" value="' + encoded + b'"/>'
+    require(raw.count(needle) == 1 and raw.count(encoded) == 1,
+            "Ambiguous keyboard last_active raw span")
+    start = raw.index(encoded)
+    masked = raw[:start] + replacement.encode("ascii") + raw[start + len(encoded):]
+    require(len(masked) == len(raw), "Keyboard last_active projection length drift")
+    return sha_bytes(b"arctic3410-keyboard-last-active-projection-v1\0" + masked)
+
+
 def _parent_payload_digest(storage_root: Path, relative: str, payload: bytes) -> str:
     if relative == JELLYFIN_CREDENTIALS_RELATIVE:
         return _jellyfin_credentials_projection(storage_root, payload)
     if relative == JELLYFIN_SETTINGS_RELATIVE:
         return _jellyfin_settings_projection(storage_root, payload)
+    if relative == KEYBOARD_RELATIVE:
+        return _keyboard_last_active_projection(payload)
     return sha_bytes(payload)
 
 
@@ -342,8 +408,9 @@ def _snapshot_map(root: Path, expected: dict[Path, bytes | None]) -> dict[str, s
         relative = _relative(root, path)
         require(relative not in result, "Duplicate parent evidence path")
         require(payload is None or isinstance(payload, bytes), "Invalid parent expected payload")
-        if relative in (JELLYFIN_CREDENTIALS_RELATIVE, JELLYFIN_SETTINGS_RELATIVE):
-            require(isinstance(payload, bytes), "Jellyfin runtime state cannot be absent")
+        if relative in (JELLYFIN_CREDENTIALS_RELATIVE, JELLYFIN_SETTINGS_RELATIVE,
+                        KEYBOARD_RELATIVE):
+            require(isinstance(payload, bytes), "Reviewed runtime state cannot be absent")
         result[relative] = (None if payload is None else
                             _parent_payload_digest(root, relative, payload))
     require(result, "Parent cohort preflight produced no evidence")
@@ -777,6 +844,9 @@ def _actual_parent_payload(storage_root: Path, old_skin: Path,
     if relative == JELLYFIN_SETTINGS_RELATIVE:
         return _stable_regular_bytes(
             path, MAX_JELLYFIN_SETTINGS_BYTES, "Jellyfin settings")
+    if relative == KEYBOARD_RELATIVE:
+        return _stable_regular_bytes(
+            path, MAX_KEYBOARD_BYTES, "keyboard peripheral state")
     return path.read_bytes()
 
 
