@@ -213,6 +213,15 @@ runtime probe proves it end-to-end. It is not a skin transaction or physical UI
 acceptance. The CLI captures `kodi-send` helper chatter and emits one JSON
 receipt, with the apply result nested under `result`.
 
+The private `generation-evidence.json` is written only after both owned Kodi
+units have been proved gone. It binds the exact stage record, cohort identity,
+base and generated skin trees, generated-file hashes, menu inputs, dependency
+closure and generation-tool sources. Every non-generated skin file must still
+equal the staged candidate; only the named generator include files may differ.
+The receipt is canonical, owner-private and fsynced. Content, identity, stage or
+tool drift invalidates it. This is generation evidence, not an installed-skin
+receipt or physical playback acceptance.
+
 Example read-only plan:
 
 ```sh

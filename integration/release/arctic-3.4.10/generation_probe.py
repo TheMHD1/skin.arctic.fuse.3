@@ -23,6 +23,7 @@ import xml.etree.ElementTree as ET
 
 import install
 import lifecycle
+import generation_evidence
 
 SKIN_ID = "skin.arctic.fuse.3"
 SKIN_PATH = Path("addons") / SKIN_ID
@@ -732,7 +733,8 @@ def run_probe(storage_root: Path, stage: Path, profile: dict, runtime_home: Path
               send_path_proof=_send_path_proof,
               wait_for_path_proof=_wait_for_path_proof,
               activate_private_skin=_activate_private_skin,
-              enable_private_addons=enable_private_addons_offline) -> dict:
+              enable_private_addons=enable_private_addons_offline,
+              evidence_writer=generation_evidence.write) -> dict:
     """Run the bounded probe; only call after an operator chooses ``--apply``."""
     kodi_bin = Path(kodi_bin)
     binary_validator(kodi_bin)
@@ -740,13 +742,19 @@ def run_probe(storage_root: Path, stage: Path, profile: dict, runtime_home: Path
     # This first pass is read-only; the same complete preflight runs again after
     # normal Kodi is stopped, closing the source/identity race before staging.
     preflight_func(storage_root, stage, profile, hostname_reader, mac_reader)
-    dependency_preflight(storage_root, stage, system_addons, reviewed_addons_root)
+    initial_dependencies = dependency_preflight(
+        storage_root, stage, system_addons, reviewed_addons_root
+    )
 
     cleanup_confirmed = {"value": True}
 
     def mutate():
         preflight_func(storage_root, stage, profile, hostname_reader, mac_reader)
-        dependency_preflight(storage_root, stage, system_addons, reviewed_addons_root)
+        stopped_dependencies = dependency_preflight(
+            storage_root, stage, system_addons, reviewed_addons_root
+        )
+        if stopped_dependencies != initial_dependencies:
+            raise RuntimeError("runtime dependency closure changed before generation")
         ports_validator()
         path_proof_nonce = secrets.token_hex(32)
         receipt = prepare_home(storage_root, stage, runtime_home, system_addons,
@@ -754,6 +762,7 @@ def run_probe(storage_root: Path, stage: Path, profile: dict, runtime_home: Path
         previous_generated = clear_generated_outputs(runtime_home)
         bootstrap_unit = _unit_name(runtime_home, "bootstrap")
         generation_unit = _unit_name(runtime_home, "generation")
+        result = None
         try:
             # Phase 1 is deliberately Estuary-only. It lets Kodi discover the
             # staged closure and create a fresh Addons33 database, which is
@@ -794,9 +803,10 @@ def run_probe(storage_root: Path, stage: Path, profile: dict, runtime_home: Path
             generated = _wait_for_generation(runtime_home, GENERATION_TIMEOUT_SECONDS)
             if time.monotonic() - started > MAX_RUNTIME_SECONDS:
                 raise RuntimeError("staged Kodi generation exceeded runtime budget")
-            return {"receipt": receipt, "bootstrap": bootstrap,
-                    "enabled_addons": enabled_addons, "path_mappings": mappings,
-                    "removed_generated": previous_generated, "generated": [str(item) for item in generated]}
+            result = {"receipt": receipt, "bootstrap": bootstrap,
+                      "enabled_addons": enabled_addons, "path_mappings": mappings,
+                      "removed_generated": previous_generated,
+                      "generated": [str(item) for item in generated]}
         finally:
             # ``systemd-run --no-block`` can report a transport error after
             # PID 1 accepted the bootstrap request. Reap both exact hashed
@@ -815,6 +825,21 @@ def run_probe(storage_root: Path, stage: Path, profile: dict, runtime_home: Path
                     raise cleanup_errors[0]
                 detail = "; ".join(str(error) for error in cleanup_errors)
                 raise RuntimeError("multiple isolated Kodi units failed cleanup: " + detail) from cleanup_errors[0]
+
+        # Create deployable evidence only after the finally block has proved
+        # both exact private Kodi units gone.
+        if result is None:
+            raise RuntimeError("isolated generation produced no accepted result")
+        result["generation_evidence"] = evidence_writer(
+            runtime_home=runtime_home,
+            stage=stage,
+            generated_skin=Path(runtime_home) / ".kodi/addons" / SKIN_ID,
+            profile=profile,
+            menu_inputs=result["receipt"]["menu_inputs"],
+            runtime_dependencies=stopped_dependencies,
+            tool_root=Path(__file__).resolve().parent,
+        )
+        return result
 
     return lifecycle.with_stopped_kodi(
         mutate, run=run, restart_permitted=lambda: cleanup_confirmed["value"],

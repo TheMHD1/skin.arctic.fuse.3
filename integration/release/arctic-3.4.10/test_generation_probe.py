@@ -327,7 +327,10 @@ class GenerationProbeTests(unittest.TestCase):
         original_wait = probe._wait_for_generation
         try:
             probe.lifecycle.idle = lambda: calls.append("idle")
-            probe.prepare_home = lambda *args, **kwargs: {"home": "private", "addons": {probe.SKIN_ID: "h"}}
+            probe.prepare_home = lambda *args, **kwargs: {
+                "home": "private", "addons": {probe.SKIN_ID: "h"},
+                "menu_inputs": {"userdata/addon_data/skin.arctic.fuse.3": "m" * 64},
+            }
             generated = self.root / ".arctic3410-generation/proof.xml"
             generated.parent.mkdir(parents=True)
             generated.write_text("ok")
@@ -362,6 +365,9 @@ class GenerationProbeTests(unittest.TestCase):
                 wait_for_path_proof=lambda home, nonce: {"special://home": "private"},
                 activate_private_skin=lambda rpc, addons, runner, helper: calls.append(("activate", tuple(sorted(addons)))) or sorted(addons),
                 enable_private_addons=lambda home, addons: calls.append(("bootstrap-db", tuple(sorted(addons)))) or {"schema": 33, "closure_count": len(addons)},
+                evidence_writer=lambda **kwargs: calls.append(("evidence",)) or {
+                    "path": "/private/evidence", "sha256": "e" * 64, "body": {},
+                },
             )
         finally:
             probe.lifecycle.idle = original_idle
@@ -387,8 +393,13 @@ class GenerationProbeTests(unittest.TestCase):
         # Bootstrap is stopped before its private DB transaction, then both
         # exact units are proven gone again in the outer failure-safe cleanup.
         self.assertEqual(sum(1 for call in calls if isinstance(call, tuple) and call[0] == "stop-owned"), 3)
+        last_owned_stop = max(index for index, call in enumerate(calls)
+                              if isinstance(call, tuple) and call[0] == "stop-owned")
+        self.assertLess(last_owned_stop, calls.index(("evidence",)))
+        self.assertLess(calls.index(("evidence",)), calls.index(("systemctl", "start", "kodi")))
         self.assertEqual(calls[-1], ("systemctl", "start", "kodi"))
         self.assertEqual(result["generated"], [str(generated)])
+        self.assertEqual(result["generation_evidence"]["sha256"], "e" * 64)
 
     def test_bootstrap_launcher_error_still_reaps_both_hashed_units_before_restart(self):
         calls = []
