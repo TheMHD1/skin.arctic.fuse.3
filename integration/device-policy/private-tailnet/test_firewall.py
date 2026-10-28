@@ -13,7 +13,7 @@ class FirewallTests(unittest.TestCase):
         text=firewall.render(CONFIG,'')
         self.assertIn('-s 100.64.0.10/32 -p tcp --dport 22',text)
         self.assertIn('-d 100.64.0.20/32 -p tcp --dport 2049',text)
-        self.assertEqual(text.count('--dport'),2)
+        self.assertEqual(text.count('--dport'),3)
         self.assertNotIn('100.64.0.0/10',text)
         self.assertIn('-A AM9TS_FWD -j DROP',text)
         self.assertNotIn(':INPUT',text)
@@ -25,6 +25,16 @@ class FirewallTests(unittest.TestCase):
                 self.assertTrue('--sport ' in line or '--dport ' in line)
         for line in text.splitlines():
             if line.startswith(('-I ','-D ')):self.assertIn('tailscale0',line)
+
+    def test_media_controller_ssh_is_inbound_only_and_exact_peer(self):
+        text=firewall.render(CONFIG,'')
+        self.assertIn('-A AM9TS_IN -s 100.64.0.20/32 -p tcp --dport 22 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT',text)
+        self.assertIn('-A AM9TS_OUT -d 100.64.0.20/32 -p tcp --sport 22 -m conntrack --ctstate ESTABLISHED -j ACCEPT',text)
+        self.assertNotIn('-A AM9TS_OUT -d 100.64.0.20/32 -p tcp --dport 22',text)
+        new_flows=[line for line in text.splitlines() if '--ctstate NEW,ESTABLISHED' in line]
+        self.assertEqual(len(new_flows),3)
+        self.assertTrue(all('--dport 22' in line or '--dport 2049' in line for line in new_flows))
+        self.assertTrue(text.rstrip().endswith('-A AM9TS_FWD -j DROP\nCOMMIT'))
 
     def test_reapply_replaces_only_own_jumps(self):
         old='-A INPUT -j EXISTING\n-A INPUT -i tailscale0 -j AM9TS_IN\n'

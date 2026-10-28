@@ -28,7 +28,8 @@ Stop only the Tailscale service before initial policy installation. The firewall
 refuses to apply around a running daemon. It tests both address families before
 applying and alters only owned chains/interface-qualified hooks, preserving LAN
 traffic and unrelated firewall state. IPv4 accepts ordinary key-only SSH from
-one administrator and NFSv4/TCP2049 to one media peer; IPv6 and forwarding are
+one administrator and the exact media/controller peer, plus NFSv4/TCP2049 to
+that media peer; IPv6 and forwarding are
 blocked. Established flows are restricted to those same peers/ports. It uses
 `--noflush`, not a whole-firewall replacement. Cross-family atomicity is not
 claimed; the overlay must remain stopped until both applications succeed.
@@ -150,6 +151,28 @@ only this policy's hooks/chains. Disabling the Jellyfin account alone does not
 revoke device-level NFS. Do not restore an old allow-all policy while leaving a
 tagged appliance authorized. Returning a tagged node to user ownership requires
 reauthentication, not merely deleting all its tags.
+
+### October28 controller access
+
+The media peer can also initiate ordinary TCP22 to this appliance for the
+reviewed off-device maintenance controller. This adds only an exact-peer input
+SSH rule and established SSH replies; it does not permit the appliance to
+initiate SSH back to that server, permit another peer, or change IPv6/forwarding.
+The four-field private profile is unchanged: the already configured media peer
+is the controller, not a new broad administrator list.
+
+Both layers are mandatory: an independently validated, conditionally published
+tailnet TCP22 grant and a separately installed, source-restricted public key.
+Keep the existing administrative grant, NFS flow and reverse-direction denials.
+An overlay ping is not proof that TCP22 is authorized. The October28 device
+rules were checked while the control-plane grant remained pending; neither
+firmware delivery nor remote controller acceptance is claimed by this source
+change. Preserve private hashes/backups and verify existing administrative SSH
+before and after applying an exact owned-chain change. Do not restart the
+overlay remotely merely to add one rule or widen the policy to diagnose a
+control-plane denial. For rollback, revoke only this added controller grant/key
+and restore the previous same-device script/rules; retain the original
+administrator and media-read access.
 
 Run `python3 -m unittest discover -s integration/device-policy/private-tailnet`.
 Runtime evidence and private profiles are not shipped here. Bell-house Wi-Fi,

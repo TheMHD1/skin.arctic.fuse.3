@@ -52,6 +52,8 @@ def render(config, existing, ipv6=False):
         lines += [
             '-A AM9TS_IN -s '+admin+'/32 -p tcp --dport 22 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT',
             '-A AM9TS_OUT -d '+admin+'/32 -p tcp --sport 22 -m conntrack --ctstate ESTABLISHED -j ACCEPT',
+            '-A AM9TS_IN -s '+media+'/32 -p tcp --dport 22 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT',
+            '-A AM9TS_OUT -d '+media+'/32 -p tcp --sport 22 -m conntrack --ctstate ESTABLISHED -j ACCEPT',
             '-A AM9TS_IN -s '+media+'/32 -p tcp --sport 2049 -m conntrack --ctstate ESTABLISHED -j ACCEPT',
             '-A AM9TS_IN -s '+admin+'/32 -p icmp --icmp-type echo-request -j ACCEPT',
             '-A AM9TS_OUT -d '+admin+'/32 -p icmp --icmp-type echo-reply -j ACCEPT',
