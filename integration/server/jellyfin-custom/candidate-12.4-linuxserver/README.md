@@ -50,7 +50,7 @@ six retained historical test files whose 10.10 fake is incompatible; this is not
 claim to have run those tests. See BUILD.md for the reproducible artifact pin
 and mandatory complete stopped-config rollback procedure.
 
-## October 28 production attempt and recovery
+## October 28 earlier production attempt and recovery
 
 The reviewed all-feature candidate started successfully with all 20 expected
 plugins. Database continuity passed: accounts, permissions, API keys, display
@@ -72,3 +72,22 @@ healthy baseline using that corrected validator; never reuse the old raw-order
 hash or start another promotion before the previous recovery is terminal.
 Retain verified external recovery archives and reclaim only independently
 verified redundant working copies before rechecking capacity.
+
+## October 28 corrected production deployment: accepted
+
+The subsequent corrected retry completed successfully. Production now runs
+the reviewed all-feature Jellyfin `12.4.0` image from [BUILD.md](BUILD.md), with
+all expected plugins active, the runtime/mount/device contract verified,
+database continuity accepted, and native plus public HTTPS health passing.
+The prior paragraph describing production restored to 12.1 is the historical
+rollback state, not the current deployment.
+
+The full verified pre-upgrade recovery archive and exact prior image/plugin/Web
+references remain retained privately. Accounts, permissions, API keys and
+display preferences matched the captured baseline. Watch-history coverage was
+preserved, with only the reviewed native conflicting-row harmonization; no
+unexpected rows were accepted. The owner-approved inherited-rating-cache
+migration difference was the only separate opt-in, not a policy reset.
+Paused publishers were restored before the executor recorded success. This
+acceptance does not imply that an offline remote Kodi device was updated or
+that physical TV/audio and every client playback case were tested.
