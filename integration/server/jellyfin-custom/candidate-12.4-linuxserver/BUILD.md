@@ -23,7 +23,7 @@ tests; the server and Live-TV plugin Web trees were compared as complete
 manifests before the image build. Native publication acceptance passed all 13
 synthetic real-Jellyfin checks. The retained custom Moonbase snapshot has 201
 reviewed regular files and its digest-pinned SDK build passed 341 tests; its
-six historical test files absent from this retained snapshot are not implied by
+six retained historical test files excluded for their incompatible 10.10 fake are not implied by
 that count. The reproduced Moonfin DLL SHA-256 is
 `be85afefe7e315a3cdddc3f76c5118e333b176895b3fdaf1b902d6cacfaee45a`.
 The excluded historical files are `FakeLibraryManager.cs`,

@@ -115,6 +115,10 @@ minutes, with a30-second per-attempt timeout. These are bounded systemd retries,
 not an identity-guard bypass: a real address mismatch remains fail-closed. The
 five-minute timer remains the eventual recovery path. Source review/testing is
 separate from copying/reloading this revised template on the host.
+The revised template was subsequently deployed October28 and its guarded
+oneshot completed successfully; the timer remained active and Tailscale
+reported Running/online with no health warnings. No daemon restart or policy
+widening was needed for that unit change.
 
 For rollback, turn Native mode off first so the client returns to authenticated
 HTTPS, apply `--block-all` to cut even conntrack-retained authorized flows,

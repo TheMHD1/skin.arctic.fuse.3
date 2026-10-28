@@ -46,6 +46,6 @@ streaming, populated production rows or physical-client playback.
 The retained Moonbase source is plain reviewable source, independently checked
 against its exact 201-file manifest. The digest-pinned SDK builder passed 341
 tests and verified every emitted artifact. Its test project explicitly excludes
-six historical test files absent from the retained snapshot; this is not a
+six retained historical test files whose 10.10 fake is incompatible; this is not a
 claim to have run those tests. See BUILD.md for the reproducible artifact pin
 and mandatory complete stopped-config rollback procedure.
