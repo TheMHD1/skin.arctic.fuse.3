@@ -318,8 +318,8 @@ def prepare_home(storage_root: Path, stage: Path, runtime_home: Path,
     userdata = runtime_home / ".kodi" / "userdata"
     userdata.mkdir(mode=0o700)
     # A fresh Kodi Addons database discovers copied add-ons as disabled. Start
-    # on built-in Estuary, then enable precisely this private closure through
-    # Kodi JSON-RPC before requesting the candidate skin. Never seed/copy the
+    # on built-in Estuary, then dispatch only audited plugin/script enablement
+    # plus LoadSkin through the loopback event server. Never seed/copy the
     # active profile's database merely to make the sandbox load a skin.
     (userdata / "guisettings.xml").write_text(
         '<settings version="2">'
@@ -417,23 +417,32 @@ def _wait_for_private_addons_enabled(rpc, addon_ids: set[str], timeout: int = 10
     raise RuntimeError("Kodi did not enable private add-ons: " + ", ".join(sorted(pending)))
 
 
-def _activate_private_skin(rpc, addon_ids: set[str]) -> list[str]:
-    """Enable the candidate's exact private closure, then switch through Kodi."""
+def _builtin_enableable_addons(runtime_home: Path, addon_ids: set[str]) -> list[str]:
+    """Return only audited private plugin/script IDs supported by EnableAddon."""
+    selected = []
+    for addon_id in sorted(addon_ids):
+        root = ET.fromstring((Path(runtime_home) / ".kodi/addons" / addon_id / "addon.xml").read_bytes())
+        points = {item.get("point") for item in root.findall("extension")}
+        if "xbmc.python.script" in points or "xbmc.python.pluginsource" in points:
+            selected.append(addon_id)
+    return selected
+
+
+def _activate_private_skin(rpc, addon_ids: set[str], runtime_home: Path, run, kodi_send: Path) -> list[str]:
+    """Use non-blocking Kodi event actions, never enable through its RPC thread."""
     addon_ids = set(addon_ids)
     if not addon_ids or SKIN_ID not in addon_ids:
         raise RuntimeError("private runtime closure does not contain the candidate skin")
     for addon_id in addon_ids:
         _safe_addon_id(addon_id)
-    # Kodi's own CAddonMgr::EnableAddon resolves required dependencies
-    # recursively and enables them in reverse dependency order. Asking Kodi to
-    # enable only the candidate avoids inventing a second ordering algorithm;
-    # the following poll still verifies every member of our audited closure.
-    acknowledged = rpc("Addons.SetAddonEnabled", {"addonid": SKIN_ID, "enabled": True})
-    if acknowledged != "OK":
-        raise RuntimeError("Kodi rejected private candidate enablement: " + repr(acknowledged))
+    # EnableAddon is documented for plugins/scripts; dispatch it over the event
+    # server so Kodi's GUI/addon-manager thread can complete without blocking
+    # the JSON-RPC request handler. LoadSkin is the corresponding supported
+    # skin action and resolves the candidate's remaining audited dependencies.
+    for addon_id in _builtin_enableable_addons(runtime_home, addon_ids):
+        _send_builtin(run, kodi_send, "EnableAddon(" + addon_id + ")")
+    _send_builtin(run, kodi_send, "LoadSkin(" + SKIN_ID + ")")
     enabled = _wait_for_private_addons_enabled(rpc, addon_ids)
-    if rpc("Settings.SetSettingValue", {"setting": "lookandfeel.skin", "value": SKIN_ID}) is not True:
-        raise RuntimeError("Kodi rejected the private skin activation request")
     return enabled
 
 
@@ -608,8 +617,57 @@ def _launch_isolated_kodi(run, unit: str, runtime_home: Path, kodi_bin: Path) ->
     run(command, check=True, timeout=15)
 
 
-def _stop_owned_unit(run, unit: str) -> None:
-    run(["systemctl", "stop", unit], check=False, timeout=20)
+def _stop_owned_unit(run, unit: str, *, clock=time.monotonic, sleeper=time.sleep) -> None:
+    """Stop and prove reaping of this exact transient unit.
+
+    A successful ``systemctl stop`` alone is not enough: the earlier d01 probe
+    returned after stop timed out and normal Kodi raced the private process for
+    port 9090. Normal Kodi can restart only after this unit is inactive/dead
+    with no main PID, or has been collected completely.
+    """
+    deadline = clock() + 30
+    killed = False
+    last_error: Exception | None = None
+    while clock() < deadline:
+        try:
+            state = run(
+                ["systemctl", "show", unit, "--no-page",
+                 "--property=LoadState", "--property=ActiveState",
+                 "--property=SubState", "--property=MainPID"],
+                check=False, timeout=5, capture_output=True, text=True,
+            )
+            values = {}
+            for line in (getattr(state, "stdout", "") or "").splitlines():
+                if "=" in line:
+                    key, value = line.split("=", 1)
+                    values[key] = value
+            if values.get("LoadState") == "not-found" or (
+                values.get("ActiveState") == "inactive"
+                and values.get("SubState") == "dead"
+                and values.get("MainPID") in {"", "0"}
+            ):
+                return
+        except subprocess.TimeoutExpired as exc:
+            last_error = exc
+
+        stop_timed_out = False
+        try:
+            run(["systemctl", "stop", unit], check=False, timeout=10)
+        except subprocess.TimeoutExpired as exc:
+            last_error = exc
+            stop_timed_out = True
+        # Escalate only the hashed unit created for this runtime HOME, never a
+        # process selected by executable name or the normal kodi.service.
+        if not killed and (stop_timed_out or clock() + 5 >= deadline):
+            try:
+                run(["systemctl", "kill", "--kill-who=all", "--signal=SIGKILL", unit],
+                    check=False, timeout=10)
+            except subprocess.TimeoutExpired as exc:
+                last_error = exc
+            killed = True
+        sleeper(0.25)
+    detail = f": {last_error}" if last_error else ""
+    raise RuntimeError("owned isolated Kodi unit did not terminate before normal Kodi restart" + detail)
 
 
 def run_probe(storage_root: Path, stage: Path, profile: dict, runtime_home: Path,
@@ -637,6 +695,8 @@ def run_probe(storage_root: Path, stage: Path, profile: dict, runtime_home: Path
     preflight_func(storage_root, stage, profile, hostname_reader, mac_reader)
     dependency_preflight(storage_root, stage, system_addons, reviewed_addons_root)
 
+    cleanup_confirmed = {"value": True}
+
     def mutate():
         preflight_func(storage_root, stage, profile, hostname_reader, mac_reader)
         dependency_preflight(storage_root, stage, system_addons, reviewed_addons_root)
@@ -650,7 +710,7 @@ def run_probe(storage_root: Path, stage: Path, profile: dict, runtime_home: Path
         try:
             launcher(run, unit, runtime_home, kodi_bin)
             _wait_for_rpc(START_TIMEOUT_SECONDS, rpc)
-            enabled_addons = activate_private_skin(rpc, set(receipt["addons"]))
+            enabled_addons = activate_private_skin(rpc, set(receipt["addons"]), runtime_home, run, kodi_send)
             wait_for_active_skin(SKIN_ACTIVATION_TIMEOUT_SECONDS, rpc)
             if time.monotonic() - started > MAX_RUNTIME_SECONDS:
                 raise RuntimeError("staged Kodi startup exceeded runtime budget")
@@ -669,9 +729,15 @@ def run_probe(storage_root: Path, stage: Path, profile: dict, runtime_home: Path
         finally:
             # This exact transient unit contains the only stage process.  Do
             # not kill by executable name and never touch normal kodi.service.
-            stop_owned_unit(run, unit)
+            try:
+                stop_owned_unit(run, unit)
+            except Exception:
+                cleanup_confirmed["value"] = False
+                raise
 
-    return lifecycle.with_stopped_kodi(mutate, run=run)
+    return lifecycle.with_stopped_kodi(
+        mutate, run=run, restart_permitted=lambda: cleanup_confirmed["value"],
+    )
 
 
 def main() -> None:

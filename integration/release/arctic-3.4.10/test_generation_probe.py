@@ -1,6 +1,7 @@
 import importlib.util
 import io
 import json
+import subprocess
 import sys
 import tempfile
 import types
@@ -272,7 +273,7 @@ class GenerationProbeTests(unittest.TestCase):
                 dependency_preflight=lambda *args: {probe.SKINVARIABLES: "h"},
                 send_path_proof=lambda run, helper: calls.append(("path-proof", str(helper))),
                 wait_for_path_proof=lambda home, nonce: {"special://home": "private"},
-                activate_private_skin=lambda rpc, addons: calls.append(("activate", tuple(sorted(addons)))) or sorted(addons),
+                activate_private_skin=lambda rpc, addons, home, runner, helper: calls.append(("activate", tuple(sorted(addons)))) or sorted(addons),
                 wait_for_active_skin=lambda timeout, rpc: calls.append(("active-skin", timeout)),
             )
         finally:
@@ -292,36 +293,43 @@ class GenerationProbeTests(unittest.TestCase):
         calls = []
         enabled = set()
 
-        def rpc(method, params=None):
-            calls.append((method, params))
-            if method == "Addons.SetAddonEnabled":
-                self.assertTrue(params["enabled"])
-                self.assertEqual(params["addonid"], probe.SKIN_ID)
-                enabled.update(closure)
-                return "OK"
-            if method == "Addons.GetAddonDetails":
-                return {"addon": {"enabled": params["addonid"] in enabled}}
-            if method == "Settings.SetSettingValue":
-                self.assertEqual(params, {"setting": "lookandfeel.skin", "value": probe.SKIN_ID})
-                return True
-            self.fail("unexpected RPC method: " + method)
-
-        closure = {probe.SKIN_ID, probe.SKINVARIABLES, "script.module.infotagger"}
-        self.assertEqual(probe._activate_private_skin(rpc, closure), sorted(closure))
-        set_calls = [params["addonid"] for method, params in calls if method == "Addons.SetAddonEnabled"]
-        self.assertEqual(set_calls, [probe.SKIN_ID])
-        self.assertEqual(calls[-1][0], "Settings.SetSettingValue")
-
-        with self.assertRaises(RuntimeError):
-            probe._activate_private_skin(rpc, {probe.SKINVARIABLES})
-
-    def test_activation_rejects_bad_ack_and_never_enabled_closure(self):
-        with self.assertRaises(RuntimeError):
-            probe._activate_private_skin(
-                lambda method, params=None: "not-acknowledged",
-                {probe.SKIN_ID},
+        runtime = self.root / ".arctic3410-generation/activation"
+        for addon_id, point in ((probe.SKIN_ID, "xbmc.gui.skin"),
+                                (probe.SKINVARIABLES, "xbmc.python.script"),
+                                ("plugin.video.themoviedb.helper", "xbmc.python.pluginsource"),
+                                ("script.module.infotagger", "xbmc.python.module")):
+            path = runtime / ".kodi/addons" / addon_id
+            path.mkdir(parents=True, exist_ok=True)
+            (path / "addon.xml").write_text(
+                f'<addon id="{addon_id}" version="1.0.0"><extension point="{point}" /></addon>'
             )
 
+        def rpc(method, params=None):
+            calls.append((method, params))
+            if method == "Addons.GetAddonDetails":
+                return {"addon": {"enabled": params["addonid"] in enabled}}
+            self.fail("unexpected RPC method: " + method)
+
+        closure = {probe.SKIN_ID, probe.SKINVARIABLES, "plugin.video.themoviedb.helper", "script.module.infotagger"}
+        builtin_calls = []
+        def send_builtin(run, helper, action):
+            builtin_calls.append(action)
+            if action.startswith("LoadSkin("):
+                enabled.update(closure)
+        with mock.patch.object(probe, "_send_builtin", side_effect=send_builtin):
+            self.assertEqual(probe._activate_private_skin(rpc, closure, runtime, lambda *args, **kwargs: None,
+                                                          Path("/usr/bin/kodi-send")), sorted(closure))
+        self.assertEqual(builtin_calls, [
+            "EnableAddon(plugin.video.themoviedb.helper)",
+            "EnableAddon(script.skinvariables)",
+            "LoadSkin(skin.arctic.fuse.3)",
+        ])
+
+        with self.assertRaises(RuntimeError):
+            probe._activate_private_skin(rpc, {probe.SKINVARIABLES}, runtime, lambda *args, **kwargs: None,
+                                         Path("/usr/bin/kodi-send"))
+
+    def test_activation_rejects_never_enabled_closure(self):
         calls = []
         def never_enabled(method, params=None):
             calls.append((method, params))
@@ -337,6 +345,48 @@ class GenerationProbeTests(unittest.TestCase):
             "Addons.GetAddonDetails",
             {"addonid": probe.SKINVARIABLES, "properties": ["enabled"]},
         )])
+
+    def test_owned_unit_cleanup_proves_exact_unit_gone_before_returning(self):
+        calls = []
+        states = iter((
+            "LoadState=loaded\nActiveState=active\nSubState=running\nMainPID=91\n",
+            "LoadState=loaded\nActiveState=inactive\nSubState=dead\nMainPID=0\n",
+        ))
+
+        def run(argv, **kwargs):
+            calls.append((tuple(argv), kwargs))
+            if argv[1] == "show":
+                return types.SimpleNamespace(stdout=next(states))
+            return types.SimpleNamespace(stdout="")
+
+        probe._stop_owned_unit(run, "arctic3410-generation-123")
+        self.assertEqual(calls[0][0][0:3], ("systemctl", "show", "arctic3410-generation-123"))
+        self.assertEqual(calls[1][0], ("systemctl", "stop", "arctic3410-generation-123"))
+        self.assertEqual(calls[2][0][0:3], ("systemctl", "show", "arctic3410-generation-123"))
+
+    def test_owned_unit_cleanup_escalates_only_the_exact_unit_after_stop_timeout(self):
+        calls = []
+        now = [0.0]
+        states = iter((
+            "LoadState=loaded\nActiveState=active\nSubState=running\nMainPID=91\n",
+            "LoadState=not-found\nActiveState=inactive\nSubState=dead\nMainPID=0\n",
+        ))
+
+        def run(argv, **kwargs):
+            calls.append(tuple(argv))
+            if argv[1] == "show":
+                return types.SimpleNamespace(stdout=next(states))
+            if argv[1] == "stop":
+                raise subprocess.TimeoutExpired(argv, kwargs["timeout"])
+            return types.SimpleNamespace(stdout="")
+
+        probe._stop_owned_unit(
+            run, "arctic3410-generation-exact", clock=lambda: now[0],
+            sleeper=lambda seconds: now.__setitem__(0, now[0] + seconds),
+        )
+        self.assertIn(("systemctl", "kill", "--kill-who=all", "--signal=SIGKILL",
+                       "arctic3410-generation-exact"), calls)
+        self.assertNotIn(("systemctl", "kill", "--kill-who=all", "--signal=SIGKILL", "kodi"), calls)
 
     def test_wait_for_active_skin_requires_candidate(self):
         responses = iter([{"skin": "skin.estuary"}, {"skin": probe.SKIN_ID}])

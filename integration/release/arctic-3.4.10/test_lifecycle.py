@@ -59,4 +59,17 @@ class T(unittest.TestCase):
   with patch.object(life,'idle',lambda:None):
    with self.assertRaises(RuntimeError):life.with_stopped_kodi(lambda:None,run)
   self.assertEqual(calls,[['systemctl','stop','kodi'],['systemctl','start','kodi']])
+ def test_restart_is_withheld_when_owned_unit_cleanup_is_unproven(self):
+  calls=[]
+  with patch.object(life,'idle',lambda:None):
+   with self.assertRaisesRegex(RuntimeError,'restart withheld'):
+    life.with_stopped_kodi(lambda:None,lambda args,**_:calls.append(args),restart_permitted=lambda:False)
+  self.assertEqual(calls,[['systemctl','stop','kodi']])
+ def test_cleanup_error_is_not_masked_by_restart_guard(self):
+  calls=[]
+  def mutate(): raise RuntimeError('owned unit remains')
+  with patch.object(life,'idle',lambda:None):
+   with self.assertRaisesRegex(RuntimeError,'owned unit remains'):
+    life.with_stopped_kodi(mutate,lambda args,**_:calls.append(args),restart_permitted=lambda:False)
+  self.assertEqual(calls,[['systemctl','stop','kodi']])
 if __name__=='__main__':unittest.main()

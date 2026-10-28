@@ -1,6 +1,6 @@
 """Exact appliance identity and Kodi lifecycle guards for the candidate installer."""
 from __future__ import annotations
-import json, socket, subprocess, time
+import json, socket, subprocess, sys, time
 from pathlib import Path
 def rpc(method, params=None):
  with socket.create_connection(('127.0.0.1',9090),3) as s:
@@ -39,8 +39,15 @@ def identity(root, profile, hostname, mac):
 def stop_start(run=subprocess.run):
  idle(); run(['systemctl','stop','kodi'],check=True,timeout=45); run(['systemctl','start','kodi'],check=True,timeout=45)
 
-def with_stopped_kodi(mutate, run=subprocess.run):
- """Run a supplied reversible transaction only after idle; always restart Kodi."""
+def with_stopped_kodi(mutate, run=subprocess.run, restart_permitted=None):
+ """Run a reversible transaction after idle and restart only when it is safe.
+
+ ``restart_permitted`` is intentionally an opt-in guard for transactions that
+ launch a second, private Kodi process. If that process cannot be proved gone,
+ starting normal Kodi could race it for JSON-RPC port 9090. In that exceptional
+ case leave normal Kodi stopped and retain the original cleanup failure instead
+ of masking it with a second bind failure.
+ """
  idle()
  stop_attempted=False
  try:
@@ -48,4 +55,9 @@ def with_stopped_kodi(mutate, run=subprocess.run):
   run(['systemctl','stop','kodi'],check=True,timeout=45)
   return mutate()
  finally:
-  if stop_attempted: run(['systemctl','start','kodi'],check=True,timeout=45)
+  if stop_attempted:
+   permitted = restart_permitted is None or restart_permitted()
+   if permitted:
+    run(['systemctl','start','kodi'],check=True,timeout=45)
+   elif sys.exc_info()[0] is None:
+    raise RuntimeError('normal Kodi restart withheld: owned isolated unit was not confirmed stopped')
