@@ -181,6 +181,17 @@ audited closure row. The second transient Kodi start then dispatches only the
 noninteractive `LoadSkin(skin.arctic.fuse.3)` builtin and polls the whole
 closure. It never copies, reads, or changes the live Addons database.
 
+Runtime activation is proved by the nonce-bound script's exact
+`special://skin` mapping, not the saved `lookandfeel.skin` preference.
+Kodi's [Settings RPC](https://github.com/xbmc/xbmc/blob/master/xbmc/interfaces/json-rpc/SettingsOperations.cpp)
+and GUI skin property read that saved preference, while the
+[LoadSkin builtin](https://github.com/xbmc/xbmc/blob/master/xbmc/interfaces/builtins/SkinBuiltins.cpp)
+loads a skin directly. A real isolated October 28 probe loaded the candidate
+but safely failed a former saved-setting check because it still said Estuary.
+Normal Kodi was restored and no skin was installed. The corrected probe keeps
+the stronger in-process home/profile/skin mapping proof before generation;
+wrong or stale runtime mappings still prevent every generator call.
+
 This is deliberately not a generic Kodi database editor: it rejects a missing,
 symlinked, uncheckpointed, malformed, wrong-version, or incomplete private DB;
 it rejects a closure outside the staged audited IDs; and it performs the one

@@ -46,7 +46,6 @@ PATH_PROOF_TIMEOUT_SECONDS = 10
 PATH_PROOF_MAX_BYTES = 4096
 ADDONS_DATABASE_FILENAME = "Addons33.db"
 ADDONS_DATABASE_SCHEMA = 33
-SKIN_ACTIVATION_TIMEOUT_SECONDS = 20
 REVIEWED_RESOURCES = {
     "resource.images.arctic.weather": {
         "version": "1.0.4",
@@ -507,21 +506,6 @@ def _activate_private_skin(rpc, addon_ids: set[str], run, kodi_send: Path) -> li
     return enabled
 
 
-def _wait_for_active_skin(timeout: int, rpc=lifecycle.rpc) -> None:
-    deadline = time.monotonic() + timeout
-    last_error: Exception | None = None
-    while time.monotonic() < deadline:
-        try:
-            result = rpc("Settings.GetSkinSettings")
-            if result.get("skin") == SKIN_ID:
-                return
-            last_error = RuntimeError(f"active skin is {result.get('skin')!r}")
-        except Exception as exc:
-            last_error = exc
-        time.sleep(0.25)
-    raise RuntimeError("isolated Kodi did not activate the candidate skin") from last_error
-
-
 def _validate_path_proof_receipt(runtime_home: Path, nonce: str) -> dict[str, str]:
     """Fail closed unless an in-process Kodi receipt proves all three paths."""
     receipt = _path_proof_receipt(runtime_home, nonce)
@@ -748,7 +732,6 @@ def run_probe(storage_root: Path, stage: Path, profile: dict, runtime_home: Path
               send_path_proof=_send_path_proof,
               wait_for_path_proof=_wait_for_path_proof,
               activate_private_skin=_activate_private_skin,
-              wait_for_active_skin=_wait_for_active_skin,
               enable_private_addons=enable_private_addons_offline) -> dict:
     """Run the bounded probe; only call after an operator chooses ``--apply``."""
     kodi_bin = Path(kodi_bin)
@@ -794,9 +777,13 @@ def run_probe(storage_root: Path, stage: Path, profile: dict, runtime_home: Path
             launcher(run, generation_unit, runtime_home, kodi_bin)
             _wait_for_rpc(START_TIMEOUT_SECONDS, rpc)
             enabled_addons = activate_private_skin(rpc, set(receipt["addons"]), run, kodi_send)
-            wait_for_active_skin(SKIN_ACTIVATION_TIMEOUT_SECONDS, rpc)
             if time.monotonic() - started > MAX_RUNTIME_SECONDS:
                 raise RuntimeError("staged Kodi startup exceeded runtime budget")
+            # LoadSkin changes the running skin without changing the saved
+            # lookandfeel.skin setting. Settings.GetSkinSettings (and GUI's
+            # skin property) report that saved setting, not this runtime
+            # selection. Require the stronger nonce-bound in-process mapping
+            # proof below before invoking any generator instead.
             send_path_proof(run, kodi_send)
             mappings = wait_for_path_proof(runtime_home, path_proof_nonce)
             if time.monotonic() - started > MAX_RUNTIME_SECONDS:

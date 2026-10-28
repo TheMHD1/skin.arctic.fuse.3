@@ -340,11 +340,17 @@ class GenerationProbeTests(unittest.TestCase):
                 preflights.append(args)
                 return {Path("skin"): Path("candidate")}
 
+            def runtime_rpc(method, params=None):
+                # LoadSkin may run Arctic while the saved preference is Estuary.
+                if method in {"Settings.GetSkinSettings", "GUI.GetProperties"}:
+                    raise AssertionError("saved skin setting is not runtime evidence")
+                return []
+
             result = probe.run_probe(
                 self.root, self.stage, {"cohort": "local"},
                 self.root / ".arctic3410-generation/run-d",
                 run=run,
-                rpc=lambda method, params=None: [],
+                rpc=runtime_rpc,
                 binary_validator=lambda path: self.assertEqual(path, Path("/usr/lib/kodi/kodi.bin")),
                 preflight_func=preflight,
                 ports_validator=lambda: calls.append("ports"),
@@ -355,7 +361,6 @@ class GenerationProbeTests(unittest.TestCase):
                 send_path_proof=lambda run, helper: calls.append(("path-proof", str(helper))),
                 wait_for_path_proof=lambda home, nonce: {"special://home": "private"},
                 activate_private_skin=lambda rpc, addons, runner, helper: calls.append(("activate", tuple(sorted(addons)))) or sorted(addons),
-                wait_for_active_skin=lambda timeout, rpc: calls.append(("active-skin", timeout)),
                 enable_private_addons=lambda home, addons: calls.append(("bootstrap-db", tuple(sorted(addons)))) or {"schema": 33, "closure_count": len(addons)},
             )
         finally:
@@ -562,14 +567,31 @@ class GenerationProbeTests(unittest.TestCase):
                        "arctic3410-generation-exact"), calls)
         self.assertNotIn(("systemctl", "kill", "--kill-who=all", "--signal=SIGKILL", "kodi"), calls)
 
-    def test_wait_for_active_skin_requires_candidate(self):
-        responses = iter([{"skin": "skin.estuary"}, {"skin": probe.SKIN_ID}])
-        original_sleep = probe.time.sleep
-        try:
-            probe.time.sleep = lambda _: None
-            probe._wait_for_active_skin(1, lambda method, params=None: next(responses))
-        finally:
-            probe.time.sleep = original_sleep
+    def test_failed_runtime_path_proof_never_invokes_generator_and_restores_kodi(self):
+        calls = []
+        def run(argv, **kwargs):
+            calls.append(tuple(argv))
+        with mock.patch.object(probe.lifecycle, "idle", return_value=None), \
+             mock.patch.object(probe, "prepare_home", return_value={
+                 "home": "private", "addons": {probe.SKIN_ID: "h"}}):
+            with self.assertRaisesRegex(RuntimeError, "wrong runtime skin"):
+                probe.run_probe(
+                    self.root, self.stage, {"cohort": "local"},
+                    self.root / ".arctic3410-generation/wrong-runtime-skin",
+                    run=run, rpc=lambda method, params=None: [],
+                    binary_validator=lambda path: None,
+                    preflight_func=lambda *args: {}, ports_validator=lambda: None,
+                    dependency_preflight=lambda *args: {}, launcher=lambda *args: None,
+                    stop_owned_unit=lambda runner, unit: calls.append(("reaped", unit)),
+                    enable_private_addons=lambda *args: {},
+                    activate_private_skin=lambda *args: [probe.SKIN_ID],
+                    send_path_proof=lambda *args: None,
+                    wait_for_path_proof=mock.Mock(side_effect=RuntimeError("wrong runtime skin")),
+                    send_generator=lambda *args: calls.append("generator"),
+                )
+        self.assertNotIn("generator", calls)
+        self.assertEqual(sum(call[0] == "reaped" for call in calls), 3)
+        self.assertEqual(calls[-1], ("systemctl", "start", "kodi"))
 
     def test_builtin_captures_kodi_send_chatter_and_main_emits_one_apply_receipt(self):
         calls = []
