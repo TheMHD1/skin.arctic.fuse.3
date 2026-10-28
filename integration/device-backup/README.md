@@ -80,3 +80,33 @@ not installed. `test_local_overlay.py` uses actual rsync filter semantics to
 verify that the download cache is omitted and bundled dependency packages remain.
 Do not transplant the remote Python worker onto the local mirror or point both
 devices at the same backup destination. Verify a new snapshot after deployment.
+
+## October 28 restricted-receiver compatibility
+
+A receiver package update added inode-pinned destination resolution to `rrsync`.
+For an existing *file* destination, the restricted wrapper passes a procfs file
+descriptor pathname to the receiver. Replacing that destination then fails with
+`unlink(4): Operation not permitted`; writable storage and valid SSH keys alone
+do not prevent this failure. Do not patch the package-owned wrapper, disable the
+restricted receiver, or suppress rsync exit 23.
+
+`rsync_receiver_overlay.py` is a whole-private-worker SHA-guarded correction
+following the existing local overlay. It changes only three single-file remote
+destinations to their existing parent directory: status marker, hostname and
+optional regulatory hint. The unchanged source basenames select the same final
+files. Identity, restricted SSH key, destination root, SQLite consistency,
+rooted package exclusion, retention, timer and all directory mirror commands
+remain unchanged. Unknown source or missing/duplicate anchors fail closed.
+
+Before deployment retain the exact worker privately, apply this overlay to that
+same device only, validate `sh -n`, and verify the changed-file digest. Run
+`test_rsync_receiver_overlay.py` for anchor/guard/syntax and actual local rsync
+basename/overwrite semantics. Then run the real device backup and verify a new
+success marker, backed-up script and database checks through its existing
+restricted receiver. A local filesystem test is not remote-receiver acceptance.
+The remote Python snapshot worker does not use these shell receiver targets;
+it needs independent normal backup verification, not this overlay.
+
+This repair is source-prepared; actual deployment and a completed new backup
+are separate private acceptance records. Roll back only the saved worker, not
+the package-owned receiver or either appliance's private profile.

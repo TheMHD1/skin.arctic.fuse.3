@@ -55,6 +55,7 @@ run(sys.executable,str(HERE/'server/test-venom-series-revisions.py'))
 run(sys.executable,str(HERE/'server/artwork-publication/test_artwork_publication.py'))
 run(sys.executable,str(HERE/'server/test_venom_jellyfin_readiness.py'))
 run(sys.executable,str(HERE/'server/test_venom_reviewed_artwork.py'))
+run(sys.executable,str(HERE/'device-backup/test_rsync_receiver_overlay.py'))
 for name in ('test_contract.py','test_upnext_policy.py','test_state_guard.py'):
     run(sys.executable,str(HERE/'release/next-episode'/name))
 run(sys.executable,str(HERE/'check-venom-package.py'))
