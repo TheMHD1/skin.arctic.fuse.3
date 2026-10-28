@@ -152,32 +152,36 @@ translated private profile path.  The host rejects stale/non-regular receipts,
 wrong nonces, unknown JSON keys, and every mapping outside the private tree.
 This replaces an unreliable debug-log heuristic without relaxing the mount
 sandbox. A new sandbox Addons database initially marks discovered copied addons
-disabled, so the probe first starts only built-in Estuary. The loopback Event
-Server launches a nonce-bound private activation script through `RunScript`.
-That script invokes Kodi's supported in-process `Addons.SetAddonEnabled` for
-the one audited candidate skin; Kodi resolves its dependency closure itself and
-the host then polls every closure member. This intentionally does **not** use
-the documented `EnableAddon(id)` builtin: Kodi implements that builtin with a
-yes/no GUI confirmation, so unattended event dispatch would not prove an
-enablement. Once the receipt and closure poll succeed, the host dispatches the
-noninteractive `LoadSkin(skin.arctic.fuse.3)` builtin. No live Addons database
-is copied or changed, and no host-side synchronous TCP RPC request waits for
-the enablement work. The probe snapshots/removes only private
-generated includes, requires fresh nonempty XML containing every managed
-owned/Venom selector route, then stops only its own unit. It proves the exact
-transient unit is dead before restarting normal Kodi; if that proof fails,
-normal Kodi deliberately remains stopped instead of competing for port 9090.
+disabled. The current **unaccepted candidate design** therefore uses two
+private-only phases: (1) start built-in Estuary in the newly-created HOME only
+long enough for Kodi itself to discover the staged closure and create its fresh
+`Addons33.db`, then prove that exact transient unit is gone; (2) while no Kodi
+process owns that private database, verify its Piers schema and integrity and
+atomically set `installed.enabled=1, disabledReason=0` for every and only the
+audited closure row. The second transient Kodi start then dispatches only the
+noninteractive `LoadSkin(skin.arctic.fuse.3)` builtin and polls the whole
+closure. It never copies, reads, or changes the live Addons database.
 
-The October 28 `d01` local runtime attempt did **not** generate XML: synchronous
-`Addons.SetAddonEnabled` did not reply before its RPC deadline, and its delayed
-owned-unit cleanup briefly blocked normal Kodi's JSON-RPC port. Normal Kodi was
-then restored active and idle; the remote device was plan-only and was not
-applied. Neither is generation acceptance. The superseded `df0` event-action
-candidate is also not accepted or eligible for runtime use: source review found
-that its `EnableAddon` action prompts for a GUI confirmation. The corrected
-private-script/event-launch path and exact-unit cleanup require a fresh paired
-runtime probe before any skin transaction or physical UI acceptance. The CLI captures `kodi-send` helper
-chatter and emits one JSON receipt, with the apply result nested under `result`.
+This is deliberately not a generic Kodi database editor: it rejects a missing,
+symlinked, uncheckpointed, malformed, wrong-version, or incomplete private DB;
+it rejects a closure outside the staged audited IDs; and it performs the one
+private update inside a SQLite transaction. Its first phase has the existing
+bounded RPC readiness check; phase two retains the existing bounded generation
+budget. It is neither a retry loop nor a blind timeout increase.
+
+The October 28 `d01` local runtime attempt did **not** generate XML: host-side
+synchronous `Addons.SetAddonEnabled` did not reply before its RPC deadline, and
+its delayed owned-unit cleanup briefly blocked normal Kodi's JSON-RPC port.
+Normal Kodi was restored active and idle; the remote device was plan-only and
+was not applied. The superseded `df0` event-action candidate is not accepted:
+Kodi's documented `EnableAddon(id)` builtin prompts for a GUI confirmation.
+The subsequent `f810` local private-script attempt is also not accepted: the
+script began recursive enablement but stalled before its receipt or XML; normal
+Kodi was restored and the remote remained plan-only. The two-phase DB design
+above is source/test work only until a separately reviewed, fresh isolated
+runtime probe proves it end-to-end. It is not a skin transaction or physical UI
+acceptance. The CLI captures `kodi-send` helper chatter and emits one JSON
+receipt, with the apply result nested under `result`.
 
 Example read-only plan:
 

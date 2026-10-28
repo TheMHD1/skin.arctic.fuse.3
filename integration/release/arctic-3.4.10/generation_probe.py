@@ -16,6 +16,7 @@ import re
 import secrets
 import shutil
 import socket
+import sqlite3
 import subprocess
 import time
 import xml.etree.ElementTree as ET
@@ -43,10 +44,8 @@ PATH_PROOF_RECEIPT_PREFIX = "arctic3410-path-proof-"
 PATH_PROOF_RECEIPT_SUFFIX = ".json"
 PATH_PROOF_TIMEOUT_SECONDS = 10
 PATH_PROOF_MAX_BYTES = 4096
-ACTIVATION_PROOF_SCHEMA = 1
-ACTIVATION_PROOF_SCRIPT = "arctic3410-activation.py"
-ACTIVATION_PROOF_RECEIPT_PREFIX = "arctic3410-activation-"
-ACTIVATION_PROOF_TIMEOUT_SECONDS = 15
+ADDONS_DATABASE_FILENAME = "Addons33.db"
+ADDONS_DATABASE_SCHEMA = 33
 SKIN_ACTIVATION_TIMEOUT_SECONDS = 20
 REVIEWED_RESOURCES = {
     "resource.images.arctic.weather": {
@@ -299,61 +298,10 @@ os.replace(temporary, target)
     return script
 
 
-def _activation_proof_receipt(runtime_home: Path, nonce: str) -> Path:
-    if not re.fullmatch(r"[0-9a-f]{64}", nonce):
-        raise ValueError("invalid activation-proof nonce")
-    return (Path(runtime_home).resolve() / ".kodi" / "userdata"
-            / f"{ACTIVATION_PROOF_RECEIPT_PREFIX}{nonce}{PATH_PROOF_RECEIPT_SUFFIX}")
-
-
-def _write_activation_script(runtime_home: Path, nonce: str) -> Path:
-    """Write a private, nonce-bound noninteractive enable request.
-
-    Kodi's documented ``EnableAddon`` builtin deliberately presents a yes/no
-    dialog.  A private script launched through the loopback Event Server instead
-    invokes Kodi's supported in-process ``Addons.SetAddonEnabled`` API for the
-    one audited skin. Kodi resolves and enables its dependencies recursively;
-    the host independently polls every closure member afterward. This avoids
-    both GUI automation and the prior host-side synchronous TCP RPC wait.
-    """
-    receipt = _activation_proof_receipt(runtime_home, nonce)
-    script = receipt.with_name(ACTIVATION_PROOF_SCRIPT)
-    payload = {
-        "schema": ACTIVATION_PROOF_SCHEMA,
-        "nonce": nonce,
-        "receipt": receipt.name,
-        "addon": SKIN_ID,
-    }
-    source = """import json
-import os
-import xbmc
-import xbmcvfs
-
-PAYLOAD = {payload}
-request = {{"jsonrpc": "2.0", "id": 1, "method": "Addons.SetAddonEnabled",
-           "params": {{"addonid": PAYLOAD["addon"], "enabled": True}}}}
-response = json.loads(xbmc.executeJSONRPC(json.dumps(request, separators=(",", ":"))))
-if response.get("id") != 1 or response.get("result") != "OK" or "error" in response:
-    raise RuntimeError("private candidate enablement rejected")
-target = os.path.join(xbmcvfs.translatePath("special://profile"), PAYLOAD["receipt"])
-temporary = target + ".tmp"
-with open(temporary, "w", encoding="utf-8") as handle:
-    json.dump({{"schema": PAYLOAD["schema"], "nonce": PAYLOAD["nonce"],
-               "addon": PAYLOAD["addon"], "result": "OK"}}, handle,
-              sort_keys=True, separators=(",", ":"))
-    handle.flush()
-    os.fsync(handle.fileno())
-os.replace(temporary, target)
-""".format(payload=json.dumps(payload, sort_keys=True))
-    script.write_text(source, encoding="utf-8")
-    return script
-
-
 def prepare_home(storage_root: Path, stage: Path, runtime_home: Path,
                  system_addons: Path = Path("/usr/share/kodi/addons"),
                  reviewed_root: Path | None = None,
-                 path_proof_nonce: str | None = None,
-                 activation_proof_nonce: str | None = None) -> dict:
+                 path_proof_nonce: str | None = None) -> dict:
     """Create an isolated Kodi HOME and return a write receipt for its closure."""
     storage_root, stage = Path(storage_root).resolve(), Path(stage).resolve()
     runtime_home = _runtime_home(storage_root, runtime_home)
@@ -373,10 +321,10 @@ def prepare_home(storage_root: Path, stage: Path, runtime_home: Path,
     userdata = runtime_home / ".kodi" / "userdata"
     userdata.mkdir(mode=0o700)
     # A fresh Kodi Addons database discovers copied add-ons as disabled. Start
-    # on built-in Estuary; a private event-launched script later enables only
-    # the audited candidate skin through Kodi's supported in-process API. Never
-    # seed/copy the active profile's database merely to make the sandbox load a
-    # skin.
+    # on built-in Estuary. A first private-only Kodi start will create its own
+    # Addons33 database; after it is stopped, the exact audited closure is
+    # enabled offline inside that fresh database. Never seed/copy the active
+    # profile's database merely to make the sandbox load a skin.
     (userdata / "guisettings.xml").write_text(
         '<settings version="2">'
         '<setting id="lookandfeel.skin">skin.estuary</setting>'
@@ -403,15 +351,12 @@ def prepare_home(storage_root: Path, stage: Path, runtime_home: Path,
         copied_inputs[str(relative)] = copied_hash
     if path_proof_nonce is not None:
         _write_path_proof_script(runtime_home, path_proof_nonce)
-    if activation_proof_nonce is not None:
-        _write_activation_script(runtime_home, activation_proof_nonce)
-    validate_minimal_home(runtime_home, set(receipt), path_proof_nonce, activation_proof_nonce)
+    validate_minimal_home(runtime_home, set(receipt), path_proof_nonce)
     return {"home": str(runtime_home), "addons": receipt, "menu_inputs": copied_inputs}
 
 
 def validate_minimal_home(runtime_home: Path, allowed_addons: set[str],
-                          path_proof_nonce: str | None = None,
-                          activation_proof_nonce: str | None = None) -> None:
+                          path_proof_nonce: str | None = None) -> None:
     """Reject any stage path outside the intentionally tiny profile surface."""
     runtime_home = Path(runtime_home).resolve()
     kodi = runtime_home / ".kodi"
@@ -420,9 +365,6 @@ def validate_minimal_home(runtime_home: Path, allowed_addons: set[str],
     if path_proof_nonce is not None:
         _path_proof_receipt(runtime_home, path_proof_nonce)
         allowed.add(Path("userdata") / PATH_PROOF_SCRIPT)
-    if activation_proof_nonce is not None:
-        _activation_proof_receipt(runtime_home, activation_proof_nonce)
-        allowed.add(Path("userdata") / ACTIVATION_PROOF_SCRIPT)
     for item in kodi.rglob("*"):
         relative = item.relative_to(kodi)
         if item.is_symlink():
@@ -479,51 +421,87 @@ def _wait_for_private_addons_enabled(rpc, addon_ids: set[str], timeout: int = 10
     raise RuntimeError("Kodi did not enable private add-ons: " + ", ".join(sorted(pending)))
 
 
-def _validate_activation_proof_receipt(runtime_home: Path, nonce: str) -> None:
-    receipt = _activation_proof_receipt(runtime_home, nonce)
-    expected_parent = (Path(runtime_home).resolve() / ".kodi" / "userdata").resolve()
-    if receipt.parent.resolve() != expected_parent or receipt.is_symlink() or not receipt.is_file():
-        raise RuntimeError("Kodi did not create a private activation receipt")
-    if receipt.stat().st_size > PATH_PROOF_MAX_BYTES:
-        raise RuntimeError("Kodi activation receipt is too large")
-    try:
-        payload = json.loads(receipt.read_text(encoding="utf-8"))
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise RuntimeError("Kodi activation receipt is invalid") from exc
-    expected = {"schema": ACTIVATION_PROOF_SCHEMA, "nonce": nonce,
-                "addon": SKIN_ID, "result": "OK"}
-    if payload != expected:
-        raise RuntimeError("Kodi activation receipt mismatch")
+def _private_addons_database(runtime_home: Path) -> Path:
+    runtime_home = Path(runtime_home).resolve()
+    database = runtime_home / ".kodi" / "userdata" / "Database" / ADDONS_DATABASE_FILENAME
+    if (runtime_home not in database.parents or database.parent.is_symlink()
+            or database.is_symlink() or not database.is_file()):
+        raise RuntimeError("fresh private Kodi Addons database is missing or unsafe")
+    for sidecar in (database.with_name(database.name + suffix)
+                    for suffix in ("-journal", "-wal", "-shm")):
+        if sidecar.exists():
+            raise RuntimeError("private Kodi Addons database has an uncheckpointed sidecar")
+    return database
 
 
-def _wait_for_activation_proof(runtime_home: Path, nonce: str,
-                               timeout: int = ACTIVATION_PROOF_TIMEOUT_SECONDS) -> None:
-    deadline = time.monotonic() + timeout
-    last_error: Exception | None = None
-    while time.monotonic() < deadline:
-        try:
-            _validate_activation_proof_receipt(runtime_home, nonce)
-            return
-        except RuntimeError as exc:
-            last_error = exc
-        time.sleep(0.1)
-    raise RuntimeError("Kodi did not prove private candidate enablement") from last_error
+def enable_private_addons_offline(runtime_home: Path, addon_ids: set[str]) -> dict[str, int]:
+    """Enable only an audited closure in a fresh, stopped private Addons33 DB.
 
-
-def _activate_private_skin(rpc, addon_ids: set[str], runtime_home: Path, run,
-                           kodi_send: Path, activation_nonce: str,
-                           wait_for_activation=_wait_for_activation_proof) -> list[str]:
-    """Enable once in the private Kodi process, then load and verify the skin."""
+    Kodi Piers stores disabled state solely in ``installed.enabled`` and
+    ``installed.disabledReason``. This is intentionally a two-phase sandbox
+    operation: Kodi itself first discovers all staged add-ons and creates the
+    database; after its exact transient unit is confirmed gone, this function
+    changes only the selected private rows in one SQLite transaction.
+    """
     addon_ids = set(addon_ids)
     if not addon_ids or SKIN_ID not in addon_ids:
         raise RuntimeError("private runtime closure does not contain the candidate skin")
     for addon_id in addon_ids:
         _safe_addon_id(addon_id)
-    _send_private_activation(run, kodi_send)
-    wait_for_activation(runtime_home, activation_nonce)
-    # Only LoadSkin is dispatched as a builtin: unlike EnableAddon, it has no
-    # confirmation dialog. The receipt and following poll prove the private
-    # in-process request completed before the skin is loaded.
+    database = _private_addons_database(runtime_home)
+    try:
+        # The file has already been required to exist and to be private/regular.
+        # Do not encode an operator-supplied HOME path into a SQLite URI: URI
+        # metacharacters in its final component could otherwise alter parsing.
+        connection = sqlite3.connect(database)
+        try:
+            if connection.execute("PRAGMA integrity_check").fetchall() != [("ok",)]:
+                raise RuntimeError("private Kodi Addons database integrity check failed")
+            if connection.execute("SELECT idVersion FROM version").fetchall() != [(ADDONS_DATABASE_SCHEMA,)]:
+                raise RuntimeError("unexpected private Kodi Addons database schema")
+            columns = {row[1] for row in connection.execute("PRAGMA table_info(installed)")}
+            required = {"addonID", "enabled", "disabledReason"}
+            if not required.issubset(columns):
+                raise RuntimeError("private Kodi Addons database lacks required installed fields")
+            placeholders = ",".join("?" for _ in addon_ids)
+            rows = connection.execute(
+                f"SELECT addonID, enabled, disabledReason FROM installed WHERE addonID IN ({placeholders})",
+                tuple(sorted(addon_ids)),
+            ).fetchall()
+            found = {row[0] for row in rows}
+            if found != addon_ids or len(rows) != len(addon_ids):
+                raise RuntimeError("fresh private Kodi Addons database lacks the audited closure")
+            connection.execute("BEGIN IMMEDIATE")
+            connection.execute(
+                f"UPDATE installed SET enabled=1, disabledReason=0 WHERE addonID IN ({placeholders})",
+                tuple(sorted(addon_ids)),
+            )
+            verified = connection.execute(
+                f"SELECT addonID, enabled, disabledReason FROM installed WHERE addonID IN ({placeholders})",
+                tuple(sorted(addon_ids)),
+            ).fetchall()
+            if {row[0] for row in verified} != addon_ids or any(row[1:] != (1, 0) for row in verified):
+                raise RuntimeError("private Kodi Addons database did not enable the audited closure")
+            connection.commit()
+            return {"schema": ADDONS_DATABASE_SCHEMA, "closure_count": len(addon_ids)}
+        except Exception:
+            connection.rollback()
+            raise
+        finally:
+            connection.close()
+    except sqlite3.Error as exc:
+        raise RuntimeError("private Kodi Addons database update failed") from exc
+
+
+def _activate_private_skin(rpc, addon_ids: set[str], run, kodi_send: Path) -> list[str]:
+    """Load a pre-enabled private candidate and verify the complete closure."""
+    addon_ids = set(addon_ids)
+    if not addon_ids or SKIN_ID not in addon_ids:
+        raise RuntimeError("private runtime closure does not contain the candidate skin")
+    for addon_id in addon_ids:
+        _safe_addon_id(addon_id)
+    # LoadSkin has no approval dialog. The preceding offline DB transaction
+    # makes the candidate and exact closure available before this second start.
     _send_builtin(run, kodi_send, "LoadSkin(" + SKIN_ID + ")")
     enabled = _wait_for_private_addons_enabled(rpc, addon_ids)
     return enabled
@@ -661,10 +639,6 @@ def _send_builtin(run, kodi_send: Path, action: str) -> None:
         capture_output=True, text=True)
 
 
-def _send_private_activation(run, kodi_send: Path) -> None:
-    _send_builtin(run, kodi_send, "RunScript(special://profile/" + ACTIVATION_PROOF_SCRIPT + ")")
-
-
 def _send_path_proof(run, kodi_send: Path) -> None:
     _send_builtin(run, kodi_send, "RunScript(special://profile/" + PATH_PROOF_SCRIPT + ")")
 
@@ -679,9 +653,11 @@ def _validate_kodi_binary(kodi_bin: Path) -> None:
         raise ValueError("requires the direct CoreELEC kodi.bin executable")
 
 
-def _unit_name(runtime_home: Path) -> str:
-    digest = hashlib.sha256(str(Path(runtime_home).resolve()).encode()).hexdigest()[:16]
-    return "arctic3410-generation-" + digest
+def _unit_name(runtime_home: Path, phase: str = "generation") -> str:
+    if phase not in {"bootstrap", "generation"}:
+        raise ValueError("unsupported isolated Kodi phase")
+    digest = hashlib.sha256((str(Path(runtime_home).resolve()) + "\0" + phase).encode()).hexdigest()[:16]
+    return "arctic3410-" + phase + "-" + digest
 
 
 def _launch_isolated_kodi(run, unit: str, runtime_home: Path, kodi_bin: Path) -> None:
@@ -773,7 +749,7 @@ def run_probe(storage_root: Path, stage: Path, profile: dict, runtime_home: Path
               wait_for_path_proof=_wait_for_path_proof,
               activate_private_skin=_activate_private_skin,
               wait_for_active_skin=_wait_for_active_skin,
-              wait_for_activation_proof=_wait_for_activation_proof) -> dict:
+              enable_private_addons=enable_private_addons_offline) -> dict:
     """Run the bounded probe; only call after an operator chooses ``--apply``."""
     kodi_bin = Path(kodi_bin)
     binary_validator(kodi_bin)
@@ -790,20 +766,34 @@ def run_probe(storage_root: Path, stage: Path, profile: dict, runtime_home: Path
         dependency_preflight(storage_root, stage, system_addons, reviewed_addons_root)
         ports_validator()
         path_proof_nonce = secrets.token_hex(32)
-        activation_proof_nonce = secrets.token_hex(32)
         receipt = prepare_home(storage_root, stage, runtime_home, system_addons,
-                               reviewed_addons_root, path_proof_nonce,
-                               activation_proof_nonce)
+                               reviewed_addons_root, path_proof_nonce)
         previous_generated = clear_generated_outputs(runtime_home)
-        unit = _unit_name(runtime_home)
-        started = time.monotonic()
+        bootstrap_unit = _unit_name(runtime_home, "bootstrap")
+        generation_unit = _unit_name(runtime_home, "generation")
         try:
-            launcher(run, unit, runtime_home, kodi_bin)
+            # Phase 1 is deliberately Estuary-only. It lets Kodi discover the
+            # staged closure and create a fresh Addons33 database, which is
+            # then safely edited while no Kodi process owns it.
+            launcher(run, bootstrap_unit, runtime_home, kodi_bin)
+            try:
+                _wait_for_rpc(START_TIMEOUT_SECONDS, rpc)
+            finally:
+                try:
+                    stop_owned_unit(run, bootstrap_unit)
+                except Exception:
+                    cleanup_confirmed["value"] = False
+                    raise
+            ports_validator()
+            bootstrap = enable_private_addons(runtime_home, set(receipt["addons"]))
+            # Phase 1 has its own hard RPC readiness bound and is fully stopped
+            # before the private DB update.  The existing generation budget
+            # starts only for phase 2; this is not an unbounded retry or a
+            # timeout extension for the prior stalled enablement path.
+            started = time.monotonic()
+            launcher(run, generation_unit, runtime_home, kodi_bin)
             _wait_for_rpc(START_TIMEOUT_SECONDS, rpc)
-            enabled_addons = activate_private_skin(
-                rpc, set(receipt["addons"]), runtime_home, run, kodi_send,
-                activation_proof_nonce, wait_for_activation_proof,
-            )
+            enabled_addons = activate_private_skin(rpc, set(receipt["addons"]), run, kodi_send)
             wait_for_active_skin(SKIN_ACTIVATION_TIMEOUT_SECONDS, rpc)
             if time.monotonic() - started > MAX_RUNTIME_SECONDS:
                 raise RuntimeError("staged Kodi startup exceeded runtime budget")
@@ -817,16 +807,27 @@ def run_probe(storage_root: Path, stage: Path, profile: dict, runtime_home: Path
             generated = _wait_for_generation(runtime_home, GENERATION_TIMEOUT_SECONDS)
             if time.monotonic() - started > MAX_RUNTIME_SECONDS:
                 raise RuntimeError("staged Kodi generation exceeded runtime budget")
-            return {"receipt": receipt, "enabled_addons": enabled_addons, "path_mappings": mappings,
+            return {"receipt": receipt, "bootstrap": bootstrap,
+                    "enabled_addons": enabled_addons, "path_mappings": mappings,
                     "removed_generated": previous_generated, "generated": [str(item) for item in generated]}
         finally:
-            # This exact transient unit contains the only stage process.  Do
-            # not kill by executable name and never touch normal kodi.service.
-            try:
-                stop_owned_unit(run, unit)
-            except Exception:
-                cleanup_confirmed["value"] = False
-                raise
+            # ``systemd-run --no-block`` can report a transport error after
+            # PID 1 accepted the bootstrap request. Reap both exact hashed
+            # units in reverse launch order, even if the bootstrap inner
+            # cleanup already saw it gone. Do not kill by executable name and
+            # never touch normal kodi.service.
+            cleanup_errors = []
+            for owned_unit in (generation_unit, bootstrap_unit):
+                try:
+                    stop_owned_unit(run, owned_unit)
+                except Exception as exc:
+                    cleanup_confirmed["value"] = False
+                    cleanup_errors.append(exc)
+            if cleanup_errors:
+                if len(cleanup_errors) == 1:
+                    raise cleanup_errors[0]
+                detail = "; ".join(str(error) for error in cleanup_errors)
+                raise RuntimeError("multiple isolated Kodi units failed cleanup: " + detail) from cleanup_errors[0]
 
     return lifecycle.with_stopped_kodi(
         mutate, run=run, restart_permitted=lambda: cleanup_confirmed["value"],

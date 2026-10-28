@@ -1,6 +1,7 @@
 import importlib.util
 import io
 import json
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -80,10 +81,8 @@ class GenerationProbeTests(unittest.TestCase):
     def test_prepare_copies_only_candidate_and_dependency_closure(self):
         runtime = self.root / ".arctic3410-generation/run-a"
         nonce = "a" * 64
-        activation_nonce = "e" * 64
         result = probe.prepare_home(self.root, self.stage, runtime, self.system,
-                                    path_proof_nonce=nonce,
-                                    activation_proof_nonce=activation_nonce)
+                                    path_proof_nonce=nonce)
         copied = result["addons"]
         self.assertEqual(set(copied), {
             probe.SKIN_ID,
@@ -102,10 +101,7 @@ class GenerationProbeTests(unittest.TestCase):
         self.assertTrue(proof_script.is_file())
         self.assertIn("xbmcvfs.translatePath", proof_script.read_text())
         self.assertIn("os.replace", proof_script.read_text())
-        activation_script = runtime / ".kodi/userdata" / probe.ACTIVATION_PROOF_SCRIPT
-        self.assertTrue(activation_script.is_file())
-        self.assertIn("Addons.SetAddonEnabled", activation_script.read_text())
-        probe.validate_minimal_home(runtime, set(copied), nonce, activation_nonce)
+        probe.validate_minimal_home(runtime, set(copied), nonce)
 
     def test_service_dependency_and_extra_stage_file_are_rejected(self):
         candidate = self.stage / "candidate/addons" / probe.SKIN_ID
@@ -208,36 +204,85 @@ class GenerationProbeTests(unittest.TestCase):
         self.assertFalse(receipt.with_name(receipt.name + ".tmp").exists())
         self.assertEqual(probe._validate_path_proof_receipt(runtime, nonce), mappings)
 
-    def test_activation_script_enables_only_candidate_and_writes_nonce_receipt(self):
-        runtime = self.root / ".arctic3410-generation/run-activation-script"
-        profile = runtime / ".kodi/userdata"
-        profile.mkdir(parents=True)
-        nonce = "e" * 64
-        script = probe._write_activation_script(runtime, nonce)
-        requested = []
-        xbmc = types.SimpleNamespace(
-            executeJSONRPC=lambda raw: requested.append(json.loads(raw)) or json.dumps({"id": 1, "result": "OK"}),
-        )
-        original_xbmc = sys.modules.get("xbmc")
-        original_xbmcvfs = sys.modules.get("xbmcvfs")
-        sys.modules["xbmc"] = xbmc
-        sys.modules["xbmcvfs"] = types.SimpleNamespace(translatePath=lambda path: str(profile))
-        try:
-            exec(compile(script.read_text(), str(script), "exec"), {})
-        finally:
-            if original_xbmc is None:
-                del sys.modules["xbmc"]
-            else:
-                sys.modules["xbmc"] = original_xbmc
-            if original_xbmcvfs is None:
-                del sys.modules["xbmcvfs"]
-            else:
-                sys.modules["xbmcvfs"] = original_xbmcvfs
-        self.assertEqual(requested, [{
-            "jsonrpc": "2.0", "id": 1, "method": "Addons.SetAddonEnabled",
-            "params": {"addonid": probe.SKIN_ID, "enabled": True},
-        }])
-        probe._validate_activation_proof_receipt(runtime, nonce)
+    def test_offline_bootstrap_enables_only_audited_private_closure(self):
+        runtime = self.root / ".arctic3410-generation/run-bootstrap-db"
+        database = runtime / ".kodi/userdata/Database" / probe.ADDONS_DATABASE_FILENAME
+        database.parent.mkdir(parents=True)
+        connection = sqlite3.connect(database)
+        connection.executescript("""
+            CREATE TABLE version (idVersion integer, iCompressCount integer);
+            INSERT INTO version VALUES (33, 0);
+            CREATE TABLE installed (id INTEGER PRIMARY KEY, addonID TEXT UNIQUE,
+                enabled BOOLEAN, installDate TEXT, lastUpdated TEXT, lastUsed TEXT,
+                origin TEXT NOT NULL DEFAULT '', disabledReason INTEGER NOT NULL DEFAULT 0);
+        """)
+        closure = {probe.SKIN_ID, probe.SKINVARIABLES, "script.module.infotagger"}
+        for addon_id in sorted(closure | {"unrelated.private.addon"}):
+            connection.execute("INSERT INTO installed(addonID,enabled,disabledReason) VALUES(?,?,?)",
+                               (addon_id, 0, 7))
+        connection.commit()
+        connection.close()
+
+        self.assertEqual(probe.enable_private_addons_offline(runtime, closure),
+                         {"schema": 33, "closure_count": 3})
+        connection = sqlite3.connect(database)
+        rows = dict(connection.execute("SELECT addonID,enabled FROM installed"))
+        connection.close()
+        self.assertTrue(all(rows[addon_id] == 1 for addon_id in closure))
+        self.assertEqual(rows["unrelated.private.addon"], 0)
+
+    def test_offline_bootstrap_rejects_incomplete_or_unclean_private_database(self):
+        runtime = self.root / ".arctic3410-generation/run-bootstrap-reject"
+        database = runtime / ".kodi/userdata/Database" / probe.ADDONS_DATABASE_FILENAME
+        database.parent.mkdir(parents=True)
+        connection = sqlite3.connect(database)
+        connection.executescript("""
+            CREATE TABLE version (idVersion integer, iCompressCount integer);
+            INSERT INTO version VALUES (33, 0);
+            CREATE TABLE installed (id INTEGER PRIMARY KEY, addonID TEXT UNIQUE,
+                enabled BOOLEAN, disabledReason INTEGER NOT NULL DEFAULT 0);
+        """)
+        connection.execute("INSERT INTO installed(addonID,enabled,disabledReason) VALUES(?,?,?)",
+                           (probe.SKIN_ID, 0, 7))
+        connection.commit()
+        connection.close()
+
+        closure = {probe.SKIN_ID, probe.SKINVARIABLES}
+        with self.assertRaisesRegex(RuntimeError, "lacks the audited closure"):
+            probe.enable_private_addons_offline(runtime, closure)
+        connection = sqlite3.connect(database)
+        self.assertEqual(connection.execute(
+            "SELECT enabled,disabledReason FROM installed WHERE addonID=?", (probe.SKIN_ID,)
+        ).fetchone(), (0, 7))
+        connection.close()
+
+        database.with_name(database.name + "-journal").write_bytes(b"not-a-live-journal")
+        with self.assertRaisesRegex(RuntimeError, "uncheckpointed sidecar"):
+            probe.enable_private_addons_offline(runtime, {probe.SKIN_ID})
+
+    def test_offline_bootstrap_rejects_wrong_schema_before_mutating_rows(self):
+        runtime = self.root / ".arctic3410-generation/run-bootstrap-wrong-schema"
+        database = runtime / ".kodi/userdata/Database" / probe.ADDONS_DATABASE_FILENAME
+        database.parent.mkdir(parents=True)
+        connection = sqlite3.connect(database)
+        connection.executescript("""
+            CREATE TABLE version (idVersion integer, iCompressCount integer);
+            INSERT INTO version VALUES (32, 0);
+            CREATE TABLE installed (id INTEGER PRIMARY KEY, addonID TEXT UNIQUE,
+                enabled BOOLEAN, disabledReason INTEGER NOT NULL DEFAULT 0);
+        """)
+        connection.execute("INSERT INTO installed(addonID,enabled,disabledReason) VALUES(?,?,?)",
+                           (probe.SKIN_ID, 0, 9))
+        connection.commit()
+        connection.close()
+
+        with self.assertRaisesRegex(RuntimeError, "unexpected private Kodi Addons database schema"):
+            probe.enable_private_addons_offline(runtime, {probe.SKIN_ID})
+        connection = sqlite3.connect(database)
+        self.assertEqual(connection.execute(
+            "SELECT enabled,disabledReason FROM installed WHERE addonID=?", (probe.SKIN_ID,)
+        ).fetchone(), (0, 9))
+        connection.close()
 
     def test_reviewed_resources_are_exact_and_required_outputs_are_fresh(self):
         reviewed = Path(self.tmp.name) / "reviewed"
@@ -309,8 +354,9 @@ class GenerationProbeTests(unittest.TestCase):
                 dependency_preflight=lambda *args: {probe.SKINVARIABLES: "h"},
                 send_path_proof=lambda run, helper: calls.append(("path-proof", str(helper))),
                 wait_for_path_proof=lambda home, nonce: {"special://home": "private"},
-                activate_private_skin=lambda rpc, addons, home, runner, helper, nonce, wait: calls.append(("activate", tuple(sorted(addons)))) or sorted(addons),
+                activate_private_skin=lambda rpc, addons, runner, helper: calls.append(("activate", tuple(sorted(addons)))) or sorted(addons),
                 wait_for_active_skin=lambda timeout, rpc: calls.append(("active-skin", timeout)),
+                enable_private_addons=lambda home, addons: calls.append(("bootstrap-db", tuple(sorted(addons)))) or {"schema": 33, "closure_count": len(addons)},
             )
         finally:
             probe.lifecycle.idle = original_idle
@@ -320,10 +366,104 @@ class GenerationProbeTests(unittest.TestCase):
         self.assertLess(calls.index(("systemctl", "stop", "kodi")), calls.index("ports"))
         self.assertLess(calls.index(("path-proof", "/usr/bin/kodi-send")),
                         calls.index(("generator", "/usr/bin/kodi-send")))
+        launches = [call for call in calls if isinstance(call, tuple) and call[0] == "launch"]
+        self.assertEqual(len(launches), 2)
+        self.assertIn("bootstrap", launches[0][1])
+        self.assertIn("generation", launches[1][1])
+        bootstrap_stop = next(index for index, call in enumerate(calls)
+                              if isinstance(call, tuple) and call[0] == "stop-owned"
+                              and "bootstrap" in call[1])
+        bootstrap_update = calls.index(("bootstrap-db", (probe.SKIN_ID,)))
+        generation_launch = calls.index(launches[1])
+        self.assertLess(bootstrap_stop, bootstrap_update)
+        self.assertLess(bootstrap_update, generation_launch)
+        self.assertLess(calls.index(("bootstrap-db", (probe.SKIN_ID,))), calls.index(("activate", (probe.SKIN_ID,))))
         self.assertLess(calls.index(("activate", (probe.SKIN_ID,))), calls.index(("path-proof", "/usr/bin/kodi-send")))
-        self.assertTrue(any(call[0] == "stop-owned" for call in calls if isinstance(call, tuple)))
+        # Bootstrap is stopped before its private DB transaction, then both
+        # exact units are proven gone again in the outer failure-safe cleanup.
+        self.assertEqual(sum(1 for call in calls if isinstance(call, tuple) and call[0] == "stop-owned"), 3)
         self.assertEqual(calls[-1], ("systemctl", "start", "kodi"))
         self.assertEqual(result["generated"], [str(generated)])
+
+    def test_bootstrap_launcher_error_still_reaps_both_hashed_units_before_restart(self):
+        calls = []
+        original_idle = probe.lifecycle.idle
+        original_prepare = probe.prepare_home
+        try:
+            probe.lifecycle.idle = lambda: calls.append("idle")
+            probe.prepare_home = lambda *args, **kwargs: {
+                "home": "private", "addons": {probe.SKIN_ID: "h"},
+            }
+
+            def run(argv, **kwargs):
+                calls.append(tuple(argv))
+
+            def launcher(run, unit, home, binary):
+                calls.append(("launch", unit))
+                if "bootstrap" in unit:
+                    raise RuntimeError("systemd-run transport failed after submission")
+
+            with self.assertRaisesRegex(RuntimeError, "transport failed"):
+                probe.run_probe(
+                    self.root, self.stage, {"cohort": "local"},
+                    self.root / ".arctic3410-generation/run-bootstrap-launch-error",
+                    run=run,
+                    rpc=lambda method, params=None: [],
+                    binary_validator=lambda path: None,
+                    preflight_func=lambda *args: {},
+                    ports_validator=lambda: calls.append("ports"),
+                    launcher=launcher,
+                    stop_owned_unit=lambda run, unit: calls.append(("stop-owned", unit)),
+                    dependency_preflight=lambda *args: {},
+                )
+        finally:
+            probe.lifecycle.idle = original_idle
+            probe.prepare_home = original_prepare
+
+        stopped = [call[1] for call in calls if isinstance(call, tuple) and call[0] == "stop-owned"]
+        self.assertEqual(len(stopped), 2)
+        self.assertIn("generation", stopped[0])
+        self.assertIn("bootstrap", stopped[1])
+        self.assertEqual(calls[-1], ("systemctl", "start", "kodi"))
+
+    def test_bootstrap_launcher_cleanup_failure_withholds_normal_kodi_restart(self):
+        calls = []
+        original_idle = probe.lifecycle.idle
+        original_prepare = probe.prepare_home
+        try:
+            probe.lifecycle.idle = lambda: calls.append("idle")
+            probe.prepare_home = lambda *args, **kwargs: {
+                "home": "private", "addons": {probe.SKIN_ID: "h"},
+            }
+
+            def run(argv, **kwargs):
+                calls.append(tuple(argv))
+
+            def stop_owned(run, unit):
+                calls.append(("stop-owned", unit))
+                if "bootstrap" in unit:
+                    raise RuntimeError("bootstrap unit cleanup not proven")
+
+            with self.assertRaisesRegex(RuntimeError, "bootstrap unit cleanup not proven"):
+                probe.run_probe(
+                    self.root, self.stage, {"cohort": "local"},
+                    self.root / ".arctic3410-generation/run-bootstrap-cleanup-error",
+                    run=run,
+                    rpc=lambda method, params=None: [],
+                    binary_validator=lambda path: None,
+                    preflight_func=lambda *args: {},
+                    ports_validator=lambda: calls.append("ports"),
+                    launcher=lambda *args: (_ for _ in ()).throw(
+                        RuntimeError("systemd-run transport failed after submission")
+                    ),
+                    stop_owned_unit=stop_owned,
+                    dependency_preflight=lambda *args: {},
+                )
+        finally:
+            probe.lifecycle.idle = original_idle
+            probe.prepare_home = original_prepare
+
+        self.assertFalse(any(call == ("systemctl", "start", "kodi") for call in calls))
 
     def test_activation_enables_only_closure_verifies_every_addon_and_switches_skin(self):
         calls = []
@@ -352,19 +492,16 @@ class GenerationProbeTests(unittest.TestCase):
             builtin_calls.append(action)
             if action.startswith("LoadSkin("):
                 enabled.update(closure)
-        with mock.patch.object(probe, "_send_private_activation") as send_activation, \
-             mock.patch.object(probe, "_send_builtin", side_effect=send_builtin):
+        with mock.patch.object(probe, "_send_builtin", side_effect=send_builtin):
             self.assertEqual(probe._activate_private_skin(
-                rpc, closure, runtime, lambda *args, **kwargs: None,
-                Path("/usr/bin/kodi-send"), "f" * 64,
-                lambda home, nonce: self.assertEqual((home, nonce), (runtime, "f" * 64)),
+                rpc, closure, lambda *args, **kwargs: None,
+                Path("/usr/bin/kodi-send"),
             ), sorted(closure))
-        send_activation.assert_called_once()
         self.assertEqual(builtin_calls, ["LoadSkin(skin.arctic.fuse.3)"])
 
         with self.assertRaises(RuntimeError):
-            probe._activate_private_skin(rpc, {probe.SKINVARIABLES}, runtime, lambda *args, **kwargs: None,
-                                         Path("/usr/bin/kodi-send"), "f" * 64)
+            probe._activate_private_skin(rpc, {probe.SKINVARIABLES}, lambda *args, **kwargs: None,
+                                         Path("/usr/bin/kodi-send"))
 
     def test_activation_rejects_never_enabled_closure(self):
         calls = []
