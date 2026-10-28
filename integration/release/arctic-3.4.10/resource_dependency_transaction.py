@@ -736,7 +736,11 @@ def start_kodi():
 
 
 def stop_kodi(state_reader=kodi_state, clock=time.monotonic, sleeper=time.sleep):
-    result = systemctl("stop", "kodi")
+    # Enqueue the stop and prove its terminal state below.  A synchronous
+    # systemctl call races Kodi's native 30-second TimeoutStopSec with this
+    # helper's own 30-second subprocess bound even when systemd stops it
+    # correctly at the deadline.
+    result = systemctl("--no-block", "stop", "kodi")
     if result.returncode: raise RuntimeError("Kodi stop failed")
     deadline = clock() + 45; last = None
     while clock() < deadline:

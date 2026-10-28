@@ -334,6 +334,13 @@ checks `Addons.GetAddonDetails`, then stops Kodi and independently reads back
 its native rows. Acceptance requires unchanged database ownership/mode and
 every non-owned schema/row, exact resource trees and a reread canonical receipt.
 
+The stop request is queued with `systemctl --no-block`; the existing bounded
+state poll, not the enqueue acknowledgment, must prove Kodi stopped before any
+database readback. A live attempt exposed a race between synchronous systemctl's
+30-second subprocess deadline and Kodi's native 30-second shutdown limit. That
+attempt rolled back and restored the old Kodi session. No stop deadline or
+database/sidecar guard was relaxed to correct the race.
+
 Recovery fsyncs both parents of cross-directory moves, retains failed evidence,
 and compares the complete database state before replacement. Content-bound
 pending records cover interrupted bootstrap, journal and acceptance commits;

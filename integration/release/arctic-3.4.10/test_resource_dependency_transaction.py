@@ -124,6 +124,39 @@ class ResourceTransactionTests(unittest.TestCase):
     def lock(self):
         return tx.deployment_lock(self.storage)
 
+    def test_stop_kodi_enqueues_nonblocking_and_still_polls_terminal_state(self):
+        calls, states, now = [], [
+            ("active", "running", 123), ("inactive", "dead", 0)], [0.0]
+
+        def systemctl(*args):
+            calls.append(args)
+            return type("Result", (), {"returncode": 0})()
+
+        def state():
+            return states.pop(0)
+
+        with mock.patch.object(tx, "systemctl", side_effect=systemctl):
+            tx.stop_kodi(state_reader=state, clock=lambda: now[0],
+                         sleeper=lambda seconds: now.__setitem__(0, now[0] + seconds))
+        self.assertEqual(calls, [("--no-block", "stop", "kodi")])
+        self.assertEqual(states, [])
+
+    def test_stop_kodi_nonblocking_ack_never_substitutes_for_deadline_proof(self):
+        calls, now = [], [0.0]
+
+        def systemctl(*args):
+            calls.append(args)
+            return type("Result", (), {"returncode": 0})()
+
+        with mock.patch.object(tx, "systemctl", side_effect=systemctl):
+            with self.assertRaisesRegex(RuntimeError, "could not be proved"):
+                tx.stop_kodi(state_reader=lambda: ("active", "running", 123),
+                             clock=lambda: now[0],
+                             sleeper=lambda seconds: now.__setitem__(
+                                 0, now[0] + max(seconds, 0.25)))
+        self.assertEqual(calls, [("--no-block", "stop", "kodi")])
+        self.assertGreaterEqual(now[0], 45)
+
     def prepare(self, lock):
         return tx.prepare(self.storage, self.source, cohort="local",
                           profile_binding_sha256=self.binding,
