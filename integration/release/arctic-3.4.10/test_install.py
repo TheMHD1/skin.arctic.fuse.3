@@ -91,9 +91,20 @@ class ArcticInstallTests(unittest.TestCase):
         gui = self.root / "userdata/guisettings.xml"
         gui.parent.mkdir(parents=True, exist_ok=True)
         gui.write_text("<settings>gui</settings>")
-        jellyfin = self.root / "userdata/addon_data/plugin.video.jellyfin/data.json"
-        jellyfin.parent.mkdir(parents=True)
-        jellyfin.write_text(json.dumps({"Servers": [{"UserId": "u", "address": "http://j"}]}))
+        self.jellyfin_addon = self.root / "addons/plugin.video.jellyfin/addon.xml"
+        self.jellyfin_addon.parent.mkdir(parents=True)
+        self.jellyfin_addon.write_text(
+            '<addon id="plugin.video.jellyfin" version="2.2.0+py3" />')
+        self.jellyfin = self.root / "userdata/addon_data/plugin.video.jellyfin/data.json"
+        self.jellyfin.parent.mkdir(parents=True)
+        self.jellyfin_credentials = {
+            "Servers": [{
+                "AccessToken": "fixture-token", "DateLastAccessed": "2026-10-28T12:00:00Z",
+                "Id": "fixture-server", "Name": "Fixture", "UserId": "u",
+                "address": "http://j",
+            }]
+        }
+        self.write_jellyfin(self.jellyfin_credentials)
 
         self.stage = Path(self.temporary.name) / "stage"
         self.candidate = self.stage / "candidate" / install.SKIN
@@ -139,13 +150,17 @@ class ArcticInstallTests(unittest.TestCase):
         self.parent_expected = {
             self.manifest: self.manifest.read_bytes(), self.nonskin: self.nonskin.read_bytes(),
             self.storage / ".cache/hostname": (self.storage / ".cache/hostname").read_bytes(),
-            jellyfin: jellyfin.read_bytes(), self.parent_absent: None,
+            self.jellyfin: self.jellyfin.read_bytes(), self.parent_absent: None,
         }
         for name in skin_entries:
             path = self.root / name
             self.parent_expected[path] = path.read_bytes()
         self.parent_pending = False
         self.prepare_private_evidence("local")
+
+    def write_jellyfin(self, value):
+        self.jellyfin.write_bytes(json.dumps(
+            value, sort_keys=True, indent=4, ensure_ascii=False).encode("utf-8"))
 
     def guard(self, root, profile):
         self.assertEqual(Path(root), self.storage)
@@ -239,6 +254,165 @@ class ArcticInstallTests(unittest.TestCase):
                 self.assertEqual(body["historical_skin_count"], 16)
                 self.assertEqual(body["generated_skin_sha256"],
                                  install.directory_transaction.tree_hash(self.generated))
+                self.assertEqual(body["parent_projection"], install.PARENT_PROJECTION)
+
+    def test_jellyfin_timestamp_projection_preserves_raw_transaction_cas(self):
+        initial = install.plan(self.storage, self.stage, self.profile, self.guard)
+        initial_raw = initial.expected[self.jellyfin]
+        initial_map = install.parent_expected_digests(self.storage, initial.expected)
+        changed = json.loads(initial_raw)
+        changed["Servers"][0]["DateLastAccessed"] = "2026-10-28T12:34:56Z"
+        self.write_jellyfin(changed)
+        self.parent_expected[self.jellyfin] = self.jellyfin.read_bytes()
+        refreshed = install.plan(self.storage, self.stage, self.profile, self.guard)
+        self.assertNotEqual(initial_raw, refreshed.expected[self.jellyfin])
+        self.assertEqual(initial_map,
+                         install.parent_expected_digests(self.storage, refreshed.expected))
+        self.assertEqual(self.deployment().fingerprint,
+                         self.profile[install.RECEIPT_PROFILE_KEY])
+
+    def test_timestamp_projection_never_weakens_immediate_raw_cas(self):
+        initial = install.plan(self.storage, self.stage, self.profile, self.guard)
+        changed = json.loads(self.jellyfin.read_bytes())
+        changed["Servers"][0]["DateLastAccessed"] = "2026-10-28T12:34:56Z"
+        self.write_jellyfin(changed)
+        original = self.nonskin.read_bytes()
+        raw_plan = install.transaction.Plan(
+            {self.nonskin: b"must-not-be-written"}, initial.expected)
+        backup = self.storage / "must-not-create-backup"
+        with patch.object(install.transaction.subprocess, "run") as run:
+            with self.assertRaisesRegex(RuntimeError, "Source changed since planning"):
+                install.transaction.deploy(
+                    self.storage, raw_plan, backup, run=run,
+                    idle_check=lambda: None, wait_ready=lambda: None)
+            run.assert_not_called()
+        self.assertFalse(backup.exists())
+        self.assertEqual(self.nonskin.read_bytes(), original)
+
+    def test_installed_receipt_survives_subsequent_timestamp_only_reconnect(self):
+        result, _calls = self.apply()
+        self.assertEqual(result["status"], "accepted")
+        changed = json.loads(self.jellyfin.read_bytes())
+        changed["Servers"][0]["DateLastAccessed"] = "2026-10-28T12:59:59Z"
+        self.write_jellyfin(changed)
+        accepted = install.installed_plan(
+            self.storage, self.stage, self.profile, self.generated,
+            self.evidence_path)
+        self.assertEqual(accepted.expected[self.jellyfin], self.jellyfin.read_bytes())
+
+    def test_jellyfin_meaningful_fields_remain_exact(self):
+        baseline = install._jellyfin_credentials_projection(
+            self.storage, self.jellyfin.read_bytes())
+        variants = {}
+        for field, value in (
+            ("AccessToken", "different-token"), ("address", "https://different.invalid"),
+            ("UserId", "different-user"), ("Id", "different-server"),
+            ("Name", "Different"), ("Extra", "meaningful"),
+        ):
+            changed = json.loads(json.dumps(self.jellyfin_credentials))
+            changed["Servers"][0][field] = value
+            variants[field] = changed
+        removed = json.loads(json.dumps(self.jellyfin_credentials))
+        del removed["Servers"][0]["Name"]
+        variants["removed"] = removed
+        second = json.loads(json.dumps(self.jellyfin_credentials["Servers"][0]))
+        second.update(Id="second-server", DateLastAccessed="2026-10-28T12:00:01Z")
+        variants["server-added"] = {
+            "Servers": [self.jellyfin_credentials["Servers"][0], second]}
+        variants["server-order"] = {"Servers": [second, self.jellyfin_credentials["Servers"][0]]}
+        for label, value in variants.items():
+            with self.subTest(label=label):
+                raw = json.dumps(value, sort_keys=True, indent=4,
+                                 ensure_ascii=False).encode("utf-8")
+                self.assertNotEqual(
+                    baseline,
+                    install._jellyfin_credentials_projection(self.storage, raw))
+
+    def test_jellyfin_projection_rejects_unreviewed_shapes_and_writer(self):
+        variants = {}
+        for label, timestamp in (
+            ("missing", None), ("non-string", 1),
+            ("offset", "2026-10-28T12:00:00+00:00"),
+            ("impossible", "2026-02-30T12:00:00Z"),
+        ):
+            value = json.loads(json.dumps(self.jellyfin_credentials))
+            if timestamp is None:
+                del value["Servers"][0]["DateLastAccessed"]
+            else:
+                value["Servers"][0]["DateLastAccessed"] = timestamp
+            variants[label] = json.dumps(value, sort_keys=True, indent=4).encode()
+        duplicate = json.loads(json.dumps(self.jellyfin_credentials["Servers"][0]))
+        duplicate["DateLastAccessed"] = "2026-10-28T12:00:01Z"
+        variants["duplicate-id"] = json.dumps(
+            {"Servers": [self.jellyfin_credentials["Servers"][0], duplicate]},
+            sort_keys=True, indent=4).encode()
+        variants["extra-root"] = json.dumps(
+            {**self.jellyfin_credentials, "Other": {}}, sort_keys=True, indent=4).encode()
+        variants["compact-writer"] = json.dumps(
+            self.jellyfin_credentials, sort_keys=True, separators=(",", ":")).encode()
+        variants["bom"] = b"\xef\xbb\xbf" + self.jellyfin.read_bytes()
+        variants["duplicate-key"] = (
+            b'{"Servers":[{"DateLastAccessed":"2026-10-28T12:00:00Z",'
+            b'"Id":"fixture-server","Id":"other"}]}')
+        for label, raw in variants.items():
+            with self.subTest(label=label):
+                with self.assertRaises(ValueError):
+                    install._jellyfin_credentials_projection(self.storage, raw)
+        original = self.jellyfin_addon.read_bytes()
+        self.jellyfin_addon.write_text(
+            '<addon id="plugin.video.jellyfin" version="2.2.1" />')
+        with self.assertRaisesRegex(ValueError, "Unreviewed Jellyfin"):
+            install._jellyfin_credentials_projection(
+                self.storage, self.jellyfin.read_bytes())
+        self.jellyfin_addon.write_bytes(original)
+
+    def test_jellyfin_projection_rejects_addon_replacement_during_read(self):
+        original_read = install.os.read
+        replaced = [False]
+
+        def replacing_read(descriptor, amount):
+            payload = original_read(descriptor, amount)
+            if not replaced[0]:
+                replacement = self.jellyfin_addon.with_name("addon.xml.replacement")
+                replacement.write_bytes(self.jellyfin_addon.read_bytes())
+                replacement.replace(self.jellyfin_addon)
+                replaced[0] = True
+            return payload
+
+        with patch.object(install.os, "read", side_effect=replacing_read):
+            with self.assertRaisesRegex(ValueError, "changed while reading"):
+                install._jellyfin_credentials_projection(
+                    self.storage, self.jellyfin.read_bytes())
+
+    def test_apply_accepts_only_timestamp_drift_across_stop_and_start(self):
+        before = self.jellyfin.read_bytes()
+
+        def reconnect():
+            changed = json.loads(before)
+            changed["Servers"][0]["DateLastAccessed"] = "2026-10-28T12:34:56Z"
+            self.write_jellyfin(changed)
+            self.parent_expected[self.jellyfin] = self.jellyfin.read_bytes()
+
+        result, _calls = self.apply(wait_stopped_func=reconnect)
+        self.assertEqual(result["status"], "accepted")
+        accepted = install.installed_plan(
+            self.storage, self.stage, self.profile, self.generated,
+            self.evidence_path)
+        self.assertEqual(accepted.expected[self.jellyfin], self.jellyfin.read_bytes())
+
+    def test_apply_rejects_meaningful_jellyfin_drift_before_skin_prepare(self):
+        before = self.jellyfin.read_bytes()
+
+        def reconnect_with_token_change():
+            changed = json.loads(before)
+            changed["Servers"][0]["DateLastAccessed"] = "2026-10-28T12:34:56Z"
+            changed["Servers"][0]["AccessToken"] = "foreign-token"
+            self.write_jellyfin(changed)
+            self.parent_expected[self.jellyfin] = self.jellyfin.read_bytes()
+
+        with self.assertRaisesRegex(RuntimeError, "exact 3.3.1 state restored"):
+            self.apply(wait_stopped_func=reconnect_with_token_change)
+        self.assertFalse((self.root / ".arctic3410-recovery").exists())
 
     def test_dependency_and_menu_drift_fail_before_stop(self):
         wrong = dict(self.dependencies, unexpected="0" * 64)

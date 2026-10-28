@@ -8,6 +8,8 @@ generation evidence record must already exist before Kodi is stopped.
 from __future__ import annotations
 
 import argparse
+import copy
+import datetime
 import hashlib
 import importlib.util
 import json
@@ -42,7 +44,7 @@ latest = load("arctic3410_latest_parent", HERE.parent / "local-backup-receiver" 
 base = latest.previous
 transaction = base.transaction
 
-RELEASE = "arctic-3.4.10-paired.2"
+RELEASE = "arctic-3.4.10-paired.3"
 PARENT_RELEASE = latest.RELEASE
 SKIN = Path("addons/skin.arctic.fuse.3")
 SKIN_RELATIVE = ".kodi/addons/skin.arctic.fuse.3"
@@ -58,7 +60,14 @@ RECEIPT_PROFILE_KEY = "arctic3410_release_receipt_sha256"
 HISTORICAL_SKIN_COUNT = 16
 HISTORICAL_SKIN_SHA256 = "d3bd5dafeb9a7e25dbc894589fc8249e6d13c36aaa8a74c3db1efb193787417d"
 SHA = re.compile(r"[0-9a-f]{64}\Z")
-RECEIPT_SCHEMA = 1
+RECEIPT_SCHEMA = 2
+PARENT_PROJECTION = "exact-plus-jellyfin-datelastaccessed-v1"
+JELLYFIN_CREDENTIALS_RELATIVE = (
+    ".kodi/userdata/addon_data/plugin.video.jellyfin/data.json"
+)
+JELLYFIN_ADDON_RELATIVE = ".kodi/addons/plugin.video.jellyfin/addon.xml"
+JELLYFIN_ADDON_VERSION = "2.2.0+py3"
+MAX_JELLYFIN_CREDENTIALS_BYTES = 1024 * 1024
 ORDER_ONLY_MENU_INPUT = "userdata/addon_data/skin.arctic.fuse.3"
 ORDER_ONLY_SETTINGS = "settings.xml"
 MAX_MENU_INPUT_FILE_BYTES = 4 * 1024 * 1024
@@ -70,7 +79,8 @@ RECEIPT_KEYS = {
     "upstream_commit", "tmdbhelper", "candidate_skin_sha256",
     "generation_evidence_sha256", "generated_skin_sha256", "generated_files",
     "menu_inputs", "runtime_dependencies", "profile_identity_sha256",
-    "generation_tool_sha256", "adapter_tool_sha256", "acceptance",
+    "generation_tool_sha256", "adapter_tool_sha256", "parent_projection",
+    "acceptance",
 }
 
 
@@ -125,15 +135,150 @@ def _regular(root: Path, relative: str) -> Path:
     return current
 
 
+def _stable_regular_bytes(path: Path, limit: int, label: str) -> bytes:
+    path = Path(path)
+    flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
+    descriptor = os.open(path, flags)
+    try:
+        before = os.fstat(descriptor)
+        require(stat.S_ISREG(before.st_mode) and before.st_nlink == 1
+                and 0 < before.st_size <= limit, "Unsafe " + label + " metadata")
+        identity = (before.st_dev, before.st_ino, stat.S_IMODE(before.st_mode),
+                    before.st_uid, before.st_gid, before.st_mtime_ns,
+                    before.st_nlink, before.st_size)
+        chunks, remaining = [], before.st_size
+        while remaining:
+            chunk = os.read(descriptor, min(remaining, 64 * 1024))
+            require(chunk, label + " changed while reading")
+            chunks.append(chunk)
+            remaining -= len(chunk)
+        require(os.read(descriptor, 1) == b"", label + " grew while reading")
+        after = os.fstat(descriptor)
+        require((after.st_dev, after.st_ino, stat.S_IMODE(after.st_mode),
+                 after.st_uid, after.st_gid, after.st_mtime_ns,
+                 after.st_nlink, after.st_size) == identity,
+                label + " changed while reading")
+    finally:
+        os.close(descriptor)
+    current = path.stat(follow_symlinks=False)
+    require((current.st_dev, current.st_ino, stat.S_IMODE(current.st_mode),
+             current.st_uid, current.st_gid, current.st_mtime_ns,
+             current.st_nlink, current.st_size) == identity,
+            label + " path changed while reading")
+    return b"".join(chunks)
+
+
+def _strict_json(raw: bytes, label: str):
+    require(isinstance(raw, bytes) and raw and b"\0" not in raw,
+            "Invalid " + label + " bytes")
+
+    def pairs(items):
+        result = {}
+        for key, value in items:
+            require(isinstance(key, str) and key not in result,
+                    "Duplicate or invalid key in " + label)
+            result[key] = value
+        return result
+
+    def invalid_constant(_value):
+        raise ValueError("Invalid JSON constant in " + label)
+
+    try:
+        return json.loads(raw.decode("utf-8"), object_pairs_hook=pairs,
+                          parse_constant=invalid_constant)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValueError("Malformed " + label) from exc
+
+
+def _jellyfin_credentials_projection(storage_root: Path, raw: bytes) -> str:
+    """Hash credentials while excluding only Jellyfin's connection timestamp.
+
+    The raw bytes remain in ``transaction.Plan.expected`` and therefore retain
+    exact immediate-mutation CAS behavior.  This semantic hash is used only by
+    durable receipts/proposals that must survive Jellyfin's own successful
+    reconnect updating ``DateLastAccessed``.
+    """
+    require(0 < len(raw) <= MAX_JELLYFIN_CREDENTIALS_BYTES,
+            "Unsafe Jellyfin credentials size")
+    addon = _regular(storage_root, JELLYFIN_ADDON_RELATIVE)
+    require(addon.is_file() and not addon.is_symlink(),
+            "Reviewed Jellyfin add-on is missing")
+    try:
+        node = ET.fromstring(_stable_regular_bytes(
+            addon, 1024 * 1024, "Jellyfin add-on"))
+    except (ET.ParseError, UnicodeDecodeError) as exc:
+        raise ValueError("Malformed Jellyfin add-on identity") from exc
+    require(node.tag == "addon" and node.get("id") == "plugin.video.jellyfin"
+            and node.get("version") == JELLYFIN_ADDON_VERSION,
+            "Unreviewed Jellyfin credentials writer")
+
+    value = _strict_json(raw, "Jellyfin credentials")
+    require(isinstance(value, dict) and set(value) == {"Servers"},
+            "Unexpected Jellyfin credentials root")
+    servers = value["Servers"]
+    require(isinstance(servers, list) and servers,
+            "Jellyfin credentials have no servers")
+    seen = set()
+    projected = copy.deepcopy(value)
+    for index, server in enumerate(servers):
+        require(isinstance(server, dict) and isinstance(server.get("Id"), str)
+                and server["Id"] and server["Id"] not in seen,
+                "Invalid Jellyfin server identity")
+        seen.add(server["Id"])
+        timestamp = server.get("DateLastAccessed")
+        require(isinstance(timestamp, str)
+                and re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z",
+                                 timestamp) is not None,
+                "Invalid Jellyfin DateLastAccessed")
+        try:
+            parsed = datetime.datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%SZ")
+        except ValueError as exc:
+            raise ValueError("Invalid Jellyfin DateLastAccessed") from exc
+        require(parsed.strftime("%Y-%m-%dT%H:%M:%SZ") == timestamp,
+                "Noncanonical Jellyfin DateLastAccessed")
+        projected["Servers"][index]["DateLastAccessed"] = {
+            "$volatile": "DateLastAccessed"
+        }
+    canonical_writer = json.dumps(
+        value, sort_keys=True, indent=4, ensure_ascii=False).encode("utf-8")
+    require(raw == canonical_writer,
+            "Jellyfin credentials do not match reviewed writer format")
+    semantic = {
+        "schema": 1,
+        "writer": "plugin.video.jellyfin@" + JELLYFIN_ADDON_VERSION,
+        "credentials": projected,
+    }
+    return sha_bytes(b"arctic3410-parent-projection-v1\0"
+                     + compact_canonical(semantic))
+
+
+def _parent_payload_digest(storage_root: Path, relative: str, payload: bytes) -> str:
+    if relative == JELLYFIN_CREDENTIALS_RELATIVE:
+        return _jellyfin_credentials_projection(storage_root, payload)
+    return sha_bytes(payload)
+
+
 def _snapshot_map(root: Path, expected: dict[Path, bytes | None]) -> dict[str, str | None]:
     result: dict[str, str | None] = {}
     for path, payload in expected.items():
         relative = _relative(root, path)
         require(relative not in result, "Duplicate parent evidence path")
         require(payload is None or isinstance(payload, bytes), "Invalid parent expected payload")
-        result[relative] = None if payload is None else sha_bytes(payload)
+        if relative == JELLYFIN_CREDENTIALS_RELATIVE:
+            require(isinstance(payload, bytes), "Jellyfin credentials cannot be absent")
+        result[relative] = (None if payload is None else
+                            _parent_payload_digest(root, relative, payload))
     require(result, "Parent cohort preflight produced no evidence")
     return dict(sorted(result.items()))
+
+
+def parent_expected_digests(storage_root: Path,
+                            expected: dict[Path, bytes | None]) -> dict[str, str | None]:
+    """Public controller projection for the same parent evidence as receipts."""
+    storage_root = Path(storage_root).resolve()
+    snapshot = _snapshot_map(storage_root, expected)
+    return {str(_regular(storage_root, relative)): digest
+            for relative, digest in snapshot.items()}
 
 
 def _snapshot_hash(snapshot: dict[str, str | None]) -> str:
@@ -444,6 +589,7 @@ def _receipt_body(*, storage_root: Path, stage: Path, profile: dict, parent,
         "profile_identity_sha256": evidence["profile_identity_sha256"],
         "generation_tool_sha256": evidence["tool_sha256"],
         "adapter_tool_sha256": _adapter_tool_hashes(adapter_tool_root),
+        "parent_projection": PARENT_PROJECTION,
         "acceptance": "live-skin-loaded-inprocess-and-source-guarded",
     }
 
@@ -531,6 +677,7 @@ def _read_receipt(path: Path, profile: dict) -> tuple[dict, bytes]:
             and value["parent_release"] == PARENT_RELEASE
             and value["historical_skin_count"] == HISTORICAL_SKIN_COUNT
             and value["historical_skin_sha256"] == HISTORICAL_SKIN_SHA256
+            and value["parent_projection"] == PARENT_PROJECTION
             and value["acceptance"] == "live-skin-loaded-inprocess-and-source-guarded",
             "Arctic release receipt identity drift")
     return value, raw
@@ -546,6 +693,9 @@ def _actual_parent_payload(storage_root: Path, old_skin: Path,
     if not path.exists():
         return None
     require(path.is_file() and not path.is_symlink(), "Parent projection is not a regular file")
+    if relative == JELLYFIN_CREDENTIALS_RELATIVE:
+        return _stable_regular_bytes(
+            path, MAX_JELLYFIN_CREDENTIALS_BYTES, "Jellyfin credentials")
     return path.read_bytes()
 
 
@@ -561,7 +711,9 @@ def _validate_parent_projection(storage_root: Path, old_skin: Path,
                 and (digest is None or isinstance(digest, str) and SHA.fullmatch(digest)),
                 "Invalid parent snapshot member")
         payload = _actual_parent_payload(storage_root, old_skin, relative)
-        require((None if payload is None else sha_bytes(payload)) == digest,
+        projected = (None if payload is None else
+                     _parent_payload_digest(storage_root, relative, payload))
+        require(projected == digest,
                 "Accepted parent source drift: " + relative)
         expected[_regular(storage_root, relative)] = payload
     manifest_path = _regular(storage_root, base.MANIFEST)

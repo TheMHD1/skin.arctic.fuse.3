@@ -105,7 +105,7 @@ target whose source bytes differ is rejected even if it still reports version
 rebuilt for both cohorts.
 
 `install.py` remains **plan-only**: public `--apply` exits before mutation.
-The paired `.2` adapter exposes separately reviewed `deployment_plan`,
+The paired `.3` adapter exposes separately reviewed `deployment_plan`,
 `apply_release`, `installed_plan` and `recover_release` library functions for a
 private controller; publishing them does not approve a device deployment.
 It takes `/storage`, invokes the latest `local-backup-receiver` parent plan to
@@ -137,6 +137,22 @@ IDs, attributes and text. Added, removed, duplicated, nested or changed settings
 other file drift, comments, processing instructions, DTD/entities and unsafe
 objects remain fatal. The exception neither rewrites the live file nor replaces
 the evidence/stage hash, and it is rechecked at each pre-switch guard.
+
+Jellyfin for Kodi `2.2.0+py3` also updates `Servers[*].DateLastAccessed` in
+its canonical `data.json` whenever it connects successfully. Receipt schema 2
+therefore uses one explicit parent projection that normalizes only that valid
+UTC timestamp. It requires the exact reviewed add-on version, unique server
+IDs, duplicate-key-free JSON and the writer's exact sorted/indented UTF-8
+serialization. Tokens, addresses, user/server IDs, names, all other fields and
+server order remain exact. The public adapter and private controller use the
+same projection for proposals, receipts, installed validation and recovery.
+Immediate transaction `Plan.expected` bytes remain raw: a file change after
+that immediate snapshot still aborts before mutation. The live file and old
+evidence are never rewritten; fresh proposals/receipts are required. Tests also
+prove that a later timestamp-only reconnect preserves an installed receipt.
+Actual local deployment exposed this timestamp drift before any Kodi stop or
+resource mutation; the correction is source/test work until a fresh deployment
+is separately accepted for each cohort.
 
 The directory transaction fsyncs a same-filesystem journal before copying or
 renaming, snapshots protected paths including their absence and permissions,
