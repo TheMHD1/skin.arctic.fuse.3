@@ -24,6 +24,7 @@ jobs:
       - run: python integration/server/dovi/test_fast_import.py
       - run: python integration/server/subtitle-publication/subtitle-publication-tests.py
       - run: python integration/server/publication-e2e/test_harness.py
+      - run: python -m unittest discover -s integration/server/web-watchdog
       - run: python integration/server/jellyfin-custom/candidate-12.4-linuxserver/verify-moonbase-source.py
       - run: python integration/server/jellyfin-custom/candidate-12.4-linuxserver/test_moonbase_source.py
       - run: python integration/server/jellyfin-custom/candidate-12.4-linuxserver/test_livetv_web_builder.py

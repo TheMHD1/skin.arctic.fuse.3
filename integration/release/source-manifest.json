@@ -1,7 +1,7 @@
 {
   "files": {
     ".gitattributes": "b3af6f3f1e96bc5fa2a771b6f2dcdefadb36150abb5d89930dc694d69c6fb2d7",
-    ".github/workflows/integration.yml": "03c4b78d4ce665288ea44f812f4d075620e6d4c04fcace3c5f533da88cb27952",
+    ".github/workflows/integration.yml": "4970f18459874ff5fdd952c63a5846275ef99ae9687d9e246f3ea8a0917a67ac",
     ".gitignore": "4ae93b55b629a076458ebdbd2726d524346d9e17e8c9971a5603e8f487ea1490",
     "1080i/Includes_Labels.xml": "4862335c67f20599cb6c8c1b3d3d7bedd2aee560457b553403b86291a7cedf48",
     "1080i/Includes_Layouts.xml": "8dd81dbc0c15b578cb7012206b541bb8f2f813634d1cf117f22350672de959ed",
@@ -716,6 +716,10 @@
     "integration/server/vod-xc-head/install.py": "59818df431132cc0c3ddbc67f8492dbd6257c82ffc0dec3871716b151bd8f668",
     "integration/server/vod-xc-head/test_head.py": "51ae8b7ca84f0c24c63c4822471a2167df28961913dd8319b3b17c56c3261524",
     "integration/server/vod-xc-head/xc_routes.fixture.py": "fdf0a9d898b7d29cdea2867b4e5df0718994fcd24a911c6c9d7c0b981cf02917",
+    "integration/server/web-watchdog/README.md": "931a0feda17954a70b0948d1f294d591cec3bc54fc93c297d6a08c2393a33c83",
+    "integration/server/web-watchdog/logrotate.conf": "ad49f9e465aed88d5e21ce997464063350cd38faf2d0ff08b5ee45e889769d69",
+    "integration/server/web-watchdog/test_watchdog.py": "29a504c937578027069359ba928dd5b29c51e5637f38ffb545427b90aa1123a3",
+    "integration/server/web-watchdog/watchdog.sh": "6b3fb56720fb212b52a47df50741225e2886ee690028a564695cb3d985960a0c",
     "integration/settings-reference.json": "19ea60803abde7f716ea71d85fe86e61360e0fdf6c213bd0f832a15c4e1979f3",
     "integration/test-habibi-service.py": "83333eed649eb9e22492875269d0d7c24dbc5ac9f8567bc65863fcdc3e48d00f",
     "integration/test-library-search.py": "069c6d0f330a65acb03a7243b9a1b822b88dbc056127e5330b8409c7528bbd8a",
