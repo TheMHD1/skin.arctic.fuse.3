@@ -20,17 +20,27 @@ class T(unittest.TestCase):
   self.assertEqual(life.appliance_hostname(storage),'h');self.assertEqual(life.appliance_mac(mac),'aa:bb')
  def test_rpc_rejects_malformed_wrongid_and_error_and_accepts_fragments(self):
   class Sock:
-   def __init__(self,chunks):self.chunks=list(chunks)
+   def __init__(self,chunks):self.chunks=list(chunks);self.sent=[]
    def __enter__(self):return self
    def __exit__(self,*_):return False
    def settimeout(self,_):pass
-   def sendall(self,_):pass
+   def sendall(self,payload):self.sent.append(payload)
    def recv(self,_):return self.chunks.pop(0) if self.chunks else b''
   def invoke(chunks):
    with patch.object(life.socket,'create_connection',return_value=Sock(chunks)):return life.rpc('JSONRPC.Ping')
   self.assertEqual(invoke([b'{"jsonrpc":"2.0",',b'"id":1,"result":"pong"}']),'pong')
   for chunks in ([b'not json',b''],[b'{"id":2,"result":"pong"}'],[b'{"id":1,"error":{}}']):
    with self.assertRaises(RuntimeError):invoke(chunks)
+ def test_rpc_serializes_optional_params(self):
+  sock=type('Sock',(),{
+   '__enter__':lambda self:self,'__exit__':lambda self,*_:False,
+   'settimeout':lambda self,_:None,'sent':[],
+   'sendall':lambda self,payload:self.sent.append(payload),
+   'recv':lambda self,_:b'{"jsonrpc":"2.0","id":1,"result":"OK"}'
+  })()
+  with patch.object(life.socket,'create_connection',return_value=sock):
+   self.assertEqual(life.rpc('Addons.SetAddonEnabled',{'addonid':'skin.arctic.fuse.3','enabled':True}),'OK')
+  self.assertEqual(json.loads(sock.sent[0])['params'],{'addonid':'skin.arctic.fuse.3','enabled':True})
  def test_stop_start_is_after_idle(self):
   calls=[]
   with patch.object(life,'idle',side_effect=lambda:calls.append('idle')):

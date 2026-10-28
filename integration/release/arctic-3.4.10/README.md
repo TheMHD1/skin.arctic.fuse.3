@@ -151,15 +151,21 @@ proof script inside that transient Kodi process.  The script uses
 translated private profile path.  The host rejects stale/non-regular receipts,
 wrong nonces, unknown JSON keys, and every mapping outside the private tree.
 This replaces an unreliable debug-log heuristic without relaxing the mount
-sandbox.  The probe snapshots/removes only private generated includes, requires
-fresh nonempty XML containing every managed owned/Venom selector route, then
-stops only its own unit and restarts normal Kodi in a `finally` path.
+sandbox. A new sandbox Addons database initially marks discovered copied addons
+disabled, so the probe first starts only built-in Estuary. It enables and
+verifies exactly the audited private dependency closure through Kodi JSON-RPC,
+then requests the candidate through `Settings.SetSettingValue`; it never copies
+or changes a live Addons database. The probe snapshots/removes only private
+generated includes, requires fresh nonempty XML containing every managed
+owned/Venom selector route, then stops only its own unit and restarts normal
+Kodi in a `finally` path.
 
-The original/local appliance completed this isolated runtime gate October28:
-private path proof and fresh XML selectors passed, and normal Kodi returned
-active/idle. This was not a live skin installation or physical UI acceptance.
-The CLI captures `kodi-send` helper chatter and emits one JSON receipt, with
-the apply result nested under `result`; remote runtime acceptance is separate.
+The October 28 local and remote attempts proved the private path mapping and
+returned normal Kodi active/idle, but the fresh sandbox database left the copied
+candidate skin disabled, so neither attempt is generation acceptance. The
+corrected activation path requires a fresh paired runtime probe before any skin
+transaction or physical UI acceptance. The CLI captures `kodi-send` helper
+chatter and emits one JSON receipt, with the apply result nested under `result`.
 
 Example read-only plan:
 

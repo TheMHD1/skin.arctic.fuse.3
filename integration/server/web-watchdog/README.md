@@ -31,3 +31,9 @@ threshold, seven retained rotations and compression prevent endless retention.
 Run `python3 -m unittest discover -s integration/server/web-watchdog` for the
 hermetic fake-curl/Docker tests. Runtime deployment and deliberate failure
 acceptance are separate from those source tests.
+
+October28 deployment: the reviewed script, private actual-listener environment
+and unit drop-in, and bounded rotation policy are installed on the media host.
+Whole-config logrotate validation and a healthy one-shot pass; `last_ok`
+advanced while Jellyfin's container start timestamp remained unchanged. The
+original timer remains active. No production failure was induced.

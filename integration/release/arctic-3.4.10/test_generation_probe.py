@@ -91,7 +91,7 @@ class GenerationProbeTests(unittest.TestCase):
         self.assertFalse((runtime / ".kodi/addons/plugin.video.jellyfin").exists())
         self.assertFalse((runtime / ".kodi/userdata/addon_data/plugin.video.jellyfin").exists())
         settings = (runtime / ".kodi/userdata/guisettings.xml").read_text()
-        self.assertIn('<setting id="lookandfeel.skin">skin.arctic.fuse.3</setting>', settings)
+        self.assertIn('<setting id="lookandfeel.skin">skin.estuary</setting>', settings)
         self.assertIn('<setting id="services.esenabled">true</setting>', settings)
         self.assertIn('<setting id="services.esport">9777</setting>', settings)
         self.assertIn('<setting id="services.esallinterfaces">false</setting>', settings)
@@ -262,7 +262,7 @@ class GenerationProbeTests(unittest.TestCase):
                 self.root, self.stage, {"cohort": "local"},
                 self.root / ".arctic3410-generation/run-d",
                 run=run,
-                rpc=lambda method: [],
+                rpc=lambda method, params=None: [],
                 binary_validator=lambda path: self.assertEqual(path, Path("/usr/lib/kodi/kodi.bin")),
                 preflight_func=preflight,
                 ports_validator=lambda: calls.append("ports"),
@@ -272,6 +272,8 @@ class GenerationProbeTests(unittest.TestCase):
                 dependency_preflight=lambda *args: {probe.SKINVARIABLES: "h"},
                 send_path_proof=lambda run, helper: calls.append(("path-proof", str(helper))),
                 wait_for_path_proof=lambda home, nonce: {"special://home": "private"},
+                activate_private_skin=lambda rpc, addons: calls.append(("activate", tuple(sorted(addons)))) or sorted(addons),
+                wait_for_active_skin=lambda timeout, rpc: calls.append(("active-skin", timeout)),
             )
         finally:
             probe.lifecycle.idle = original_idle
@@ -281,9 +283,45 @@ class GenerationProbeTests(unittest.TestCase):
         self.assertLess(calls.index(("systemctl", "stop", "kodi")), calls.index("ports"))
         self.assertLess(calls.index(("path-proof", "/usr/bin/kodi-send")),
                         calls.index(("generator", "/usr/bin/kodi-send")))
+        self.assertLess(calls.index(("activate", (probe.SKIN_ID,))), calls.index(("path-proof", "/usr/bin/kodi-send")))
         self.assertTrue(any(call[0] == "stop-owned" for call in calls if isinstance(call, tuple)))
         self.assertEqual(calls[-1], ("systemctl", "start", "kodi"))
         self.assertEqual(result["generated"], [str(generated)])
+
+    def test_activation_enables_only_closure_verifies_every_addon_and_switches_skin(self):
+        calls = []
+        enabled = set()
+
+        def rpc(method, params=None):
+            calls.append((method, params))
+            if method == "Addons.SetAddonEnabled":
+                self.assertTrue(params["enabled"])
+                enabled.add(params["addonid"])
+                return "OK"
+            if method == "Addons.GetAddonDetails":
+                return {"addon": {"enabled": params["addonid"] in enabled}}
+            if method == "Settings.SetSettingValue":
+                self.assertEqual(params, {"setting": "lookandfeel.skin", "value": probe.SKIN_ID})
+                return True
+            self.fail("unexpected RPC method: " + method)
+
+        closure = {probe.SKIN_ID, probe.SKINVARIABLES, "script.module.infotagger"}
+        self.assertEqual(probe._activate_private_skin(rpc, closure), sorted(closure))
+        set_calls = [params["addonid"] for method, params in calls if method == "Addons.SetAddonEnabled"]
+        self.assertEqual(set_calls, sorted(closure))
+        self.assertEqual(calls[-1][0], "Settings.SetSettingValue")
+
+        with self.assertRaises(RuntimeError):
+            probe._activate_private_skin(rpc, {probe.SKINVARIABLES})
+
+    def test_wait_for_active_skin_requires_candidate(self):
+        responses = iter([{"skin": "skin.estuary"}, {"skin": probe.SKIN_ID}])
+        original_sleep = probe.time.sleep
+        try:
+            probe.time.sleep = lambda _: None
+            probe._wait_for_active_skin(1, lambda method, params=None: next(responses))
+        finally:
+            probe.time.sleep = original_sleep
 
     def test_builtin_captures_kodi_send_chatter_and_main_emits_one_apply_receipt(self):
         calls = []

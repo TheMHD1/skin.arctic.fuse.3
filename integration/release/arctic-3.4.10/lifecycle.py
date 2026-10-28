@@ -2,9 +2,11 @@
 from __future__ import annotations
 import json, socket, subprocess, time
 from pathlib import Path
-def rpc(method):
+def rpc(method, params=None):
  with socket.create_connection(('127.0.0.1',9090),3) as s:
-  s.settimeout(3);s.sendall(json.dumps({'jsonrpc':'2.0','id':1,'method':method}).encode()); data=b'';end=time.monotonic()+4
+  request={'jsonrpc':'2.0','id':1,'method':method}
+  if params is not None: request['params']=params
+  s.settimeout(3);s.sendall(json.dumps(request).encode()); data=b'';end=time.monotonic()+4
   while len(data)<65536:
    left=end-time.monotonic()
    if left<=0: raise RuntimeError('Kodi RPC timeout')

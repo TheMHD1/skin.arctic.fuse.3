@@ -43,6 +43,7 @@ PATH_PROOF_RECEIPT_PREFIX = "arctic3410-path-proof-"
 PATH_PROOF_RECEIPT_SUFFIX = ".json"
 PATH_PROOF_TIMEOUT_SECONDS = 10
 PATH_PROOF_MAX_BYTES = 4096
+SKIN_ACTIVATION_TIMEOUT_SECONDS = 20
 REVIEWED_RESOURCES = {
     "resource.images.arctic.weather": {
         "version": "1.0.4",
@@ -316,12 +317,13 @@ def prepare_home(storage_root: Path, stage: Path, runtime_home: Path,
         receipt[addon_id] = _tree_hash(addons / addon_id)
     userdata = runtime_home / ".kodi" / "userdata"
     userdata.mkdir(mode=0o700)
-    # SkinVariables writes generated includes to special://skin.  This minimal
-    # setting chooses the candidate skin without importing the live settings,
-    # addon data, repositories, network sources, or any account credential.
+    # A fresh Kodi Addons database discovers copied add-ons as disabled. Start
+    # on built-in Estuary, then enable precisely this private closure through
+    # Kodi JSON-RPC before requesting the candidate skin. Never seed/copy the
+    # active profile's database merely to make the sandbox load a skin.
     (userdata / "guisettings.xml").write_text(
         '<settings version="2">'
-        '<setting id="lookandfeel.skin">' + SKIN_ID + '</setting>'
+        '<setting id="lookandfeel.skin">skin.estuary</setting>'
         # CoreELEC's default JSON-RPC server is loopback TCP 9090; the event
         # client is configurable and otherwise disabled in a new Kodi profile.
         # Keep it loopback-only so the temporary instance is not exposed.
@@ -397,6 +399,41 @@ def _wait_for_rpc(timeout: int, rpc=lifecycle.rpc) -> None:
             last_error = exc
             time.sleep(0.25)
     raise RuntimeError("staged Kodi JSON-RPC did not become ready") from last_error
+
+
+def _activate_private_skin(rpc, addon_ids: set[str]) -> list[str]:
+    """Enable only the staged closure, then use Kodi's supported skin switch."""
+    addon_ids = set(addon_ids)
+    if not addon_ids or SKIN_ID not in addon_ids:
+        raise RuntimeError("private runtime closure does not contain the candidate skin")
+    enabled = []
+    for addon_id in sorted(addon_ids):
+        _safe_addon_id(addon_id)
+        acknowledged = rpc("Addons.SetAddonEnabled", {"addonid": addon_id, "enabled": True})
+        if not isinstance(acknowledged, str):
+            raise RuntimeError(f"Kodi did not acknowledge add-on enablement: {addon_id}")
+        details = rpc("Addons.GetAddonDetails", {"addonid": addon_id, "properties": ["enabled"]})
+        if details.get("addon", {}).get("enabled") is not True:
+            raise RuntimeError(f"Kodi did not enable private add-on: {addon_id}")
+        enabled.append(addon_id)
+    if rpc("Settings.SetSettingValue", {"setting": "lookandfeel.skin", "value": SKIN_ID}) is not True:
+        raise RuntimeError("Kodi rejected the private skin activation request")
+    return enabled
+
+
+def _wait_for_active_skin(timeout: int, rpc=lifecycle.rpc) -> None:
+    deadline = time.monotonic() + timeout
+    last_error: Exception | None = None
+    while time.monotonic() < deadline:
+        try:
+            result = rpc("Settings.GetSkinSettings")
+            if result.get("skin") == SKIN_ID:
+                return
+            last_error = RuntimeError(f"active skin is {result.get('skin')!r}")
+        except Exception as exc:
+            last_error = exc
+        time.sleep(0.25)
+    raise RuntimeError("isolated Kodi did not activate the candidate skin") from last_error
 
 
 def _validate_path_proof_receipt(runtime_home: Path, nonce: str) -> dict[str, str]:
@@ -572,7 +609,9 @@ def run_probe(storage_root: Path, stage: Path, profile: dict, runtime_home: Path
               reviewed_addons_root: Path | None = None,
               dependency_preflight=runtime_dependency_preflight,
               send_path_proof=_send_path_proof,
-              wait_for_path_proof=_wait_for_path_proof) -> dict:
+              wait_for_path_proof=_wait_for_path_proof,
+              activate_private_skin=_activate_private_skin,
+              wait_for_active_skin=_wait_for_active_skin) -> dict:
     """Run the bounded probe; only call after an operator chooses ``--apply``."""
     kodi_bin = Path(kodi_bin)
     binary_validator(kodi_bin)
@@ -595,6 +634,8 @@ def run_probe(storage_root: Path, stage: Path, profile: dict, runtime_home: Path
         try:
             launcher(run, unit, runtime_home, kodi_bin)
             _wait_for_rpc(START_TIMEOUT_SECONDS, rpc)
+            enabled_addons = activate_private_skin(rpc, set(receipt["addons"]))
+            wait_for_active_skin(SKIN_ACTIVATION_TIMEOUT_SECONDS, rpc)
             if time.monotonic() - started > MAX_RUNTIME_SECONDS:
                 raise RuntimeError("staged Kodi startup exceeded runtime budget")
             send_path_proof(run, kodi_send)
@@ -607,8 +648,8 @@ def run_probe(storage_root: Path, stage: Path, profile: dict, runtime_home: Path
             generated = _wait_for_generation(runtime_home, GENERATION_TIMEOUT_SECONDS)
             if time.monotonic() - started > MAX_RUNTIME_SECONDS:
                 raise RuntimeError("staged Kodi generation exceeded runtime budget")
-            return {"receipt": receipt, "path_mappings": mappings, "removed_generated": previous_generated,
-                    "generated": [str(item) for item in generated]}
+            return {"receipt": receipt, "enabled_addons": enabled_addons, "path_mappings": mappings,
+                    "removed_generated": previous_generated, "generated": [str(item) for item in generated]}
         finally:
             # This exact transient unit contains the only stage process.  Do
             # not kill by executable name and never touch normal kodi.service.
