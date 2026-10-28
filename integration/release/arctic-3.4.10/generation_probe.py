@@ -513,6 +513,9 @@ def select_private_skin_offline(runtime_home: Path, storage_root: Path) -> None:
     if len(rows) != 1 or rows[0].text != "skin.estuary":
         raise RuntimeError("private saved skin selection is unexpected")
     rows[0].text = SKIN_ID
+    # Kodi serializes compiled-default settings with default="true". Keeping
+    # that flag while changing only text makes its loader Reset() to Estuary.
+    rows[0].attrib.pop("default", None)
     fd = path.parent / (path.name + ".arctic3410.tmp." + secrets.token_hex(8))
     descriptor = os.open(fd, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
     with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
@@ -522,7 +525,8 @@ def select_private_skin_offline(runtime_home: Path, storage_root: Path) -> None:
     directory = os.open(path.parent, os.O_DIRECTORY)
     try: os.fsync(directory)
     finally: os.close(directory)
-    if path.is_symlink() or ET.parse(path).getroot().find("setting[@id='lookandfeel.skin']").text != SKIN_ID:
+    selected = ET.parse(path).getroot().find("setting[@id='lookandfeel.skin']")
+    if path.is_symlink() or selected is None or selected.text != SKIN_ID or "default" in selected.attrib:
         raise RuntimeError("private Arctic selection did not persist")
 
 
@@ -535,7 +539,8 @@ def _activate_private_skin(rpc, addon_ids: set[str], runtime_home: Path) -> list
         _safe_addon_id(addon_id)
     path = runtime_home.resolve() / ".kodi/userdata/guisettings.xml"
     root = ET.parse(path).getroot()
-    if [node.text for node in root.findall("setting") if node.get("id") == "lookandfeel.skin"] != [SKIN_ID]:
+    rows = [node for node in root.findall("setting") if node.get("id") == "lookandfeel.skin"]
+    if len(rows) != 1 or rows[0].text != SKIN_ID or "default" in rows[0].attrib:
         raise RuntimeError("private saved Arctic selection is not exact")
     enabled = _wait_for_private_addons_enabled(rpc, addon_ids)
     return enabled

@@ -199,8 +199,15 @@ the candidate offline before the second private launch, with strict
 absence/symlink/hardlink/duplicate/old-value checks and an exclusive mode-0600,
 fsynced atomic XML replacement. It retains the stronger nonce-bound in-process
 home/profile/skin mapping proof before generation; wrong or stale runtime
-mappings still prevent every generator call. End-to-end generation with this
-correction remains pending until a fresh isolated runtime produces accepted XML.
+mappings still prevent every generator call. A subsequent real probe caught an
+additional persistence trap: the bootstrap's serialized setting had
+`default="true"`. Changing its text alone makes Kodi reset it to compiled-default
+Estuary on the next start. The offline selector now removes that exact attribute
+and both selection and activation require the explicit non-default Arctic value.
+The regression starts with the actual Estuary/default-true input. This is not a
+relaxation of the runtime path proof, which correctly caught the reset.
+End-to-end generation with this correction remains pending until a fresh
+isolated runtime produces accepted XML.
 
 This is deliberately not a generic Kodi database editor: it rejects a missing,
 symlinked, uncheckpointed, malformed, wrong-version, or incomplete private DB;

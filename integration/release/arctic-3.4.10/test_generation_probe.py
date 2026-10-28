@@ -55,10 +55,11 @@ class GenerationProbeTests(unittest.TestCase):
         runtime = self.root / ".arctic3410-generation/select"
         settings = runtime / ".kodi/userdata/guisettings.xml"
         settings.parent.mkdir(parents=True)
-        settings.write_text('<settings><setting id="lookandfeel.skin">skin.estuary</setting><setting id="other">keep</setting></settings>')
+        settings.write_text('<settings><setting id="lookandfeel.skin" default="true">skin.estuary</setting><setting id="other">keep</setting></settings>')
         probe.select_private_skin_offline(runtime, self.root)
         root = ET.parse(settings).getroot()
         self.assertEqual([n.text for n in root.findall("setting") if n.get("id") == "lookandfeel.skin"], [probe.SKIN_ID])
+        self.assertNotIn("default", root.find("setting[@id='lookandfeel.skin']").attrib)
         self.assertEqual([n.text for n in root.findall("setting") if n.get("id") == "other"], ["keep"])
         for payload in (None,
                         '<settings><setting id="lookandfeel.skin">wrong</setting></settings>',
@@ -557,6 +558,9 @@ class GenerationProbeTests(unittest.TestCase):
                 rpc, closure, runtime,
             ), sorted(closure))
         self.assertEqual(builtin_calls, [])
+        settings.write_text('<settings><setting id="lookandfeel.skin" default="true">skin.arctic.fuse.3</setting></settings>')
+        with self.assertRaisesRegex(RuntimeError, "private saved Arctic selection is not exact"):
+            probe._activate_private_skin(rpc, closure, runtime)
         settings.write_text('<settings><setting id="lookandfeel.skin">skin.estuary</setting></settings>')
         with self.assertRaisesRegex(RuntimeError, "private saved Arctic selection is not exact"):
             probe._activate_private_skin(rpc, closure, runtime)
