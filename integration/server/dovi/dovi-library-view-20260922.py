@@ -117,6 +117,11 @@ def connect(path: Path) -> sqlite3.Connection:
     return db
 
 
+def pending_notifications(db: sqlite3.Connection) -> int:
+    """Retained dead outbox rows are evidence, not retryable pending work."""
+    return db.execute("SELECT COUNT(*) FROM notification_outbox WHERE dead=0").fetchone()[0]
+
+
 def signature(path: Path) -> tuple[int, int, int, int]:
     stat = path.stat()
     return stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns
@@ -919,7 +924,7 @@ def reconcile(args: argparse.Namespace, stack: contextlib.ExitStack) -> None:
         print(json.dumps({"notify_only": True, "jellyfin_notifications": outbox.sent,
                           "jellyfin_verified": outbox.verified,
                           "jellyfin_deadletters": publication_db.execute("SELECT COUNT(*) FROM notification_deadletters").fetchone()[0],
-                          "jellyfin_pending_notifications": publication_db.execute("SELECT COUNT(*) FROM notification_outbox").fetchone()[0]}))
+                          "jellyfin_pending_notifications": pending_notifications(publication_db)}))
         return
     db = connect(args.state)
     stack.callback(db.close)
@@ -1172,7 +1177,7 @@ def reconcile(args: argparse.Namespace, stack: contextlib.ExitStack) -> None:
     outbox.flush(force=True)
     counts["jellyfin_notifications"] = outbox.sent
     counts["jellyfin_verified"] = outbox.verified
-    counts["jellyfin_pending_notifications"] = publication_db.execute("SELECT COUNT(*) FROM notification_outbox").fetchone()[0]
+    counts["jellyfin_pending_notifications"] = pending_notifications(publication_db)
     counts["jellyfin_deadletters"] = publication_db.execute("SELECT COUNT(*) FROM notification_deadletters").fetchone()[0]
     counts["elapsed_seconds"] = round(time.monotonic() - started, 3)
     counts["applied"] = args.apply

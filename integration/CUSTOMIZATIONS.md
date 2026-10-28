@@ -42,9 +42,12 @@ reposting every thirty seconds. Repeated enqueue cannot resurrect a dead job.
 The DOVI fast and notify-only entry points must both receive the explicit pair
 of local worker/config paths. Timeout/launch failures keep bounded intent.
 The Venom exporter image-refresh change removes recursive catalogue image
-fetches from its frequent metadata refresh. These source changes are tested,
-but are not yet deployed; the original missing-artwork incident's exact cause
-is not proven merely by repairing posters.
+fetches from its frequent metadata refresh. These source changes are deployed.
+The existing-Primary exact-item acceptance passed with zero refresh posts;
+missing-Primary future-import acceptance remains pending. Effective systemd
+drop-in ordering was corrected and both DOVI entry points were verified. The
+original missing-artwork incident's exact cause is not proven merely by
+repairing posters.
 
 Version-scoped update candidates preserve existing deployed versions until
 their complete runtime gates pass:
@@ -52,15 +55,37 @@ their complete runtime gates pass:
 - [Arctic3.4.10](release/arctic-3.4.10/README.md): semantic rebase, generated
   selector checks and pinned source; paired installer/live UI acceptance pending.
 - [Jellyfin12.4](server/jellyfin-custom/candidate-12.4/README.md): patched server
-  tests and blank loopback runtime pass, with exact12.4 Library Experience
-  guard. Production web/Enhanced/KodiSyncQueue/IntroSkipper compatibility is a
-  separate gate; the production12.1 image is not replaced by that blank test.
+  tests and exact12.4 Library Experience guard pass. The operational
+  [LinuxServer candidate](server/jellyfin-custom/candidate-12.4-linuxserver/README.md)
+  loads all14 installed feature plugins, including custom Live TV Categories.
+  All13 isolated native publication checks pass against the full-feature image,
+  including real artwork enqueue,
+  one missing-Primary refresh, no verification repost, native image arrival and
+  Arabic subtitle replacement/serving without another global scan. External
+  provider downloads, production deployment and client acceptance remain
+  separate; production12.1 is not replaced by a blank test. The custom Moonbase
+  user-scoped Seerr port passes its isolated routes; the merged bundled Web
+  preserves owned Home/search plus Live TV categories and native Guide/Channels
+  tabs, passes18 targeted tests,
+  and serves from the category plugin under its exact12.4 guard. An authenticated
+  browser on the isolated blank configuration rendered Home, categories, Guide
+  and Channels with working native tab navigation. Populated production rows,
+  provider playback and physical client acceptance remain separate.
+  A private, network-disabled copy of the stopped production configuration also
+  starts on12.4 with all14 installed feature plugins. Item/user identities,
+  credentials, permissions and API keys remain unchanged. The upstream watch-data
+  harmonization migration was checked against the original snapshot: it reconciles
+  only the expected conflicting rows to their most recent playback state. No
+  library scan or production database modification was used for that check.
 - [Seerr3.5.1](server/seerr-request-privacy/candidate-3.5.1/README.md): clean
   compiled overlay builds, syntax and isolated native owner/ordinary-user
-  route/privacy acceptance pass; live request/subtitle integration and controlled
-  production recreation remain required.
+  route/privacy acceptance pass; production recreation, existing-request privacy
+  and settings continuity, Arabic-fulfillment test webhook and independent
+  request-ready polling now pass. No synthetic new download was created.
 - [Dispatcharr0.33](server/dispatcharr-candidate-0.33/README.md): exact-source
-  semantic patch rebase and isolated Django regressions pass; production
+  semantic patch rebase, all six mounted-module behaviors,63 focused and79
+  broader isolated Django regressions pass. Native movie/episode HEAD retains
+  authorization without entering stream allocation; production
   transport/authentication and client acceptance remain separate.
 
 This inventory distinguishes reviewed source, isolated tests and actual

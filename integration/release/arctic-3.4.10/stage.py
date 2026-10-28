@@ -4,6 +4,7 @@ import argparse, hashlib, json, shutil
 from pathlib import Path
 import xml.etree.ElementTree as ET
 import build, dependencies, overlay
+import directory_transaction
 
 MARKER='.arctic-3410-staging-profile'
 BACKUP=('addons/skin.arctic.fuse.3','userdata/addon_data/skin.arctic.fuse.3',
@@ -34,8 +35,14 @@ def stage(source, profile_root, output, tmdb_artifact):
         else: shutil.copy2(path,destination); saved[name]=digest(path)
     skin=output/'candidate/addons/skin.arctic.fuse.3'; skin.parent.mkdir(parents=True,exist_ok=True)
     shutil.copytree(source,skin,ignore=shutil.ignore_patterns('.git')); overlay.transform(skin)
-    result={'schema':1,'status':'staged-only-requires-real-kodi-generation',
+    source_skin=profile_root/'addons/skin.arctic.fuse.3'
+    source_receipt=profile_root/'addons/plugin.video.habibi.resume/verified-build.json'
+    if not source_receipt.is_file(): raise ValueError('missing reviewed resume receipt')
+    result={'schema':2,'status':'staged-only-requires-real-kodi-generation',
             'upstream_commit':overlay.UPSTREAM_COMMIT,'tmdbhelper':dependency,'rollback':saved,
+            'source_skin_sha256':directory_transaction.tree_hash(source_skin),
+            'source_resume_receipt_sha256':digest(source_receipt),
+            'candidate_skin_sha256':directory_transaction.tree_hash(skin),
             'generation_command':'RunScript(script.skinvariables,action=buildtemplate,force=true,no_reload=true)'}
     (output/'stage.json').write_text(json.dumps(result,indent=2,sort_keys=True)+'\n')
     return result

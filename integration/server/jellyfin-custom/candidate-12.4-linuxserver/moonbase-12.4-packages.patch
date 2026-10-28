@@ -1,0 +1,27 @@
+--- a/Jellyfin/backend/Moonfin.Server.csproj
++++ b/Jellyfin/backend/Moonfin.Server.csproj
+@@ -20,11 +20,11 @@
+ 
+   <ItemGroup>
+     <!-- Host-provided by Jellyfin: referenced for compile, but not copied/shipped (ExcludeAssets=runtime). -->
+-    <PackageReference Include="Jellyfin.Controller" Version="12.1.0">
++    <PackageReference Include="Jellyfin.Controller" Version="12.4.0">
+       <PrivateAssets>all</PrivateAssets>
+       <ExcludeAssets>runtime</ExcludeAssets>
+     </PackageReference>
+-    <PackageReference Include="Jellyfin.Model" Version="12.1.0">
++    <PackageReference Include="Jellyfin.Model" Version="12.4.0">
+       <PrivateAssets>all</PrivateAssets>
+       <ExcludeAssets>runtime</ExcludeAssets>
+     </PackageReference>
+--- a/Jellyfin/tests/Moonfin.Server.Tests/Moonfin.Server.Tests.csproj
++++ b/Jellyfin/tests/Moonfin.Server.Tests/Moonfin.Server.Tests.csproj
+@@ -24,7 +24,7 @@
+       project takes its own ordinary PackageReference (runtime assets included, matching the
+       version the backend project restores against).
+     -->
+-    <PackageReference Include="Jellyfin.Controller" Version="12.1.0" />
++    <PackageReference Include="Jellyfin.Controller" Version="12.4.0" />
+   </ItemGroup>
+
+  <ItemGroup>

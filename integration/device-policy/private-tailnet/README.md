@@ -106,6 +106,16 @@ post-start request intentionally ignores a bridge-policy failure so it cannot
 fail Docker or Tailscale.  Copy templates only with the matching reviewed
 script/private profile and inspect parent unit semantics at the target release.
 
+The October28 Tailscale package update exposed a startup race: the daemon's
+post-start hook can run before its overlay address is assigned. The existing
+identity guard correctly refused reconciliation, and a later guarded run
+restored it without widening the policy. The revised oneshot template orders
+after Tailscale and retries failures every3 seconds, at most8 starts per10
+minutes, with a30-second per-attempt timeout. These are bounded systemd retries,
+not an identity-guard bypass: a real address mismatch remains fail-closed. The
+five-minute timer remains the eventual recovery path. Source review/testing is
+separate from copying/reloading this revised template on the host.
+
 For rollback, turn Native mode off first so the client returns to authenticated
 HTTPS, apply `--block-all` to cut even conntrack-retained authorized flows,
 revoke the exact export, remove DNAT with `--remove-nat`, then remove the

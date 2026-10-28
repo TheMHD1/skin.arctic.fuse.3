@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Opt-in, disposable real-Jellyfin publication acceptance. Never uses production state."""
 import argparse
+import base64
 import hashlib
 import http.server
 import json
@@ -44,7 +45,7 @@ def wait_for(function, description, timeout=90):
 class Fixture:
     def __init__(self, args):
         self.args = args
-        self.root = Path(tempfile.mkdtemp(prefix="publication-e2e-"))
+        self.root = Path(tempfile.mkdtemp(prefix="publication-e2e-", dir=getattr(args, "fixture_parent", None)))
         self.name = "publication-e2e-" + secrets.token_hex(6)
         self.network = self.name + "-net"
         self.token = None
@@ -53,10 +54,12 @@ class Fixture:
         self.network_created = False
         self.proxy = None
         self.results = []
+        self.artwork_refresh_posts = {}
         self.source_files = [SERVER / name for name in (
             "dovi/dovi-library-view-20260922.py", "dovi/subtitle_view_filter.py",
             "subtitle-publication/subtitle-raw-arrival.py", "subtitle-publication/subtitle-publication-queue.py",
-            "subtitle-publication/subtitle-jellyfin-sync.py", "subtitle-publication/subtitle-view-filter.py")]
+            "subtitle-publication/subtitle-jellyfin-sync.py", "subtitle-publication/subtitle-view-filter.py",
+            "artwork-publication/artwork-publication.py")]
         self.source_hashes = {str(path.relative_to(SERVER)): hashlib.sha256(path.read_bytes()).hexdigest()
                               for path in self.source_files}
         for path in ("config", "cache", "media/movies", "media/shows", "view/movies", "view/shows", "compat", "locks", "tools", "subtitles"):
@@ -94,10 +97,13 @@ class Fixture:
         print("PASS " + name, flush=True)
 
     def start(self):
-        dll = SERVER / "library-experience-plugin/bin/Release/net10.0/Jellyfin.Plugin.LibraryExperience.dll"
-        meta = SERVER / "library-experience-plugin/meta.json"
+        dll = getattr(self.args, "plugin_dll", None) or SERVER / "library-experience-plugin/bin/Release/net10.0/Jellyfin.Plugin.LibraryExperience.dll"
+        meta = getattr(self.args, "plugin_meta", None) or SERVER / "library-experience-plugin/meta.json"
         assert dll.is_file(), "Build the pinned plugin first"
-        assert json.loads(meta.read_text())["version"] == "1.2.0.0"
+        metadata = json.loads(meta.read_text())
+        expected_version = getattr(self.args, "expected_version", "12.1")
+        assert metadata["version"] == "1.2.0.0"
+        assert metadata["targetAbi"] == expected_version + ".0.0", "Plugin metadata must match the explicit reviewed ABI"
         self.image_id = command("docker", "image", "inspect", self.args.image, "--format", "{{.Id}}")
         self.plugin_hash = hashlib.sha256(dll.read_bytes()).hexdigest()
         plugin = self.root / "config/data/plugins/LibraryExperience_1.2.0.0"
@@ -118,8 +124,15 @@ class Fixture:
         # HTTP contract while the server remains unable to reach the Internet.
         ip = command("docker", "inspect", self.name, "--format", '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
         target_url = "http://" + ip + ":8096"
+        fixture = self
         class Relay(http.server.BaseHTTPRequestHandler):
             def forward(self):
+                query = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
+                if (self.command == "POST" and "/Refresh?" in self.path
+                        and query.get("MetadataRefreshMode") == ["None"]
+                        and query.get("ImageRefreshMode") == ["Default"]):
+                    item_id = urllib.parse.urlsplit(self.path).path.split("/")[2].replace("-", "")
+                    fixture.artwork_refresh_posts[item_id] = fixture.artwork_refresh_posts.get(item_id, 0) + 1
                 length = int(self.headers.get("Content-Length", "0"))
                 data = self.rfile.read(length) if length else (b"" if self.command == "POST" else None)
                 headers = {key: value for key, value in self.headers.items() if key.lower() not in {"host", "connection"}}
@@ -145,7 +158,8 @@ class Fixture:
         threading.Thread(target=self.proxy.serve_forever, daemon=True).start()
         self.url = "http://127.0.0.1:" + str(self.proxy.server_port)
         info = wait_for(lambda: self.api("System/Info/Public"), "isolated Jellyfin startup", 120)
-        assert info["Version"].startswith("12.1"), "Review/rebase required for a different Jellyfin version"
+        assert info["Version"] in {expected_version, expected_version + ".0", expected_version + ".0.0"}, "Review/rebase required for a different Jellyfin version"
+        self.server_version = info["Version"]
         wait_for(lambda: self.api("Startup/User"), "startup user database readiness", 120)
         password = secrets.token_urlsafe(24)
         self.api("Startup/User", {"Name": "fixture-admin", "Password": password}, "POST")
@@ -155,6 +169,16 @@ class Fixture:
         self.api("Startup/Complete", {}, "POST")
         auth = self.api("Users/AuthenticateByName", {"Username": "fixture-admin", "Pw": password}, "POST")
         self.token = auth["AccessToken"]
+        token_file = self.root / "artwork-token"
+        token_file.write_text(self.token)
+        token_file.chmod(0o600)
+        artwork_config = self.root / "artwork-config.json"
+        artwork_config.write_text(json.dumps({"jellyfin_url": self.url, "token_file": str(token_file),
+            "state_db": str(self.root / "artwork.sqlite"), "media_root": str(self.root / "media")}))
+        artwork_config.chmod(0o600)
+        self.artwork_executable = self.root / "tools/artwork-publication"
+        shutil.copy2(SERVER / "artwork-publication/artwork-publication.py", self.artwork_executable)
+        self.artwork_executable.chmod(0o755)
         # Native Jellyfin skips wholly empty physical roots, creating neither
         # a physical Folder nor PhysicalFolderIds. Establish unrelated anchors
         # during the permitted initial scan; tested imports are still absent.
@@ -217,6 +241,9 @@ class Fixture:
                 "--new-title-bridge", "--media-root", str(self.root / "media"), "--view-root", str(self.root / "view"),
                 "--compatibility-root", str(self.root / "compat"), "--worker", str(self.root / "worker.sh"),
                 "--jellyfin", self.url]
+        if getattr(self.args, "artwork", False):
+            argv.extend(("--artwork-enqueue", str(self.artwork_executable),
+                         "--artwork-config", str(self.root / "artwork-config.json")))
         for flag, name in (("--state", "probe.sqlite"), ("--notification-state", "publication.sqlite"),
                            ("--retry-state", "retry.sqlite"), ("--queue", "queue"), ("--queue-lock", "locks/queue"),
                            ("--publication-lock", "locks/publication"), ("--title-locks", "locks/titles"), ("--run-lock", "locks/run")):
@@ -323,6 +350,8 @@ class Fixture:
             self.reconcile()
             assert self.item(video, kind)["Id"] == original_id
             self.check(kind + " duplicate event preserves exactly one native ID")
+        if getattr(self.args, "artwork", False):
+            self.exercise_artwork(movie)
         subtitle = episode.with_suffix(".ar.srt")
         def replace(text):
             staging = subtitle.with_suffix(".new")
@@ -372,9 +401,44 @@ class Fixture:
         self.check("Native elevated endpoint rejects unauthenticated discovery")
         assert self.source_hashes == {str(path.relative_to(SERVER)): hashlib.sha256(path.read_bytes()).hexdigest()
                                       for path in self.source_files}, "Source bytes changed during E2E acceptance; rerun"
-        return {"status": "passed", "jellyfinVersion": "12.1", "imageId": self.image_id,
+        return {"status": "passed", "jellyfinVersion": self.server_version, "imageId": self.image_id,
                 "pluginSha256": self.plugin_hash, "sourceSha256": self.source_hashes, "checks": self.results,
                 "scope": "synthetic SDR; actual reconciler and real Jellyfin; not ARR hook/GPU/client playback"}
+
+    def exercise_artwork(self, movie):
+        """Real queue/refresh/ack, with synthetic local image arrival, no provider."""
+        item = self.item(movie, "Movie")
+        item_id = item["Id"]
+        native = self.api("Items?Ids=" + item_id + "&Fields=Path,ImageInfos")["Items"][0]
+        assert not native.get("ImageTags", {}).get("Primary"), "Artwork fixture must start without Primary"
+        script = SERVER / "artwork-publication/artwork-publication.py"
+        def work():
+            return json.loads(command(sys.executable, str(script), "work", "--config", str(self.root / "artwork-config.json")))
+        def due():
+            with sqlite3.connect(self.root / "artwork.sqlite") as db:
+                db.execute("UPDATE jobs SET next_attempt=0 WHERE item_id=?", (item_id.replace("-", ""),))
+        count = lambda: self.artwork_refresh_posts.get(item_id.replace("-", ""), 0)
+        before = count()
+        result = work()
+        assert count() == before + 1, "Missing Primary must submit exactly one scoped image refresh: " + json.dumps(result)
+        due()
+        work()
+        assert count() == before + 1, "Verification must not repost accepted refresh"
+        with sqlite3.connect(self.root / "artwork.sqlite") as db:
+            assert db.execute("SELECT state FROM jobs WHERE item_id=?", (item_id.replace("-", ""),)).fetchone() == ("verifying",)
+        self.check("Actual import enqueues missing-Primary job; native image-only refresh accepted once, verification does not repost")
+        # Simulate a provider/local artwork arrival using the real elevated image
+        # API. This intentionally does not claim an external provider-download test.
+        png = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aLa0AAAAASUVORK5CYII=")
+        request = urllib.request.Request(self.url + "/Items/" + item_id + "/Images/Primary",
+            data=base64.b64encode(png), method="POST", headers={"Content-Type": "image/png",
+            "Authorization": 'MediaBrowser Token="' + self.token + '"'})
+        with urllib.request.urlopen(request, timeout=15) as response:
+            assert response.status == 204
+        due()
+        assert work()["completed"] == 1
+        assert count() == before + 1
+        self.check("Native Primary arrival completes actual artwork queue without another refresh or global scan")
 
     def cleanup(self):
         if self.proxy:
@@ -385,13 +449,30 @@ class Fixture:
         if self.network_created:
             command("docker", "network", "rm", self.network, timeout=30)
         if not self.args.keep:
-            shutil.rmtree(self.root)
+            try:
+                shutil.rmtree(self.root)
+            except PermissionError:
+                # S6 can create root-owned directories even with matching PUID.
+                # Fix ownership only in our generated, exact fixture mount; no
+                # production/parent mount or network/entrypoint is available.
+                assert self.root.name.startswith("publication-e2e-") and not self.root.is_symlink()
+                command("docker", "run", "--rm", "--network", "none", "--user", "0:0",
+                        "--cap-drop", "ALL", "--cap-add", "CHOWN", "--cap-add", "DAC_OVERRIDE",
+                        "--security-opt", "no-new-privileges", "--entrypoint", "/bin/sh",
+                        "-v", str(self.root) + ":/fixture", self.args.image,
+                        "-c", 'chown -hR "$1" /fixture', "cleanup", str(os.getuid()) + ":" + str(os.getgid()))
+                shutil.rmtree(self.root)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--run", action="store_true", help="Explicitly authorize this isolated fixture run")
-    parser.add_argument("--image", default=IMAGE, help="Already-local, reviewed Jellyfin 12.1 image; never pulled")
+    parser.add_argument("--image", default=IMAGE, help="Already-local, reviewed Jellyfin image; never pulled")
+    parser.add_argument("--expected-version", choices=("12.1", "12.4"), default="12.1")
+    parser.add_argument("--plugin-dll", type=Path, help="Explicit reviewed ABI-matching Library Experience DLL")
+    parser.add_argument("--plugin-meta", type=Path, help="Its exact matching metadata file")
+    parser.add_argument("--fixture-parent", type=Path, help="Private existing directory with enough space (not a media/config mount)")
+    parser.add_argument("--artwork", action="store_true", help="Also test actual scoped artwork queue and native Primary arrival")
     parser.add_argument("--keep", action="store_true", help="Keep private temporary fixture after removing its container")
     args = parser.parse_args()
     if not args.run:

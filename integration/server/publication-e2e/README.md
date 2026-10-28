@@ -9,8 +9,10 @@ Reviewed cohort: Jellyfin 12.1 custom image
 `jellyfin-custom:12.1-onepace-20260918`, native source commit
 `ee91c75e777da41a9c4f4855e70adc604fbf2ef8`, and plugin 1.2.0.0 with its exact
 Controller assembly guard. The image must already exist locally; the harness
-never pulls an image. A different image requires an explicit `--image` choice
-and still must pass the 12.1 server and plugin ABI checks.
+never pulls an image. A different reviewed cohort requires an explicit `--image`
+and `--expected-version` choice plus its rebuilt matching plugin DLL/metadata.
+Only the reviewed12.1 and12.4 versions are accepted; an arbitrary version string
+cannot bypass the native server check or matching plugin ABI metadata guard.
 
 ## Run
 
@@ -22,6 +24,26 @@ python3 integration/server/publication-e2e/test_harness.py
 python3 integration/server/publication-e2e/run.py
 python3 integration/server/publication-e2e/run.py --run
 ```
+
+For12.4, add `--expected-version 12.4 --image ALREADY_LOCAL_REVIEWED_IMAGE
+--plugin-dll PRIVATE_BUILT_DLL --plugin-meta MATCHING_META_JSON`. A private
+`--fixture-parent` with enough free space avoids a small `/tmp` tmpfs. These
+options remain side-effect-free without `--run`.
+
+Optional `--artwork` also sends the actual reconciler's accepted IDs through
+the executable exact-artwork enqueue path. A missing Primary must produce one
+native item-only image refresh, stay in verification without reposting, then
+complete when the fixture uploads a synthetic local image through Jellyfin's
+normal elevated image API. The latter simulates image arrival, **not an external
+metadata/image-provider download**. No household artwork is removed for a test.
+The all14-plugin LinuxServer12.4 candidate
+`sha256:024764b09599bc10c1284a80abc5a970e7a6b6c91dc5b8ed4c0158f10eda68f9`
+passed all13 assertions including these two artwork checks on October28.
+The subsequent full-feature image, including rebuilt custom Moonbase and the
+merged Live TV Categories Web bundle,
+`sha256:b2faebcb6d0f9f4ee3172072e9caa58a0970f462c495314c1ec8c9a7ca8da34f`,
+also passed all13 assertions with normal fixture cleanup. This does not upgrade
+production or prove physical category-screen/client playback acceptance.
 
 Without `--run` this prints a plan and performs no fixture construction or
 Docker calls. An explicit run creates randomly named temporary directories,
@@ -86,6 +108,11 @@ private fixture directory for investigation, but still removes its container,
 network and loopback relay. Forced process death can leave owned resources;
 inspect their exact `publication-e2e-...` names before manual cleanup. Never
 use a broad cleanup or production container name.
+If LinuxServer S6 leaves root-owned fixture directories, cleanup uses an
+entrypoint-overridden, network-disabled helper mounting only the exact generated
+fixture to repair its ownership before deletion. It has no parent/media mount.
+Six cheap safety tests cover no-run behavior, generated identities, scan
+invariants, exact cleanup targets and that permission-repair boundary.
 
 ## Update/recreate acceptance
 

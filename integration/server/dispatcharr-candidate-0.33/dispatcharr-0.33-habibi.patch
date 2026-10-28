@@ -613,3 +613,184 @@ index 0000000..ae8db49
 +        )
 +        self.assertEqual(attempts, 1)
 +        self.assertEqual(result[5], "bad credentials")
+diff --git a/apps/proxy/vod_proxy/tests/test_xc_head_metadata.py b/apps/proxy/vod_proxy/tests/test_xc_head_metadata.py
+new file mode 100644
+index 0000000..04b4cb2
+--- /dev/null
++++ b/apps/proxy/vod_proxy/tests/test_xc_head_metadata.py
+@@ -0,0 +1,95 @@
++"""XC VOD HEAD is metadata-only and must never enter stream_vod."""
++
++from types import SimpleNamespace
++from unittest.mock import MagicMock, patch
++
++from django.http import HttpResponse
++from django.test import RequestFactory, SimpleTestCase
++from rest_framework.response import Response
++
++
++class XcVodHeadMetadataTests(SimpleTestCase):
++    def setUp(self):
++        self.factory = RequestFactory()
++        self.user = MagicMock()
++        self.movie_relation = SimpleNamespace(movie=SimpleNamespace(uuid="movie-uuid"))
++        self.episode_relation = SimpleNamespace(episode=SimpleNamespace(uuid="episode-uuid"))
++
++    def _request(self, kind, method="HEAD"):
++        return getattr(self.factory, method.lower())(
++            f"/{kind}/test-user/test-password/17.mp4"
++        )
++
++    def _call(self, kind, method="HEAD"):
++        from apps.proxy.vod_proxy import views
++
++        view = views.stream_xc_movie if kind == "movie" else views.stream_xc_episode
++        return view(self._request(kind, method), "test-user", "test-password", "17", "mp4")
++
++    def _relation_patch(self, kind, relation):
++        name = "M3UMovieRelation" if kind == "movie" else "M3UEpisodeRelation"
++        model = MagicMock()
++        model.objects.select_related.return_value.filter.return_value.order_by.return_value.first.return_value = relation
++        return patch(f"apps.vod.models.{name}", model)
++
++    def _authorised(self):
++        return patch(
++            "apps.proxy.vod_proxy.views.authorize_xc_client",
++            return_value=(self.user, None),
++        )
++
++    def test_movie_head_is_authorised_metadata_without_stream_allocation(self):
++        with self._authorised(), self._relation_patch("movie", self.movie_relation), patch(
++            "apps.proxy.vod_proxy.views.stream_vod"
++        ) as stream_vod:
++            response = self._call("movie")
++
++        self.assertEqual(response.status_code, 200)
++        self.assertTrue(response.streaming)
++        self.assertEqual(response["Content-Type"], "video/mp4")
++        self.assertEqual(response["Accept-Ranges"], "bytes")
++        self.assertNotIn("Content-Length", response)
++        self.assertEqual(list(response.streaming_content), [])
++        stream_vod.assert_not_called()
++
++    def test_episode_head_is_authorised_metadata_without_stream_allocation(self):
++        with self._authorised(), self._relation_patch("episode", self.episode_relation), patch(
++            "apps.proxy.vod_proxy.views.stream_vod"
++        ) as stream_vod:
++            response = self._call("episode")
++
++        self.assertEqual(response.status_code, 200)
++        self.assertTrue(response.streaming)
++        self.assertEqual(response["Content-Type"], "video/mp4")
++        self.assertNotIn("Content-Length", response)
++        stream_vod.assert_not_called()
++
++    def test_head_preserves_authorisation_failure_without_stream(self):
++        with patch(
++            "apps.proxy.vod_proxy.views.authorize_xc_client",
++            return_value=(None, Response({"error": "Invalid credentials"}, status=401)),
++        ), patch("apps.proxy.vod_proxy.views.stream_vod") as stream_vod:
++            response = self._call("movie")
++
++        self.assertEqual(response.status_code, 401)
++        stream_vod.assert_not_called()
++
++    def test_head_preserves_missing_relation_without_stream(self):
++        with self._authorised(), self._relation_patch("episode", None), patch(
++            "apps.proxy.vod_proxy.views.stream_vod"
++        ) as stream_vod:
++            response = self._call("episode")
++
++        self.assertEqual(response.status_code, 404)
++        stream_vod.assert_not_called()
++
++    def test_get_remains_the_only_path_to_stream_vod(self):
++        with self._authorised(), self._relation_patch("movie", self.movie_relation), patch(
++            "apps.proxy.vod_proxy.views.stream_vod", return_value=HttpResponse("streamed")
++        ) as stream_vod:
++            response = self._call("movie", "GET")
++
++        self.assertEqual(response.status_code, 200)
++        stream_vod.assert_called_once()
++        self.assertEqual(stream_vod.call_args.args[1:3], ("movie", "movie-uuid"))
++        self.assertFalse(stream_vod.call_args.kwargs["check_network"])
+diff --git a/apps/proxy/vod_proxy/views.py b/apps/proxy/vod_proxy/views.py
+index 7f9f418..7cbbcce 100644
+--- a/apps/proxy/vod_proxy/views.py
++++ b/apps/proxy/vod_proxy/views.py
+@@ -9,7 +9,13 @@ import logging
+ import requests
+ from urllib.parse import urlencode
+ from django.db import close_old_connections
+-from django.http import JsonResponse, Http404, HttpResponse, HttpResponseRedirect
++from django.http import (
++    JsonResponse,
++    Http404,
++    HttpResponse,
++    HttpResponseRedirect,
++    StreamingHttpResponse,
++)
+ from django.shortcuts import get_object_or_404
+ from django.views.decorators.csrf import csrf_exempt
+ from apps.vod.models import Movie, Series, Episode, M3UMovieRelation, M3UEpisodeRelation
+@@ -1456,7 +1462,7 @@ def stop_vod_client(request):
+         logger.error(f"Error stopping VOD client: {e}", exc_info=True)
+         return JsonResponse({'error': str(e)}, status=500)
+ 
+-@api_view(["GET"])
++@api_view(["GET", "HEAD"])
+ @permission_classes([AllowAny])
+ def stream_xc_movie(request, username, password, stream_id, extension):
+     from apps.vod.models import M3UMovieRelation
+@@ -1482,6 +1488,22 @@ def stream_xc_movie(request, username, password, stream_id, extension):
+     except (M3UMovieRelation.DoesNotExist, M3UMovieRelation.MultipleObjectsReturned):
+         return JsonResponse({"error": "Movie not found"}, status=404)
+ 
++    # Kodi probes native XC items with HEAD before opening a range GET. Keep
++    # all authentication, entitlement and active-relation checks above, but do
++    # not turn metadata inspection into a provider request/session/slot.
++    # A streaming empty body avoids a fabricated Content-Length; GET remains
++    # solely responsible for actual size, range, redirect and stream lifecycle.
++    if request.method == "HEAD":
++        response = StreamingHttpResponse(
++            iter(()),
++            content_type=(
++                infer_content_type_from_url("file." + extension)
++                or "application/octet-stream"
++            ),
++        )
++        response["Accept-Ranges"] = "bytes"
++        return response
++
+     return stream_vod(
+         request._request,
+         'movie',
+@@ -1492,7 +1514,7 @@ def stream_xc_movie(request, username, password, stream_id, extension):
+         check_network=False,
+     )
+ 
+-@api_view(["GET"])
++@api_view(["GET", "HEAD"])
+ @permission_classes([AllowAny])
+ def stream_xc_episode(request, username, password, stream_id, extension):
+     from apps.vod.models import M3UEpisodeRelation
+@@ -1514,6 +1536,19 @@ def stream_xc_episode(request, username, password, stream_id, extension):
+     if not episode_relation:
+         return JsonResponse({"error": "Episode not found"}, status=404)
+ 
++    # See stream_xc_movie: HEAD validates this exact public XC route without
++    # invoking stream_vod or allocating any provider-side playback resources.
++    if request.method == "HEAD":
++        response = StreamingHttpResponse(
++            iter(()),
++            content_type=(
++                infer_content_type_from_url("file." + extension)
++                or "application/octet-stream"
++            ),
++        )
++        response["Accept-Ranges"] = "bytes"
++        return response
++
+     return stream_vod(
+         request._request,
+         'episode',

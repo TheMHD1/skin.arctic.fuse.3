@@ -1,7 +1,10 @@
 # CT103 exact artwork publication deployment — 2026-10-28
 
-This is a versioned deployment plan for the additive exact-item artwork
-publisher. It is deliberately **not** a claim that it is live. The publisher
+This is the versioned deployment record for the additive exact-item artwork
+publisher. The reviewed source is installed and the existing-Primary acceptance
+passes (two exact-item reads, zero refresh posts, one completion). A genuinely
+new missing-Primary import and subsequent image appearance remain a separate
+pending acceptance gate. The publisher
 belongs on ARR CT103 alongside the DOVI reconciler; CT102 hosts Jellyfin and
 must not be used as an indirect executable path for CT103.
 
@@ -58,6 +61,13 @@ ExecStart=/data/config/_dovi/dovi-library-view.py --apply --notify-jellyfin --no
 Use the exact existing `ExecStart` as the baseline if it has additional
 reviewed private arguments; do not replace its `EnvironmentFile`, token parser,
 timer cadence, or timeout settings.
+
+The full reconciliation service also needs the same pair. Install its drop-in
+as `zz-artwork.conf`, after the existing `publication.conf`, and verify the
+effective command with `systemctl show -p ExecStart`. An earlier `artwork.conf`
+is silently superseded by the later publication drop-in's reset; source and
+individual file inspection alone did not catch this deployment-order bug.
+The deployed override ordering is corrected without restarting active workers.
 
 ## Preflight before enabling either timer
 

@@ -1,0 +1,77 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <!-- One place to bump, so the three can't drift apart. The release scripts still
+         override all of them with -p: switches. -->
+    <MoonfinVersion>2.4.0</MoonfinVersion>
+    <AssemblyVersion>$(MoonfinVersion).0</AssemblyVersion>
+    <FileVersion>$(MoonfinVersion).0</FileVersion>
+    <Version>$(MoonfinVersion)</Version>
+    <RootNamespace>Moonfin.Server</RootNamespace>
+    <AssemblyName>Moonfin.Server</AssemblyName>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>CS1591</NoWarn>
+    <!-- Copy non host-provided package DLLs (SharpCompress) into the output so the plugin can ship them. -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Host-provided by Jellyfin: referenced for compile, but not copied/shipped (ExcludeAssets=runtime). -->
+    <PackageReference Include="Jellyfin.Controller" Version="12.4.0">
+      <PrivateAssets>all</PrivateAssets>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
+    <PackageReference Include="Jellyfin.Model" Version="12.4.0">
+      <PrivateAssets>all</PrivateAssets>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3">
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
+    <!-- Not host-provided: must ship in the plugin folder. -->
+    <PackageReference Include="SharpCompress" Version="1.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Web/loader.js" LogicalName="Moonfin.Server.Web.loader.js" />
+    <EmbeddedResource Include="Web/inject.html" LogicalName="Moonfin.Server.Web.inject.html" />
+    <EmbeddedResource Include="Pages/configPage.html" LogicalName="Moonfin.Server.Pages.configPage.html" />
+    <EmbeddedResource Include="EmulatorJS/player.html" LogicalName="Moonfin.Server.EmulatorJS.player.html" />
+    <EmbeddedResource Include="EmulatorJS/moonfin-bridge.js" LogicalName="Moonfin.Server.EmulatorJS.moonfin-bridge.js" />
+    <EmbeddedResource Include="assets/*.png">
+      <LogicalName>Moonfin.Server.assets.%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="assets/*.svg">
+      <LogicalName>Moonfin.Server.assets.%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <!-- The seasonal row's pure logic and rules are shared with the Emby port, so both read the
+       same files from the repo's shared folder. -->
+  <ItemGroup>
+    <Compile Include="../../shared/Seasonal/*.cs" Link="Seasonal/%(Filename)%(Extension)" />
+    <EmbeddedResource Include="../../shared/Seasonal/seasonal-holidays.json" LogicalName="Moonfin.Seasonal.holidays.json" />
+  </ItemGroup>
+
+  <!-- Stamps the push relay key into the assembly. The build scripts read it from a
+       gitignored .env, so a checkout without one still builds and simply has push off. -->
+  <ItemGroup Condition="'$(MoonfinRelayAppKey)' != ''">
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>MoonfinRelayAppKey</_Parameter1>
+      <_Parameter2>$(MoonfinRelayAppKey)</_Parameter2>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+  <Target Name="ValidateEmbeddedResourceSources" BeforeTargets="BeforeBuild">
+    <Error Condition="!Exists('Pages/configPage.html')" Text="Required embedded resource Pages/configPage.html was not found." />
+    <Error Condition="!Exists('Web/loader.js')" Text="Required embedded resource Web/loader.js was not found." />
+    <Error Condition="!Exists('Web/inject.html')" Text="Required embedded resource Web/inject.html was not found." />
+    <Error Condition="!Exists('EmulatorJS/player.html')" Text="Required embedded resource EmulatorJS/player.html was not found." />
+    <Error Condition="!Exists('EmulatorJS/moonfin-bridge.js')" Text="Required embedded resource EmulatorJS/moonfin-bridge.js was not found." />
+    <Error Condition="!Exists('../../shared/Seasonal/seasonal-holidays.json')" Text="Required embedded resource shared/Seasonal/seasonal-holidays.json was not found." />
+  </Target>
+
+</Project>

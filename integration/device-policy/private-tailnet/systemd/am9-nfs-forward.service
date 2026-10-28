@@ -1,8 +1,13 @@
 [Unit]
 Description=Reassert the reviewed exact-peer AM9 NFS bridge
 Wants=network-online.target
-After=network-online.target nfs-server.service
+After=network-online.target nfs-server.service tailscaled.service
+StartLimitIntervalSec=10min
+StartLimitBurst=8
 
 [Service]
 Type=oneshot
+Restart=on-failure
+RestartSec=3s
+TimeoutStartSec=30s
 ExecStart=/usr/bin/python3 /usr/local/lib/am9-nfs-forward.py --config /etc/am9-nfs-forward/profile.json --reconcile

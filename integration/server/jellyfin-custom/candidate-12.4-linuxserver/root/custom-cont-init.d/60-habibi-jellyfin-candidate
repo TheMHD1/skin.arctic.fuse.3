@@ -1,0 +1,23 @@
+#!/bin/sh
+set -eu
+data_dir=${JELLYFIN_DATA_DIR:-/config/data}
+plugin_root="$data_dir/plugins"
+library_dir="$plugin_root/Library Experience Maintenance_1.2.0.0"
+mkdir -p "$plugin_root"
+# Directory spelling is not identity. A fixture or administrator may already
+# have the same plugin GUID under a versioned directory; never seed a duplicate.
+if ! find "$plugin_root" -type f -name Jellyfin.Plugin.LibraryExperience.dll -print -quit | grep -q .; then
+  mkdir -p "$library_dir"
+  cp /opt/habibi-plugin/Jellyfin.Plugin.LibraryExperience.dll "$library_dir/"
+  cp /opt/habibi-plugin/meta.json "$library_dir/meta.json"
+  chown -R abc:abc "$library_dir"
+fi
+for source in /opt/habibi-plugins/*; do
+  [ -d "$source" ] || continue
+  destination="$plugin_root/$(basename "$source")"
+  if [ ! -e "$destination" ]; then
+    mkdir -p "$destination"
+    cp -a "$source"/. "$destination"/
+    chown -R abc:abc "$destination"
+  fi
+done

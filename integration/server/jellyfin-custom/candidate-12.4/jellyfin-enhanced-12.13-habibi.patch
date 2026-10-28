@@ -3,9 +3,13 @@ index 1681627..16d1849 100644
 --- a/Jellyfin.Plugin.JellyfinEnhanced/js/jellyseerr/ui/ui-results.js
 +++ b/Jellyfin.Plugin.JellyfinEnhanced/js/jellyseerr/ui/ui-results.js
 @@ -19,6 +19,7 @@
+     // render must cancel the previous one (see renderJellyseerrResults).
      let pendingRepositionObserver = null;
      let pendingRepositionTimeout = null;
 +    let pendingRepositionFrame = null;
+ 
+     // Keep card buttons in sync when a request is made from other surfaces (e.g., more info modal)
+     function markCardRequested(tmdbId, mediaType, is4k = false) {
 @@ -214,12 +215,17 @@
              clearTimeout(pendingRepositionTimeout);
              pendingRepositionTimeout = null;
@@ -21,6 +25,9 @@ index 1681627..16d1849 100644
  
          const primaryCardTypes = ['movie', 'series'];
 +        const secondarySelector = '[data-habibi-catalogue="venom"]';
+ 
+         /**
+          * Finds the last Movies/Shows section in the search results, identified
 @@ -230,8 +236,7 @@
          function findLastPrimarySection() {
              const allSections = Array.from(searchPage.querySelectorAll('.verticalSection:not(.jellyseerr-section)'));
@@ -32,6 +39,7 @@ index 1681627..16d1849 100644
                  }
              }
 @@ -247,6 +252,7 @@
+          */
          function isPrimarySection(el) {
              if (!el || !el.classList?.contains('verticalSection')) return false;
 +            if (el.matches(secondarySelector)) return false;
@@ -108,3 +116,5 @@ index 1681627..16d1849 100644
 +        // detached pages cancel this observer; it never becomes permanent.
 +        pendingRepositionTimeout = setTimeout(stopReposition, 30000);
      };
+ 
+     /**

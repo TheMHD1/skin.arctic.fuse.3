@@ -1,0 +1,8 @@
+diff --git a/Jellyfin.Plugin.LiveTvCategories/WebClient/PluginWebClientStartupFilter.cs b/Jellyfin.Plugin.LiveTvCategories/WebClient/PluginWebClientStartupFilter.cs
+--- a/Jellyfin.Plugin.LiveTvCategories/WebClient/PluginWebClientStartupFilter.cs
++++ b/Jellyfin.Plugin.LiveTvCategories/WebClient/PluginWebClientStartupFilter.cs
+@@ -18,3 +18,3 @@ public sealed class PluginWebClientStartupFilter : IStartupFilter
+ {
+     private const string DefaultWebRequestPath = "/web";
+-    private static readonly Version BundledWebServerVersion = new(12, 1, 0, 0);
++    private static readonly Version BundledWebServerVersion = new(12, 4, 0, 0);

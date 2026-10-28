@@ -47,6 +47,28 @@ class SafetyTests(unittest.TestCase):
         with patch.object(fixture, "scan_state", return_value=("Idle", fixture.baseline_scan)):
             fixture.assert_no_scan()
 
+    def test_explicit_candidate_plan_still_has_no_side_effects(self):
+        with patch.object(sys, "argv", ["run.py", "--expected-version", "12.4", "--artwork",
+                                       "--plugin-dll", "/private/candidate.dll",
+                                       "--plugin-meta", "/private/meta.json"]), patch.object(harness, "Fixture") as fixture:
+            harness.main()
+        fixture.assert_not_called()
+
+    def test_cleanup_permission_repair_is_scoped_to_generated_fixture(self):
+        fixture = harness.Fixture(types.SimpleNamespace(keep=False, image="local/reviewed:fixture"))
+        real_remove = harness.shutil.rmtree
+        try:
+            with patch.object(harness.shutil, "rmtree", side_effect=[PermissionError(), None]), patch.object(harness, "command") as command:
+                fixture.cleanup()
+            args = command.call_args.args
+            self.assertIn(str(fixture.root) + ":/fixture", args)
+            self.assertIn("none", args)
+            self.assertIn("/bin/sh", args)
+            self.assertEqual(args[-1], str(harness.os.getuid()) + ":" + str(harness.os.getgid()))
+            self.assertNotIn("/data/media:/fixture", args)
+        finally:
+            real_remove(fixture.root)
+
 
 if __name__ == "__main__":
     unittest.main()

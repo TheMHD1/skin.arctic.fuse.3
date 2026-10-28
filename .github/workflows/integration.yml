@@ -16,10 +16,17 @@ jobs:
       - run: ARCTIC_FUSE_3410_SOURCE="$RUNNER_TEMP/arctic-3410-upstream" python integration/release/arctic-3.4.10/test_overlay.py
       - run: python integration/release/arctic-3.4.10/test_dependencies.py
       - run: ARCTIC_FUSE_3410_SOURCE="$RUNNER_TEMP/arctic-3410-upstream" python integration/release/arctic-3.4.10/test_stage.py
+      - run: python integration/release/arctic-3.4.10/test_directory_transaction.py
+      - run: python integration/release/arctic-3.4.10/test_lifecycle.py
+      - run: python integration/release/arctic-3.4.10/test_install.py
+      - run: python integration/release/arctic-3.4.10/test_generation_probe.py
       - run: python integration/server/dovi/test_dovi_reconciler.py
       - run: python integration/server/dovi/test_fast_import.py
       - run: python integration/server/subtitle-publication/subtitle-publication-tests.py
       - run: python integration/server/publication-e2e/test_harness.py
+      - run: python integration/server/jellyfin-custom/candidate-12.4-linuxserver/verify-moonbase-source.py
+      - run: python integration/server/jellyfin-custom/candidate-12.4-linuxserver/test_moonbase_source.py
+      - run: python integration/server/jellyfin-custom/candidate-12.4-linuxserver/test_livetv_web_builder.py
       - run: python -m unittest discover -s integration/server/arr-request-search -p 'test_*.py'
       - uses: actions/setup-node@v4
         with:

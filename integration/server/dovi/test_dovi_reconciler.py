@@ -43,6 +43,12 @@ class ProbeTests(unittest.TestCase):
     def result(self, output="|", code=0):
         return subprocess.CompletedProcess([], code, stdout=output)
 
+    def test_pending_metric_excludes_dead_evidence_without_deleting_it(self):
+        self.db.execute("INSERT INTO notification_outbox(folder,dead) VALUES('fixture-live',0)")
+        self.db.execute("INSERT INTO notification_outbox(folder,dead) VALUES('fixture-dead',1)")
+        self.assertEqual(dovi.pending_notifications(self.db), 1)
+        self.assertEqual(self.db.execute("SELECT COUNT(*) FROM notification_outbox").fetchone()[0], 2)
+
     def test_blank_success_is_unknown_and_cools_down(self):
         with patch.object(dovi.subprocess, "run", return_value=self.result("")) as probe:
             self.assertIsNone(dovi.probe(self.media, self.db, 1000)[0])

@@ -1,8 +1,20 @@
 # Seerr 3.5.1 privacy-overlay candidate
 
-Version-specific candidate, built from the exact compiled files from the
-3.5.1 image. Production remains unchanged until the complete deployment
-transaction and request/subtitle integrations are verified.
+Version-specific overlay, built from the exact compiled files from the
+3.5.1 image. Controlled production recreation completed October28 after the
+isolated gates below. Native owner/two-ordinary-user API privacy acceptance,
+existing request/permission/ownership and integration-settings continuity,
+startup guard, homepage/health and Arabic-fulfillment webhook test passed.
+The independent request-ready timer still succeeds. No new synthetic download
+request or user watch-history test was performed in production.
+
+The first conservative continuity gate rolled back on two newly introduced
+inert defaults (`main.hideRequested=false` and empty ntfy `options.tags`).
+Only those exact defaults were normalized before the second successful
+transaction; credentials, hooks and existing settings were not relaxed.
+Private consistent configuration/database snapshots and the old image/Compose
+remain with the deployment. Any database migration rollback must restore that
+consistent configuration/database set, not just switch the image tag back.
 
 - Official source tag `v3.5.1` resolves to
   `564bfb08b54caa374bddaf820abfd226e5e69151`.
