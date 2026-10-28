@@ -15,12 +15,18 @@ The overlay ports the complete shared Home/search feature chain:
   Venom entry that leaves all non-Venom Hub use upstream-native.
 
 It requires SkinVariables `>=2.2.9`, and upstream Arctic requires TMDb Helper
-`>=6.17.9`. The candidate pins a review target of TMDb Helper `6.19.1`
-(`61917067582cb860ace3c3013a80eea17724c637`): this is newer than Arctic's
+`>=6.17.9`. The candidate pins TMDb Helper `6.19.2` source commit
+[`3a515987b0405d6e2298081edb71f8ab3099ecff`](https://github.com/jurialmunkey/plugin.video.themoviedb.helper/commit/3a515987b0405d6e2298081edb71f8ab3099ecff)
+through official repository commit
+[`1fd8db862c63066c2bd51df3183f2839874c9fff`](https://github.com/jurialmunkey/repository.jurialmunkey/tree/1fd8db862c63066c2bd51df3183f2839874c9fff/omega/zips/plugin.video.themoviedb.helper).
+This is newer than Arctic's
 minimum, but it has a materially larger dependency set and is **not** approved
-for a blind device installation. A fresh read-only verification found both
-clients already run TMDb Helper 6.19.1 with its reviewed dependencies; it must
-still be preserved and staged rather than reinstalled blindly. The authoritative
+for a blind device installation. Upstream did not create a `v6.19.2` tag, and
+later nexus commits still declare themselves 6.19.2; the version string is
+therefore never accepted as provenance. A fresh read-only verification found
+both clients already run the exact 715-file payload from the pinned official
+commit, with only derived `__pycache__/*.pyc` files in addition. It must still
+be preserved and staged rather than reinstalled blindly. The authoritative
 October 28 live audit already verified SkinVariables 2.2.10 and ran its exact
 engine in isolated staging: owned selectors were IDs 502/503 and Venom was
 504/505. Do not substitute the stale local 2.2.3 audit checkout for that
@@ -54,12 +60,20 @@ without installing it:
 
 ```sh
 python3 integration/release/arctic-3.4.10/dependencies.py \
-  --artifact /PRIVATE/plugin.video.themoviedb.helper-6.19.1.zip
+  --artifact /PRIVATE/plugin.video.themoviedb.helper-6.19.2.zip
 ```
 
-The verifier rejects a wrong ID/version, changed requirements, unsafe ZIP
-members and ambiguous addon roots. It does not prove CoreELEC/Kodi runtime
-compatibility or install anything. The real generator has already passed with
+The accepted artifact is the official
+[`omega` ZIP](https://raw.githubusercontent.com/jurialmunkey/repository.jurialmunkey/1fd8db862c63066c2bd51df3183f2839874c9fff/omega/zips/plugin.video.themoviedb.helper/plugin.video.themoviedb.helper-6.19.2.zip),
+SHA-256 `686a0f412a3183ea46c00b958e526e4b3e76bb44a902bea1aa305aa23b112560`.
+Its compression-independent 715-file payload hash is
+`f59cd113967da3c2ad6c20d7eca853d73948a716339ea18d9c419967f8e8881d`.
+The verifier rejects any other ZIP bytes or payload, a wrong ID/version,
+changed or additional imports, unsafe members, symlinks and ambiguous roots.
+The 6.19.1-to-reviewed-6.19.2 source diff is the official
+[`v6.19.1...3a515987` comparison](https://github.com/jurialmunkey/plugin.video.themoviedb.helper/compare/v6.19.1...3a515987b0405d6e2298081edb71f8ab3099ecff).
+The verifier does not prove CoreELEC/Kodi runtime compatibility or install
+anything. The real generator has already passed with
 the copied 2.2.10 engine, but must be repeated after the actual private
 local58/remote62 staging copies are assembled. Record the exact staged ZIP
 SHA256 and every required module's installed version in each private profile.
@@ -76,14 +90,19 @@ template inputs. It has no `--apply` mode and cannot target a live device:
 python3 integration/release/arctic-3.4.10/stage.py \
   --source /PRIVATE/clean-arctic-3.4.10 \
   --profile-root /PRIVATE/copied-local58-profile \
-  --tmdb-artifact /PRIVATE/plugin.video.themoviedb.helper-6.19.1.zip \
+  --tmdb-artifact /PRIVATE/plugin.video.themoviedb.helper-6.19.2.zip \
   --output /PRIVATE/local58-arctic-3.4.10-stage
 ```
 
-The resulting schema-2 `stage.json` pins the copied cohort's complete 3.3.1
-skin tree, existing Habibi resume receipt and complete transformed 3.4.10
-tree. A target whose bytes differ is rejected rather than treated as a matching
-cohort. Older schema-1 private stages are evidence only and must be rebuilt.
+The resulting schema-3 `stage.json` pins the exact TMDb source commit,
+repository commit, ZIP, payload, full import set and copied live payload along
+with the cohort's complete 3.3.1 skin tree, existing Habibi resume receipt and
+complete transformed 3.4.10 tree. The plan repeats the live 715-file payload
+check before and after Kodi stops. It tolerates only cache-tagged `.pyc` files
+inside `__pycache__` when the corresponding reviewed `.py` source exists. A
+target whose source bytes differ is rejected even if it still reports version
+6.19.2. Older schema-1/schema-2 private stages are evidence only and must be
+rebuilt for both cohorts.
 
 `install.py` remains **plan-only**: public `--apply` exits before mutation.
 Its reviewed future adapter takes `/storage`, invokes the canonical

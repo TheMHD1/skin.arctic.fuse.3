@@ -60,7 +60,10 @@ Version-scoped update candidates preserve existing deployed versions until
 their complete runtime gates pass:
 
 - [Arctic3.4.10](release/arctic-3.4.10/README.md): semantic rebase, generated
-  selector checks and pinned source; paired installer/live UI acceptance pending.
+  selector checks and pinned source; exact official TMDb Helper6.19.2 artifact
+  and 715-file payload now guarded in schema-3 private stages. Both installed
+  dependency payloads pass read-only verification; rebuilt private generation
+  and paired installer/live UI acceptance remain pending.
 - [Jellyfin12.4](server/jellyfin-custom/candidate-12.4/README.md): patched server
   tests and exact12.4 Library Experience guard pass. The operational
   [LinuxServer candidate](server/jellyfin-custom/candidate-12.4-linuxserver/README.md)

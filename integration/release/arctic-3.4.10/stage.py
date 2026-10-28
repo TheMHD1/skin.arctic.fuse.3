@@ -25,7 +25,9 @@ def validate_profile(root):
 def stage(source, profile_root, output, tmdb_artifact):
     source=build.checked_source(source); profile_root=validate_profile(profile_root); output=Path(output).resolve()
     if output.exists() and any(output.iterdir()): raise ValueError('stage output must be empty')
-    dependency=dependencies.review_tmdb_artifact(tmdb_artifact); output.mkdir(parents=True,exist_ok=True)
+    dependency=dependencies.review_tmdb_artifact(tmdb_artifact)
+    dependencies.review_live_tmdb(profile_root/'addons'/dependencies.TMDB_ID, dependency)
+    output.mkdir(parents=True,exist_ok=True)
     rollback=output/'rollback'; saved={}
     for name in BACKUP:
         path=profile_root/name
@@ -38,7 +40,7 @@ def stage(source, profile_root, output, tmdb_artifact):
     source_skin=profile_root/'addons/skin.arctic.fuse.3'
     source_receipt=profile_root/'addons/plugin.video.habibi.resume/verified-build.json'
     if not source_receipt.is_file(): raise ValueError('missing reviewed resume receipt')
-    result={'schema':2,'status':'staged-only-requires-real-kodi-generation',
+    result={'schema':3,'status':'staged-only-requires-real-kodi-generation',
             'upstream_commit':overlay.UPSTREAM_COMMIT,'tmdbhelper':dependency,'rollback':saved,
             'source_skin_sha256':directory_transaction.tree_hash(source_skin),
             'source_resume_receipt_sha256':digest(source_receipt),

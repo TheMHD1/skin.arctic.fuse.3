@@ -32,11 +32,13 @@ def plan(storage_root, stage, profile, parent_guard=canonical_parent_plan):
     skin=root/SKIN; receipt=root/'addons/plugin.video.habibi.resume/verified-build.json'
     if not skin.is_dir() or version(skin/'addon.xml')!='3.3.1': raise ValueError('unreviewed current Arctic cohort')
     record=json.loads((stage/'stage.json').read_text())
-    if record.get('schema') != 2: raise ValueError('unreviewed candidate stage schema')
+    if record.get('schema') != 3: raise ValueError('unreviewed candidate stage schema')
     if directory_transaction.tree_hash(skin)!=record.get('source_skin_sha256') or sha(receipt)!=record.get('source_resume_receipt_sha256'):
         raise ValueError('staged source/receipt drift')
-    for addon,want in (('script.skinvariables','2.2.10'),('plugin.video.themoviedb.helper',dependencies.TMDB_VERSION)):
-        if version(root/'addons'/addon/'addon.xml')!=want: raise ValueError('dependency drift: '+addon)
+    if version(root/'addons/script.skinvariables/addon.xml')!='2.2.10':
+        raise ValueError('dependency drift: script.skinvariables')
+    tmdb_binding=dependencies.require_reviewed_binding(record.get('tmdbhelper'))
+    dependencies.review_live_tmdb(root/'addons'/dependencies.TMDB_ID,tmdb_binding)
     candidate=stage/'candidate'/SKIN
     if (not candidate.is_dir() or version(candidate/'addon.xml')!='3.4.10' or
             directory_transaction.tree_hash(candidate)!=record.get('candidate_skin_sha256')): raise ValueError('invalid staged candidate')
