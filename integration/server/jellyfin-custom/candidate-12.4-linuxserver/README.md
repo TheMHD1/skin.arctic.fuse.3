@@ -49,3 +49,26 @@ tests and verified every emitted artifact. Its test project explicitly excludes
 six retained historical test files whose 10.10 fake is incompatible; this is not a
 claim to have run those tests. See BUILD.md for the reproducible artifact pin
 and mandatory complete stopped-config rollback procedure.
+
+## October 28 production attempt and recovery
+
+The reviewed all-feature candidate started successfully with all 20 expected
+plugins. Database continuity passed: accounts, permissions, API keys, display
+preferences and watch-history identities were retained. The owner explicitly
+accepted only the known inherited-rating-cache migration difference; this did
+not authorize changes to account policies or other continuity checks.
+
+The later operational acceptance validator incorrectly treated Docker's
+reordering of unchanged bind strings as a runtime configuration change. The
+guard therefore restored the entire pre-upgrade configuration and exact 12.1
+image. Full file-content, ownership, permissions, ACL/xattr and hardlink checks,
+all six database-continuity groups, and native/public health passed after
+recovery. Production is back on 12.1; this is not a successful 12.4 deployment.
+
+The reviewed correction canonicalizes only the `HostConfig.Binds` list order.
+Every complete bind string, option and duplicate remains bound, and every
+other runtime field remains strict. A future attempt must capture a fresh
+healthy baseline using that corrected validator; never reuse the old raw-order
+hash or start another promotion before the previous recovery is terminal.
+Retain verified external recovery archives and reclaim only independently
+verified redundant working copies before rechecking capacity.

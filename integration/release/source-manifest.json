@@ -330,7 +330,7 @@
     "integration/server/jellyfin-custom/candidate-12.4-linuxserver/Dockerfile": "bda7d788f20627c6426bbe49df72c67a1fc7ebdebc5e7644a05bd5f6b92919f9",
     "integration/server/jellyfin-custom/candidate-12.4-linuxserver/LIVE-PLUGIN-INVENTORY.md": "d6ea9e355c2737b0531a28b443a0437cb1b3675f71dbb58a3fa608c08a6f8255",
     "integration/server/jellyfin-custom/candidate-12.4-linuxserver/LIVE-TV-CATEGORIES-12.4.md": "333bdeee6a4fa623343a4a9ebef08ed4750fa7dd527800c533d6a9986fbc15b1",
-    "integration/server/jellyfin-custom/candidate-12.4-linuxserver/README.md": "958a0b6edd78785f579d847c2c1e50e6e16343a62497d38c9d7422c7be43bdc9",
+    "integration/server/jellyfin-custom/candidate-12.4-linuxserver/README.md": "458a9e1cc45e687a973af6c1f809b9a1000bd91cd4a8366742c7fd54786ef141",
     "integration/server/jellyfin-custom/candidate-12.4-linuxserver/build-livetv-web-12.4-candidate.sh": "d0d22335e95503ef21ff05ceb7e06b1380e7f1c66b611efae90f90da53119bce",
     "integration/server/jellyfin-custom/candidate-12.4-linuxserver/build-moonbase-12.4-candidate.sh": "13d29398f95e11d2dbd8e28ad32ea22de95fc4ff48dc106498ba8e5fad566151",
     "integration/server/jellyfin-custom/candidate-12.4-linuxserver/live-tv-categories-12.4-packages.patch": "f86806702e47b09d14cb9f2e0a8df3ed8c20cf44d18cae049e7e6d5ca17eab77",
