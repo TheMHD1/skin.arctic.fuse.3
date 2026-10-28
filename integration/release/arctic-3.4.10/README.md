@@ -253,6 +253,54 @@ rename or synthesize a failed probe's output. Both the default-user regression
 and rejection of unreviewed filenames are executable tests; a fresh run with
 the corrected published source is still required for deployment.
 
+A subsequent remote probe generated the selectors but exposed a second normal
+runtime output: `1080i/script-skinviewtypes-includes.xml`. The pinned
+SkinVariables `ViewTypes.make_xmltree`/`make_xmlfile` startup path regenerates
+that exact file. The evidence validator now treats it separately from selector
+outputs: it must contain only the complete pair of named expressions for every
+view ID in the candidate's immutable `shortcuts/skinviewtypes.json`. Extra or
+duplicate IDs, actions, nested elements, unexpected attributes, invalid XML,
+comments, processing instructions and DTD/entities are rejected. Its bytes are
+hashed into the evidence, but it cannot substitute for selectors or satisfy
+their managed-route checks. Every other candidate file remains byte-exact.
+The failed probe produced no acceptance receipt and restored normal Kodi;
+fresh generation with the corrected source is still required on both cohorts.
+
+### Native image-resource prerequisites
+
+`resource_dependency_transaction.py` is a library for a separately reviewed
+private orchestrator, not a public autonomous installer. Both live cohorts
+currently lack the two pinned image-resource directories and their native
+registration rows. A private generation stage containing them does not satisfy
+that prerequisite. The library accepts only the exact reviewed weather and
+splash trees already pinned by `generation_probe.py`; it never downloads an
+arbitrary dependency or synthesizes a Kodi database row.
+
+The caller holds `deployment_lock(storage)` across each transaction and the
+associated skin switch. `plan` requires both resources absent, or proves only
+this module's own accepted receipt, exact live trees/metadata and enabled rows.
+With Kodi proved stopped and no database sidecars, `prepare` creates a
+consistent Addons33 snapshot and durable ownership/bootstrap records;
+`install_directories` atomically installs the pair. `activate_native` starts
+normal Kodi to discover them, enables each once through `Addons.SetAddonEnabled`,
+checks `Addons.GetAddonDetails`, then stops Kodi and independently reads back
+its native rows. Acceptance requires unchanged database ownership/mode and
+every non-owned schema/row, exact resource trees and a reread canonical receipt.
+
+Recovery fsyncs both parents of cross-directory moves, retains failed evidence,
+and compares the complete database state before replacement. Content-bound
+pending records cover interrupted bootstrap, journal and acceptance commits;
+unknown/foreign state is never deleted or treated as acceptance. An uncertain
+stop, altered unrelated database state, foreign object or replaced resource
+quarantines recovery and withholds an unsafe restart. Exact accepted receipts
+make later verification idempotent without permanently freezing unrelated Kodi
+add-on activity. These are source/fixture guarantees, not live deployment proof.
+
+Run `python3 integration/release/arctic-3.4.10/test_resource_dependency_transaction.py`
+for the 41 native-flow, filesystem, database, failure and interrupted-commit
+regressions. Live resource installation, fresh generation and paired skin/UI/AV
+acceptance remain pending until separately recorded on each device.
+
 This is deliberately not a generic Kodi database editor: it rejects a missing,
 symlinked, uncheckpointed, malformed, wrong-version, or incomplete private DB;
 it rejects a closure outside the staged audited IDs; and it performs the one

@@ -152,6 +152,86 @@ class GenerationEvidenceTests(unittest.TestCase):
             evidence.validate(path, result["sha256"], stage=self.stage,
                               generated_skin=self.generated, profile=changed, tool_root=HERE)
 
+    def add_viewtypes(self):
+        (self.candidate / "shortcuts").mkdir()
+        (self.candidate / "shortcuts/skinviewtypes.json").write_text(json.dumps({
+            "prefix": "Exp_View", "viewtypes": {"500": "List", "501": "Wall"},
+        }))
+        target = self.generated / evidence.VIEWTYPES_GENERATED
+        (self.candidate / evidence.VIEWTYPES_GENERATED).write_text("<includes />")
+        shutil.copytree(self.candidate / "shortcuts", self.generated / "shortcuts")
+        target.write_text('<includes>' + ''.join(
+            '<expression name="Exp_View_' + key + suffix + '">' + value + '</expression>'
+            for key in ("500", "501") for suffix, value in (("", "[False]"), ("_Include", "False"))
+        ) + '</includes>')
+        (self.stage / "stage.json").write_text(json.dumps({
+            "schema": 3,
+            "candidate_skin_sha256": evidence.directory_transaction.tree_hash(self.candidate),
+        }))
+        return target
+
+    def test_accepts_native_viewtypes_and_hashes_it_separately_from_selectors(self):
+        target = self.add_viewtypes()
+        result = self.create()
+        self.assertEqual(set(result["body"]["generated_files"]), {
+            evidence.VIEWTYPES_GENERATED,
+            "1080i/script-skinvariables-generator-includes-.xml",
+        })
+        self.assertEqual(result["body"]["generated_files"][evidence.VIEWTYPES_GENERATED],
+                         evidence.sha_file(target))
+        self.assertEqual(evidence.validate(
+            Path(result["path"]), result["sha256"], stage=self.stage,
+            generated_skin=self.generated, profile=self.profile, tool_root=HERE), result["body"])
+
+    def test_viewtypes_rejects_foreign_ids_duplicates_actions_and_unsafe_xml(self):
+        target = self.add_viewtypes()
+        original = target.read_text()
+        cases = [
+            original.replace('Exp_View_500"', 'Exp_View_999"'),
+            original.replace('Exp_View_501"', 'Exp_View_500"'),
+            original.replace('<expression name="Exp_View_500">[False]</expression>', ''),
+            original.replace('[False]', '<onclick>PlayMedia(test)</onclick>', 1),
+            original.replace('name="Exp_View_500"', 'name="Exp_View_500" extra="x"'),
+            original.replace('>False<', '>yes<', 1),
+            original.replace('>\u005bFalse\u005d<', '>False<', 1),
+            '<!DOCTYPE includes [<!ENTITY x "False">]>' + original,
+            '<!--hidden-->' + original,
+            '<?unsafe data?>' + original,
+            '<includes>not-layout</includes>',
+            'not XML',
+        ]
+        for value in cases:
+            with self.subTest(value=value[:100]):
+                target.write_text(value)
+                with self.assertRaises(ValueError):
+                    evidence.validate_generated_tree(self.candidate, self.generated)
+        target.write_text(original)
+        (self.generated / "1080i/script-skinviewtypes-includes.xml.bak").write_text(original)
+        with self.assertRaisesRegex(ValueError, "Non-generated"):
+            evidence.validate_generated_tree(self.candidate, self.generated)
+
+    def test_viewtypes_cannot_replace_selectors_or_hide_candidate_deletion(self):
+        target = self.add_viewtypes()
+        selector = self.generated / "1080i/script-skinvariables-generator-includes-.xml"
+        selector.unlink()
+        with self.assertRaisesRegex(ValueError, "No generated selector"):
+            evidence.validate_generated_tree(self.candidate, self.generated)
+        target.unlink()
+        with self.assertRaisesRegex(ValueError, "viewtypes file missing"):
+            evidence.validate_generated_tree(self.candidate, self.generated)
+
+    def test_viewtypes_requires_pinned_definition_and_all_other_candidate_bytes(self):
+        self.add_viewtypes()
+        definition = self.generated / "shortcuts/skinviewtypes.json"
+        definition.write_text('{}')
+        with self.assertRaisesRegex(ValueError, "Non-generated"):
+            evidence.validate_generated_tree(self.candidate, self.generated)
+        baseline = evidence._regular_tree(self.candidate)
+        baseline.pop("shortcuts/skinviewtypes.json")
+        with self.assertRaisesRegex(ValueError, "candidate definition"):
+            evidence.validate_viewtypes(
+                (self.generated / evidence.VIEWTYPES_GENERATED).read_bytes(), baseline)
+
     def test_refuses_second_receipt_and_invalid_stage_or_hash_maps(self):
         self.create()
         with self.assertRaisesRegex(ValueError, "not new"):

@@ -24,6 +24,9 @@ EVIDENCE_NAME = "generation-evidence.json"
 GENERATED = re.compile(
     r"1080i/script-skinvariables-generator-includes-(?:|user-[0-9A-Za-z]+)\.xml\Z"
 )
+# The same reviewed SkinVariables runtime also rebuilds this exact startup
+# output. It is not a selector, so it must never satisfy the managed-route gate.
+VIEWTYPES_GENERATED = "1080i/script-skinviewtypes-includes.xml"
 IDENTITY_KEYS = (
     "cohort", "hostname", "wlan_mac", "jellyfin_user_id",
     "jellyfin_address", "remote_marker_sha256",
@@ -100,6 +103,7 @@ def validate_generated_tree(candidate: Path, generated: Path) -> dict[str, str]:
     baseline = _regular_tree(candidate)
     final = _regular_tree(generated)
     generated_files = {}
+    selectors = {}
     for relative, data in final.items():
         if GENERATED.fullmatch(relative):
             require(data, "Empty generated include")
@@ -108,18 +112,72 @@ def validate_generated_tree(candidate: Path, generated: Path) -> dict[str, str]:
             except ET.ParseError as exc:
                 raise ValueError("Generated include is not XML: " + relative) from exc
             generated_files[relative] = sha_bytes(data)
+            selectors[relative] = data
+        elif relative == VIEWTYPES_GENERATED:
+            validate_viewtypes(data, baseline)
+            generated_files[relative] = sha_bytes(data)
         else:
             require(relative in baseline and baseline[relative] == data,
                     "Non-generated candidate file changed: " + relative)
     for relative, data in baseline.items():
         if GENERATED.fullmatch(relative):
             continue
+        if relative == VIEWTYPES_GENERATED:
+            require(relative in final, "Candidate viewtypes file missing after generation")
+            continue
         require(final.get(relative) == data, "Candidate file missing after generation: " + relative)
-    require(generated_files, "No generated selector include was produced")
-    combined = b"".join(final[name] for name in sorted(generated_files))
+    require(selectors, "No generated selector include was produced")
+    combined = b"".join(selectors[name] for name in sorted(selectors))
     for marker in MARKERS:
         require(marker in combined, "Generated selectors omit managed route: " + marker.decode())
     return dict(sorted(generated_files.items()))
+
+
+def validate_viewtypes(data: bytes, baseline: dict[str, bytes]) -> None:
+    """Validate only the native view-expression output against pinned inputs.
+
+    SkinVariables 2.2.10 ViewTypes.make_xmltree emits precisely two expressions
+    for each view ID in the candidate's skinviewtypes.json. No include/action,
+    extra expression, attribute, nested element or arbitrary filename is allowed.
+    """
+    require(0 < len(data) <= 1024 * 1024, "Unsafe generated viewtypes size")
+    lexical = data[3:] if data.startswith(b"\xef\xbb\xbf") else data
+    upper = lexical.upper()
+    require(b"<!--" not in lexical and b"<!DOCTYPE" not in upper
+            and b"<!ENTITY" not in upper, "Unsafe generated viewtypes XML")
+    if lexical.startswith(b"<?xml") and b"?>" in lexical:
+        lexical = lexical.split(b"?>", 1)[1]
+    require(b"<?" not in lexical, "Unsafe generated viewtypes processing instruction")
+    try:
+        definition = json.loads(baseline["shortcuts/skinviewtypes.json"])
+        root = ET.fromstring(data)
+    except (KeyError, UnicodeDecodeError, json.JSONDecodeError, ET.ParseError) as exc:
+        raise ValueError("Invalid generated viewtypes XML or candidate definition") from exc
+    require(isinstance(definition, dict), "Invalid candidate viewtypes definition")
+    prefix = definition.get("prefix", "Exp_View")
+    views = definition.get("viewtypes")
+    require(isinstance(prefix, str) and re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", prefix)
+            and isinstance(views, dict) and views
+            and all(isinstance(key, str) and re.fullmatch(r"[0-9]+", key) for key in views),
+            "Invalid candidate viewtypes identifiers")
+    expected = {prefix + "_" + key + suffix for key in views for suffix in ("", "_Include")}
+    require(root.tag == "includes" and not root.attrib
+            and (root.text is None or root.text.isspace()), "Invalid generated viewtypes root")
+    seen = set()
+    for child in root:
+        name = child.attrib.get("name")
+        require(child.tag == "expression" and set(child.attrib) == {"name"}
+                and not list(child) and name in expected and name not in seen
+                and (child.tail is None or child.tail.isspace())
+                and isinstance(child.text, str) and child.text.strip(),
+                "Invalid generated viewtypes expression")
+        if name.endswith("_Include"):
+            require(child.text in {"True", "False"}, "Invalid generated viewtypes Include value")
+        else:
+            require(child.text.startswith("[") and child.text.endswith("]"),
+                    "Invalid generated viewtypes condition")
+        seen.add(name)
+    require(seen == expected, "Generated viewtypes expression set is incomplete")
 
 
 def body(*, stage: Path, generated_skin: Path, profile: dict,

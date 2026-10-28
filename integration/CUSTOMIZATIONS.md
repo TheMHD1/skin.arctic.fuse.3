@@ -28,8 +28,11 @@ The [local backup receiver acceptance layer](release/local-backup-receiver/READM
 preserves the immutable paired manifest while separately guarding the corrected
 restricted-rsync worker. Its fake-only tests preserve every parent expectation;
 the remote cohort checks receipt absence without touching the local worker.
-The actual local backup repair and fourteen database checks passed; adoption of
-this additional receipt into the next versioned device guard remains separate.
+The actual local backup repair and fourteen database checks passed. A fresh
+backup invocation, completion marker and database verification subsequently
+passed; the additive receipt was accepted against the complete local parent
+without rewriting its historical manifest. The remote cohort remains
+absence-only. Arctic's subsequent guarded deployment remains separate.
 
 The [next-episode release guard](release/next-episode/README.md) adds the patched
 Jellyfin player to the portable payload and exact installer hash checks. The
@@ -68,7 +71,14 @@ their complete runtime gates pass:
   the full latest parent without rewriting historical manifests, and has
   durable protected-state recovery. An actual isolated run generated valid
   managed selectors but exposed the evidence validator's default-user filename
-  mismatch; the corrected source still requires a fresh accepted runtime run.
+  mismatch. A subsequent remote probe generated selectors but also rebuilt the
+  native viewtypes include. Its exact-path, complete-expression-set validator
+  is now covered separately; neither failed run produced acceptance evidence.
+  Fresh accepted runtime generation remains required. Two required image
+  resources are present in private generation stages but absent from both live
+  clients and their native add-on databases; installation/enabling and guarded recovery must
+  pass before the skin is installed. Staged dependency hashes are not proof of
+  live registration.
 - [Jellyfin12.4](server/jellyfin-custom/candidate-12.4/README.md): patched server
   tests and exact12.4 Library Experience guard pass. The operational
   [LinuxServer candidate](server/jellyfin-custom/candidate-12.4-linuxserver/README.md)
