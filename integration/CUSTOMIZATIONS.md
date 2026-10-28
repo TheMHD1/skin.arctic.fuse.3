@@ -24,6 +24,13 @@ a redacted inventory, not importable configuration.
 
 ## October 28 maintenance: source candidates and acceptance boundary
 
+The [local backup receiver acceptance layer](release/local-backup-receiver/README.md)
+preserves the immutable paired manifest while separately guarding the corrected
+restricted-rsync worker. Its fake-only tests preserve every parent expectation;
+the remote cohort checks receipt absence without touching the local worker.
+The actual local backup repair and fourteen database checks passed; adoption of
+this additional receipt into the next versioned device guard remains separate.
+
 The [next-episode release guard](release/next-episode/README.md) adds the patched
 Jellyfin player to the portable payload and exact installer hash checks. The
 old builder patched its temporary checkout but omitted this file from the
