@@ -5,6 +5,15 @@ feature set to upstream Arctic Fuse 3 `3.4.10` commit
 `7206a2a1d2f9d62a025c495619a9e07d53dd2be7`. It deliberately does not modify
 the legacy root skin, a Kodi profile, or either AM9.
 
+October28 deployment status: the local paired5 resource and skin transactions
+are accepted. Kodi natively registered/enabled both pinned resources; the
+guarded directory switch retained rollback and passed two fresh in-process
+proofs of the active3.4.10 skin plus the complete installed-source guard.
+Physical UI/AV checks remain separate. The remote cohort is offline after its
+independent firmware reboot and is not claimed updated by the source push or
+the local success. Historical probe failures and the recovery design below
+remain documented; they do not supersede this later actual local acceptance.
+
 The overlay ports the complete shared Home/search feature chain:
 
 - owned → Discover → Venom ordering in combined and wall Search modes;

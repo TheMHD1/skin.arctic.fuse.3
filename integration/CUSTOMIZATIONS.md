@@ -11,7 +11,7 @@ still depends on private deployment state.
 | Component | Reviewed version | Notes |
 | --- | --- | --- |
 | CoreELEC / Kodi | CoreELEC22 nightly20261028 accepted locally; remote October28 postboot pending / Kodi22RC1 | Both use their own standalone SD and private identities. The remote October28 stage and controlled reboot request completed, but network return and postboot acceptance are not yet proved. Future firmware updates still require separate review. |
-| Arctic Fuse 3 | 3.3.1 on accepted devices | Reviewed upstream 3.3.1 source plus `patches/arctic-3.3.1-habibi.patch`; the repository root remains a legacy 3.2.19 baseline. |
+| Arctic Fuse 3 | 3.4.10 accepted locally; remote3.3.1 pending | Local guarded paired5 deployment and two in-process active-skin proofs passed. Remote is offline after its separately requested firmware reboot; never infer delivery there. The repository root remains a legacy3.2.19 baseline. |
 | Jellyfin for Kodi | 2.2.0+py3 | Apply only the consolidated 2.2 patch stack. |
 | Home companion | 1.1.0 | Server-backed Home, search, favourites and episode navigation. |
 | Venom TV | 1.3.1 | Separate local-PVR and remote-Jellyfin source cohorts. |
@@ -66,8 +66,11 @@ their complete runtime gates pass:
   selector checks and pinned source; exact official TMDb Helper6.19.2 artifact
   and 715-file payload now guarded in schema-3 private stages. Both installed
   dependency payloads pass read-only verification. A fresh actual local isolated
-  generation passed with independently validated evidence; live3.4.10 skin
-  installation and paired UI acceptance remain pending. The paired `.5`
+  generation passed with independently validated evidence. The local paired5
+  image-resource and skin transactions subsequently completed successfully:
+  native splash/weather registration, unchanged unrelated database state,
+  durable rollback and two actual in-process3.4.10 skin proofs passed.
+  Physical UI/AV and remote deployment acceptance remain separate. The paired `.5`
   adapter preserves
   the full latest parent without rewriting historical manifests, and has
   durable protected-state recovery. An actual isolated run generated valid
@@ -90,14 +93,11 @@ their complete runtime gates pass:
   restored. Receipt schema 4 projects only these reviewed runtime timestamps,
   retaining every other raw
   settings byte, credential/server field and immediate transaction guard.
-  Fresh source-bound generation,
-  resource installation and skin acceptance remain pending; the remote cohort
-  also needs postboot acceptance.
-  Two required image
-  resources are present in private generation stages but absent from both live
-  clients and their native add-on databases; installation/enabling and guarded recovery must
-  pass before the skin is installed. Staged dependency hashes are not proof of
-  live registration.
+  The local generation, resource installation and guarded skin acceptance are
+  now complete; the remote cohort still needs network return, postboot checks
+  and its own deployment. Both pinned image resources are installed and enabled
+  in the local native add-on database. They remain pending on the offline remote
+  client. Staged dependency hashes alone never prove live registration.
 - [Jellyfin12.4](server/jellyfin-custom/candidate-12.4/README.md): patched server
   tests and exact12.4 Library Experience guard pass. The operational
   [LinuxServer candidate](server/jellyfin-custom/candidate-12.4-linuxserver/README.md)
