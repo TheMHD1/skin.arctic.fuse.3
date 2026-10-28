@@ -105,6 +105,15 @@ class ArcticInstallTests(unittest.TestCase):
             }]
         }
         self.write_jellyfin(self.jellyfin_credentials)
+        self.jellyfin_settings = (
+            self.root / "userdata/addon_data/plugin.video.jellyfin/settings.xml")
+        self.jellyfin_settings.write_bytes(
+            b'<?xml version="1.0" encoding="UTF-8"?>\n'
+            b'<settings version="2">\n'
+            b'  <setting id="Other" default="true">same</setting>\n'
+            b'  <setting id="LastIncrementalSync" default="false">'
+            b'2026-10-28T12:00:00Z</setting>\n'
+            b'</settings>\n')
 
         self.stage = Path(self.temporary.name) / "stage"
         self.candidate = self.stage / "candidate" / install.SKIN
@@ -150,7 +159,9 @@ class ArcticInstallTests(unittest.TestCase):
         self.parent_expected = {
             self.manifest: self.manifest.read_bytes(), self.nonskin: self.nonskin.read_bytes(),
             self.storage / ".cache/hostname": (self.storage / ".cache/hostname").read_bytes(),
-            self.jellyfin: self.jellyfin.read_bytes(), self.parent_absent: None,
+            self.jellyfin: self.jellyfin.read_bytes(),
+            self.jellyfin_settings: self.jellyfin_settings.read_bytes(),
+            self.parent_absent: None,
         }
         for name in skin_entries:
             path = self.root / name
@@ -270,6 +281,105 @@ class ArcticInstallTests(unittest.TestCase):
                          install.parent_expected_digests(self.storage, refreshed.expected))
         self.assertEqual(self.deployment().fingerprint,
                          self.profile[install.RECEIPT_PROFILE_KEY])
+
+    def test_jellyfin_cursor_projection_preserves_receipt_but_not_raw_cas(self):
+        initial = install.plan(self.storage, self.stage, self.profile, self.guard)
+        initial_raw = initial.expected[self.jellyfin_settings]
+        initial_map = install.parent_expected_digests(self.storage, initial.expected)
+        initial_receipt = self.deployment().receipt_raw
+        changed_raw = initial_raw.replace(
+            b"2026-10-28T12:00:00Z", b"2026-10-28T12:34:56Z")
+        self.jellyfin_settings.write_bytes(changed_raw)
+        self.parent_expected[self.jellyfin_settings] = changed_raw
+        refreshed = install.plan(self.storage, self.stage, self.profile, self.guard)
+        self.assertNotEqual(initial_raw, refreshed.expected[self.jellyfin_settings])
+        self.assertEqual(initial_map,
+                         install.parent_expected_digests(self.storage, refreshed.expected))
+        self.assertEqual(initial_receipt, self.deployment().receipt_raw)
+
+        raw_plan = install.transaction.Plan(
+            {self.nonskin: b"must-not-be-written"}, initial.expected)
+        backup = self.storage / "must-not-create-cursor-backup"
+        original = self.nonskin.read_bytes()
+        with patch.object(install.transaction.subprocess, "run") as run:
+            with self.assertRaisesRegex(RuntimeError, "Source changed since planning"):
+                install.transaction.deploy(
+                    self.storage, raw_plan, backup, run=run,
+                    idle_check=lambda: None, wait_ready=lambda: None)
+            run.assert_not_called()
+        self.assertFalse(backup.exists())
+        self.assertEqual(self.nonskin.read_bytes(), original)
+
+    def test_jellyfin_cursor_projection_is_narrow_and_rejects_ambiguous_xml(self):
+        original = self.jellyfin_settings.read_bytes()
+        baseline = install._jellyfin_settings_projection(self.storage, original)
+        cursor_only = original.replace(
+            b"2026-10-28T12:00:00Z", b"2026-10-28T12:34:56Z")
+        self.assertEqual(baseline,
+                         install._jellyfin_settings_projection(self.storage, cursor_only))
+        for label, changed in {
+            "meaningful-text": original.replace(b">same<", b">different<"),
+            "meaningful-attribute": original.replace(b'default="true"', b'default="false"'),
+            "layout": original.replace(b"  <setting", b" <setting", 1),
+            "order": original.replace(
+                b'  <setting id="Other" default="true">same</setting>\n', b""),
+        }.items():
+            with self.subTest(label=label):
+                self.assertNotEqual(
+                    baseline,
+                    install._jellyfin_settings_projection(self.storage, changed))
+        invalid = {
+            "missing": original.replace(
+                b'  <setting id="LastIncrementalSync" default="false">'
+                b'2026-10-28T12:00:00Z</setting>\n', b""),
+            "duplicate": original.replace(
+                b"</settings>",
+                b'<setting id="LastIncrementalSync">2026-10-28T12:00:01Z</setting>'
+                b"</settings>"),
+            "offset": original.replace(
+                b"2026-10-28T12:00:00Z", b"2026-10-28T12:00:00+00:00"),
+            "impossible": original.replace(
+                b"2026-10-28T12:00:00Z", b"2026-02-30T12:00:00Z"),
+            "nested": original.replace(
+                b"2026-10-28T12:00:00Z", b"<value>2026-10-28T12:00:00Z</value>"),
+            "comment": original.replace(b"<settings version=", b"<!--x--><settings version="),
+            "processing": original.replace(b"</settings>", b"<?x y?></settings>"),
+            "entity": original.replace(b">same<", b">same&amp;x<"),
+            "cdata": original.replace(b">same<", b"><![CDATA[same]]><"),
+        }
+        for label, changed in invalid.items():
+            with self.subTest(label=label):
+                with self.assertRaises(ValueError):
+                    install._jellyfin_settings_projection(self.storage, changed)
+
+    def test_apply_and_installed_accept_cursor_only_not_meaningful_settings_drift(self):
+        before = self.jellyfin_settings.read_bytes()
+
+        def cursor_write():
+            changed = before.replace(
+                b"2026-10-28T12:00:00Z", b"2026-10-28T12:34:56Z")
+            self.jellyfin_settings.write_bytes(changed)
+            self.parent_expected[self.jellyfin_settings] = changed
+
+        result, _calls = self.apply(wait_stopped_func=cursor_write)
+        self.assertEqual(result["status"], "accepted")
+        accepted = install.installed_plan(
+            self.storage, self.stage, self.profile, self.generated,
+            self.evidence_path)
+        self.assertEqual(accepted.expected[self.jellyfin_settings],
+                         self.jellyfin_settings.read_bytes())
+
+    def test_apply_rejects_meaningful_jellyfin_settings_drift_before_prepare(self):
+        before = self.jellyfin_settings.read_bytes()
+
+        def meaningful_write():
+            changed = before.replace(b">same<", b">different<")
+            self.jellyfin_settings.write_bytes(changed)
+            self.parent_expected[self.jellyfin_settings] = changed
+
+        with self.assertRaisesRegex(RuntimeError, "exact 3.3.1 state restored"):
+            self.apply(wait_stopped_func=meaningful_write)
+        self.assertFalse((self.root / ".arctic3410-recovery").exists())
 
     def test_timestamp_projection_never_weakens_immediate_raw_cas(self):
         initial = install.plan(self.storage, self.stage, self.profile, self.guard)

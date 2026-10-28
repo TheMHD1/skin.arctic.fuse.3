@@ -44,7 +44,7 @@ latest = load("arctic3410_latest_parent", HERE.parent / "local-backup-receiver" 
 base = latest.previous
 transaction = base.transaction
 
-RELEASE = "arctic-3.4.10-paired.3"
+RELEASE = "arctic-3.4.10-paired.4"
 PARENT_RELEASE = latest.RELEASE
 SKIN = Path("addons/skin.arctic.fuse.3")
 SKIN_RELATIVE = ".kodi/addons/skin.arctic.fuse.3"
@@ -60,14 +60,19 @@ RECEIPT_PROFILE_KEY = "arctic3410_release_receipt_sha256"
 HISTORICAL_SKIN_COUNT = 16
 HISTORICAL_SKIN_SHA256 = "d3bd5dafeb9a7e25dbc894589fc8249e6d13c36aaa8a74c3db1efb193787417d"
 SHA = re.compile(r"[0-9a-f]{64}\Z")
-RECEIPT_SCHEMA = 2
-PARENT_PROJECTION = "exact-plus-jellyfin-datelastaccessed-v1"
+RECEIPT_SCHEMA = 3
+PARENT_PROJECTION = "exact-plus-jellyfin-runtime-fields-v2"
 JELLYFIN_CREDENTIALS_RELATIVE = (
     ".kodi/userdata/addon_data/plugin.video.jellyfin/data.json"
+)
+JELLYFIN_SETTINGS_RELATIVE = (
+    ".kodi/userdata/addon_data/plugin.video.jellyfin/settings.xml"
 )
 JELLYFIN_ADDON_RELATIVE = ".kodi/addons/plugin.video.jellyfin/addon.xml"
 JELLYFIN_ADDON_VERSION = "2.2.0+py3"
 MAX_JELLYFIN_CREDENTIALS_BYTES = 1024 * 1024
+MAX_JELLYFIN_SETTINGS_BYTES = 1024 * 1024
+JELLYFIN_CURSOR = "LastIncrementalSync"
 ORDER_ONLY_MENU_INPUT = "userdata/addon_data/skin.arctic.fuse.3"
 ORDER_ONLY_SETTINGS = "settings.xml"
 MAX_MENU_INPUT_FILE_BYTES = 4 * 1024 * 1024
@@ -190,16 +195,7 @@ def _strict_json(raw: bytes, label: str):
         raise ValueError("Malformed " + label) from exc
 
 
-def _jellyfin_credentials_projection(storage_root: Path, raw: bytes) -> str:
-    """Hash credentials while excluding only Jellyfin's connection timestamp.
-
-    The raw bytes remain in ``transaction.Plan.expected`` and therefore retain
-    exact immediate-mutation CAS behavior.  This semantic hash is used only by
-    durable receipts/proposals that must survive Jellyfin's own successful
-    reconnect updating ``DateLastAccessed``.
-    """
-    require(0 < len(raw) <= MAX_JELLYFIN_CREDENTIALS_BYTES,
-            "Unsafe Jellyfin credentials size")
+def _reviewed_jellyfin_writer(storage_root: Path) -> None:
     addon = _regular(storage_root, JELLYFIN_ADDON_RELATIVE)
     require(addon.is_file() and not addon.is_symlink(),
             "Reviewed Jellyfin add-on is missing")
@@ -210,7 +206,20 @@ def _jellyfin_credentials_projection(storage_root: Path, raw: bytes) -> str:
         raise ValueError("Malformed Jellyfin add-on identity") from exc
     require(node.tag == "addon" and node.get("id") == "plugin.video.jellyfin"
             and node.get("version") == JELLYFIN_ADDON_VERSION,
-            "Unreviewed Jellyfin credentials writer")
+            "Unreviewed Jellyfin runtime-state writer")
+
+
+def _jellyfin_credentials_projection(storage_root: Path, raw: bytes) -> str:
+    """Hash credentials while excluding only Jellyfin's connection timestamp.
+
+    The raw bytes remain in ``transaction.Plan.expected`` and therefore retain
+    exact immediate-mutation CAS behavior.  This semantic hash is used only by
+    durable receipts/proposals that must survive Jellyfin's own successful
+    reconnect updating ``DateLastAccessed``.
+    """
+    require(0 < len(raw) <= MAX_JELLYFIN_CREDENTIALS_BYTES,
+            "Unsafe Jellyfin credentials size")
+    _reviewed_jellyfin_writer(storage_root)
 
     value = _strict_json(raw, "Jellyfin credentials")
     require(isinstance(value, dict) and set(value) == {"Servers"},
@@ -252,9 +261,78 @@ def _jellyfin_credentials_projection(storage_root: Path, raw: bytes) -> str:
                      + compact_canonical(semantic))
 
 
+def _jellyfin_settings_projection(storage_root: Path, raw: bytes) -> str:
+    """Mask only LastIncrementalSync and retain every other raw byte."""
+    require(isinstance(raw, bytes) and 0 < len(raw) <= MAX_JELLYFIN_SETTINGS_BYTES
+            and b"\0" not in raw, "Unsafe Jellyfin settings bytes")
+    _reviewed_jellyfin_writer(storage_root)
+    try:
+        raw.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise ValueError("Jellyfin settings are not UTF-8") from exc
+    lexical = raw[3:] if raw.startswith(b"\xef\xbb\xbf") else raw
+    require(b"<!--" not in lexical and b"<!" not in lexical and b"&" not in lexical,
+            "Unsafe declaration, comment, CDATA or entity in Jellyfin settings")
+    processing = [match.start() for match in re.finditer(rb"<\?", lexical)]
+    if processing:
+        require(processing == [0] and lexical.startswith(b"<?xml") and b"?>" in lexical,
+                "Unsafe processing instruction in Jellyfin settings")
+        require(b"<?" not in lexical[lexical.index(b"?>") + 2:],
+                "Unsafe processing instruction in Jellyfin settings")
+    try:
+        root = ET.fromstring(raw)
+    except (ET.ParseError, UnicodeDecodeError) as exc:
+        raise ValueError("Malformed Jellyfin settings XML") from exc
+    require(root.tag == "settings" and (root.text is None or root.text.isspace())
+            and (root.tail is None or root.tail.isspace()),
+            "Unexpected Jellyfin settings root")
+    seen, cursor = set(), None
+    for child in root:
+        require(child.tag == "setting" and not list(child)
+                and (child.tail is None or child.tail.isspace()),
+                "Unexpected nested Jellyfin setting")
+        identifier = child.attrib.get("id")
+        require(isinstance(identifier, str) and identifier and identifier not in seen,
+                "Missing or duplicate Jellyfin setting id")
+        seen.add(identifier)
+        if identifier == JELLYFIN_CURSOR:
+            cursor = child.text
+    require(isinstance(cursor, str)
+            and re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z",
+                             cursor) is not None,
+            "Jellyfin settings lack one canonical incremental cursor")
+    try:
+        parsed = datetime.datetime.strptime(cursor, "%Y-%m-%dT%H:%M:%SZ")
+    except ValueError as exc:
+        raise ValueError("Invalid Jellyfin incremental cursor") from exc
+    require(parsed.strftime("%Y-%m-%dT%H:%M:%SZ") == cursor,
+            "Noncanonical Jellyfin incremental cursor")
+    encoded = cursor.encode("ascii")
+    require(len(encoded) == 20 and raw.count(encoded) == 1,
+            "Ambiguous Jellyfin incremental cursor occurrence")
+    start = raw.index(encoded)
+    opening_start = raw.rfind(b"<setting", 0, start)
+    opening_end = raw.find(b">", opening_start) + 1 if opening_start >= 0 else -1
+    closing = b"</setting>"
+    require(opening_start >= 0 and opening_end == start
+            and raw[start + len(encoded):start + len(encoded) + len(closing)] == closing,
+            "Jellyfin cursor is not plain setting text")
+    try:
+        cursor_node = ET.fromstring(raw[opening_start:opening_end] + closing)
+    except ET.ParseError as exc:
+        raise ValueError("Malformed Jellyfin cursor element") from exc
+    require(cursor_node.attrib.get("id") == JELLYFIN_CURSOR,
+            "Jellyfin cursor occurrence is not bound to its setting")
+    masked = raw[:start] + b"0000-00-00T00:00:00Z" + raw[start + len(encoded):]
+    require(len(masked) == len(raw), "Jellyfin cursor projection length drift")
+    return sha_bytes(b"arctic3410-jellyfin-settings-projection-v1\0" + masked)
+
+
 def _parent_payload_digest(storage_root: Path, relative: str, payload: bytes) -> str:
     if relative == JELLYFIN_CREDENTIALS_RELATIVE:
         return _jellyfin_credentials_projection(storage_root, payload)
+    if relative == JELLYFIN_SETTINGS_RELATIVE:
+        return _jellyfin_settings_projection(storage_root, payload)
     return sha_bytes(payload)
 
 
@@ -264,8 +342,8 @@ def _snapshot_map(root: Path, expected: dict[Path, bytes | None]) -> dict[str, s
         relative = _relative(root, path)
         require(relative not in result, "Duplicate parent evidence path")
         require(payload is None or isinstance(payload, bytes), "Invalid parent expected payload")
-        if relative == JELLYFIN_CREDENTIALS_RELATIVE:
-            require(isinstance(payload, bytes), "Jellyfin credentials cannot be absent")
+        if relative in (JELLYFIN_CREDENTIALS_RELATIVE, JELLYFIN_SETTINGS_RELATIVE):
+            require(isinstance(payload, bytes), "Jellyfin runtime state cannot be absent")
         result[relative] = (None if payload is None else
                             _parent_payload_digest(root, relative, payload))
     require(result, "Parent cohort preflight produced no evidence")
@@ -696,6 +774,9 @@ def _actual_parent_payload(storage_root: Path, old_skin: Path,
     if relative == JELLYFIN_CREDENTIALS_RELATIVE:
         return _stable_regular_bytes(
             path, MAX_JELLYFIN_CREDENTIALS_BYTES, "Jellyfin credentials")
+    if relative == JELLYFIN_SETTINGS_RELATIVE:
+        return _stable_regular_bytes(
+            path, MAX_JELLYFIN_SETTINGS_BYTES, "Jellyfin settings")
     return path.read_bytes()
 
 

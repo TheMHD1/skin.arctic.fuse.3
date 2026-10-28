@@ -67,7 +67,7 @@ their complete runtime gates pass:
   and 715-file payload now guarded in schema-3 private stages. Both installed
   dependency payloads pass read-only verification. A fresh actual local isolated
   generation passed with independently validated evidence; live3.4.10 skin
-  installation and paired UI acceptance remain pending. The paired `.3`
+  installation and paired UI acceptance remain pending. The paired `.4`
   adapter preserves
   the full latest parent without rewriting historical manifests, and has
   durable protected-state recovery. An actual isolated run generated valid
@@ -83,9 +83,11 @@ their complete runtime gates pass:
   subtree, preserving every setting ID/value/attribute and every other file.
   No evidence is rewritten. Fresh generation with that correction passed, but
   live resource preflight then safely rejected Jellyfin's own `DateLastAccessed`
-  update before stopping Kodi. Receipt schema 2 now projects only that strict
-  canonical connection timestamp, retaining every other credential/server
-  field and raw immediate transaction guards. Fresh source-bound generation,
+  update before stopping Kodi. A later plan also caught the native
+  `LastIncrementalSync` cursor advancing during derivation. Receipt schema 3
+  projects only those strict runtime timestamps, retaining every other raw
+  settings byte, credential/server field and immediate transaction guard.
+  Fresh source-bound generation,
   resource installation and skin acceptance remain pending; the remote cohort
   also needs postboot acceptance.
   Two required image

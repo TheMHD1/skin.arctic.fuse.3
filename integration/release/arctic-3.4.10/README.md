@@ -138,21 +138,27 @@ other file drift, comments, processing instructions, DTD/entities and unsafe
 objects remain fatal. The exception neither rewrites the live file nor replaces
 the evidence/stage hash, and it is rechecked at each pre-switch guard.
 
-Jellyfin for Kodi `2.2.0+py3` also updates `Servers[*].DateLastAccessed` in
-its canonical `data.json` whenever it connects successfully. Receipt schema 2
-therefore uses one explicit parent projection that normalizes only that valid
-UTC timestamp. It requires the exact reviewed add-on version, unique server
-IDs, duplicate-key-free JSON and the writer's exact sorted/indented UTF-8
-serialization. Tokens, addresses, user/server IDs, names, all other fields and
-server order remain exact. The public adapter and private controller use the
-same projection for proposals, receipts, installed validation and recovery.
-Immediate transaction `Plan.expected` bytes remain raw: a file change after
-that immediate snapshot still aborts before mutation. The live file and old
-evidence are never rewritten; fresh proposals/receipts are required. Tests also
-prove that a later timestamp-only reconnect preserves an installed receipt.
-Actual local deployment exposed this timestamp drift before any Kodi stop or
-resource mutation; the correction is source/test work until a fresh deployment
-is separately accepted for each cohort.
+Jellyfin for Kodi `2.2.0+py3` updates both `Servers[*].DateLastAccessed` in its
+canonical `data.json` when it connects and the single canonical UTC
+`LastIncrementalSync` setting in its flat `settings.xml` after a library sync.
+Receipt schema 3 therefore uses one explicit parent projection that normalizes
+only those two reviewed runtime timestamps. The JSON projection still requires
+the exact add-on version, unique server IDs, duplicate-key-free JSON and the
+writer's exact sorted/indented UTF-8 serialization. The XML projection requires
+the same exact writer, one unique cursor with plain canonical UTC text, safe
+flat XML, and no comments, extra processing instructions, DTD, CDATA or
+entities; it masks exactly the cursor's 20 bytes and hashes every other raw byte
+unchanged. Tokens, addresses, user/server IDs, names, settings, attributes,
+order, layout and every other field remain exact. The public adapter and
+private controller use the same projection for proposals, receipts, installed
+validation and recovery. Immediate transaction `Plan.expected` bytes remain
+raw: either file changing after that immediate snapshot still aborts before
+mutation. The live files and old evidence are never rewritten; fresh
+proposals/receipts are required. Tests also prove that later timestamp-only
+writes preserve the receipt while meaningful drift remains fatal. Actual local
+plans exposed the incremental cursor write during the guarded derivation and
+failed before any Kodi stop or resource mutation; the correction remains
+source/test work until a fresh deployment is separately accepted per cohort.
 
 The directory transaction fsyncs a same-filesystem journal before copying or
 renaming, snapshots protected paths including their absence and permissions,
