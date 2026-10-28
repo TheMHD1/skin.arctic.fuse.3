@@ -1,4 +1,4 @@
-import importlib.util,json,tempfile,unittest
+import importlib.util,json,sys,tempfile,types,unittest
 from pathlib import Path
 from unittest.mock import patch
 HERE=Path(__file__).resolve().parent;spec=importlib.util.spec_from_file_location('life',HERE/'lifecycle.py');life=importlib.util.module_from_spec(spec);spec.loader.exec_module(life)
@@ -46,6 +46,47 @@ class T(unittest.TestCase):
   with patch.object(life,'idle',side_effect=lambda:calls.append('idle')):
    life.stop_start(lambda args,**_:calls.append(args))
   self.assertEqual(calls,['idle',['systemctl','stop','kodi'],['systemctl','start','kodi']])
+ def test_bounded_ready_and_stopped_proofs(self):
+  now=[0.0];calls=[]
+  def ping(_):
+   calls.append('ping')
+   if len(calls)<3:raise OSError('starting')
+   return 'pong'
+  life.ready(timeout=2,rpc_func=ping,clock=lambda:now[0],sleeper=lambda value:now.__setitem__(0,now[0]+value))
+  states=iter([('deactivating','stop-sigterm','10'),('inactive','dead','0')]);now[0]=0
+  life.wait_stopped(status_reader=lambda:next(states),timeout=2,clock=lambda:now[0],sleeper=lambda value:now.__setitem__(0,now[0]+value))
+  with self.assertRaisesRegex(RuntimeError,'ready'):
+   life.ready(timeout=.5,rpc_func=lambda _:(_ for _ in ()).throw(OSError()),clock=lambda:now[0],sleeper=lambda value:now.__setitem__(0,now[0]+value))
+ def test_inprocess_live_skin_proof_requires_actual_special_skin(self):
+  proof=self.r/'proof';proof.mkdir();skin=self.r/'addons/skin.arctic.fuse.3';skin.mkdir(parents=True)
+  (skin/'addon.xml').write_text('<addon id="skin.arctic.fuse.3" version="3.4.10"/>')
+  nonce='a'*64;script,receipt=life.write_live_skin_proof_script(proof,nonce);script_source=script.read_text()
+  original=sys.modules.get('xbmcvfs');sys.modules['xbmcvfs']=types.SimpleNamespace(translatePath=lambda value:str(skin))
+  try:exec(compile(script.read_text(),str(script),'exec'),{})
+  finally:
+   if original is None:del sys.modules['xbmcvfs']
+   else:sys.modules['xbmcvfs']=original
+  self.assertEqual(life.validate_live_skin_proof(proof,nonce,skin)['version'],'3.4.10')
+  reused,_=life.write_live_skin_proof_script(proof,nonce,reuse=True);self.assertEqual(reused,script)
+  script.write_text('tampered')
+  with self.assertRaisesRegex(ValueError,'differs'):life.write_live_skin_proof_script(proof,nonce,reuse=True)
+  script.write_text(script_source)
+  value=json.loads(receipt.read_text());value['skin']=str(self.r/'wrong');receipt.write_text(json.dumps(value))
+  with self.assertRaisesRegex(RuntimeError,'did not load'):life.validate_live_skin_proof(proof,nonce,skin)
+ def test_reset_requires_exact_script_removes_prior_receipt_and_blocks_stale_temp(self):
+  proof=self.r/'reset-proof';proof.mkdir();skin=self.r/'addons/reset-skin';skin.mkdir(parents=True)
+  (skin/'addon.xml').write_text('<addon id="skin.arctic.fuse.3" version="3.4.10"/>')
+  nonce='b'*64;script,receipt=life.write_live_skin_proof_script(proof,nonce)
+  original=sys.modules.get('xbmcvfs');sys.modules['xbmcvfs']=types.SimpleNamespace(translatePath=lambda value:str(skin))
+  try:exec(compile(script.read_text(),str(script),'exec'),{})
+  finally:
+   if original is None:del sys.modules['xbmcvfs']
+   else:sys.modules['xbmcvfs']=original
+  self.assertTrue(receipt.exists());life.reset_live_skin_proof_receipt(proof,nonce);self.assertFalse(receipt.exists())
+  temporary=receipt.with_name(receipt.name+'.tmp');temporary.write_text('stale')
+  with self.assertRaisesRegex(RuntimeError,'stale'):life.reset_live_skin_proof_receipt(proof,nonce)
+  temporary.chmod(0o600);life.recover_live_skin_proof_receipt(proof,nonce)
+  self.assertFalse(temporary.exists());self.assertEqual(len(list((proof/'interrupted-proof-writes').glob('*.partial'))),1)
  def test_mutation_runs_only_after_stop_and_restarts_on_failure(self):
   calls=[]
   with patch.object(life,'idle',side_effect=lambda:calls.append('idle')):

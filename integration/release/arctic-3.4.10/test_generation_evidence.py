@@ -33,7 +33,7 @@ class GenerationEvidenceTests(unittest.TestCase):
         self.generated = self.root / "generated"
         shutil.copytree(self.candidate, self.generated)
         markers = b"".join(b"<include name=\"" + marker + b"\" />" for marker in evidence.MARKERS)
-        (self.generated / "1080i/script-skinvariables-generator-includes-main.xml").write_bytes(
+        (self.generated / "1080i/script-skinvariables-generator-includes-.xml").write_bytes(
             b"<includes>" + markers + b"</includes>"
         )
         self.runtime = self.root / "runtime"
@@ -61,8 +61,8 @@ class GenerationEvidenceTests(unittest.TestCase):
         path = Path(result["path"])
         self.assertEqual(path.stat().st_mode & 0o777, 0o600)
         self.assertEqual(result["body"]["generated_files"], {
-            "1080i/script-skinvariables-generator-includes-main.xml":
-                evidence.sha_file(self.generated / "1080i/script-skinvariables-generator-includes-main.xml")
+            "1080i/script-skinvariables-generator-includes-.xml":
+                evidence.sha_file(self.generated / "1080i/script-skinvariables-generator-includes-.xml")
         })
         self.assertEqual(
             evidence.validate(path, result["sha256"], stage=self.stage,
@@ -83,7 +83,7 @@ class GenerationEvidenceTests(unittest.TestCase):
                           menu_inputs=self.menu, runtime_dependencies=self.dependencies,
                           tool_root=HERE)
         shutil.copy2(self.candidate / "addon.xml", self.generated / "addon.xml")
-        generated = self.generated / "1080i/script-skinvariables-generator-includes-main.xml"
+        generated = self.generated / "1080i/script-skinvariables-generator-includes-.xml"
         generated.write_text("not XML")
         with self.assertRaisesRegex(ValueError, "not XML"):
             evidence.body(stage=self.stage, generated_skin=self.generated, profile=self.profile,
@@ -91,7 +91,7 @@ class GenerationEvidenceTests(unittest.TestCase):
                           tool_root=HERE)
 
     def test_rejects_missing_markers_unreviewed_outputs_and_symlinks(self):
-        generated = self.generated / "1080i/script-skinvariables-generator-includes-main.xml"
+        generated = self.generated / "1080i/script-skinvariables-generator-includes-.xml"
         generated.write_text("<includes />")
         with self.assertRaisesRegex(ValueError, "managed route"):
             evidence.body(stage=self.stage, generated_skin=self.generated, profile=self.profile,
@@ -109,6 +109,32 @@ class GenerationEvidenceTests(unittest.TestCase):
             evidence.body(stage=self.stage, generated_skin=self.generated, profile=self.profile,
                           menu_inputs=self.menu, runtime_dependencies=self.dependencies,
                           tool_root=HERE)
+
+    def test_accepts_reviewed_user_slug_and_rejects_hostile_generator_filenames(self):
+        default = self.generated / "1080i/script-skinvariables-generator-includes-.xml"
+        payload = default.read_bytes()
+        default.unlink()
+        reviewed_user = self.generated / "1080i/script-skinvariables-generator-includes-user-Omar95.xml"
+        reviewed_user.write_bytes(payload)
+        generated = evidence.validate_generated_tree(self.candidate, self.generated)
+        self.assertEqual(set(generated), {
+            "1080i/script-skinvariables-generator-includes-user-Omar95.xml"
+        })
+
+        reviewed_user.unlink()
+        for name in (
+            "script-skinvariables-generator-includes-main.xml",
+            "script-skinvariables-generator-includes-user-.xml",
+            "script-skinvariables-generator-includes-user-Omar_95.xml",
+            "script-skinvariables-generator-includes-user-Omar95.xml.bak",
+            "script-skinvariables-generator-includes-..xml",
+        ):
+            with self.subTest(name=name):
+                hostile = self.generated / "1080i" / name
+                hostile.write_bytes(payload)
+                with self.assertRaisesRegex(ValueError, "Non-generated"):
+                    evidence.validate_generated_tree(self.candidate, self.generated)
+                hostile.unlink()
 
     def test_rejects_tamper_hash_mode_and_identity(self):
         result = self.create()

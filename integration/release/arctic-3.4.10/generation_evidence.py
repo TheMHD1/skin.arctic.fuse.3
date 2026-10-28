@@ -15,7 +15,15 @@ import directory_transaction
 SCHEMA = 1
 RECORD = "arctic-3.4.10-isolated-generation"
 EVIDENCE_NAME = "generation-evidence.json"
-GENERATED = re.compile(r"1080i/script-skinvariables-generator-includes-[^/]+\.xml\Z")
+# SkinVariables 2.2.10 formats the active SkinUser directly into Arctic's
+# ``...includes-{skinuser}.xml`` output.  The reviewed default user deliberately
+# has an empty value, while users created by SkinVariables are normalized to
+# ``user-`` plus ASCII alphanumerics.  Do not accept arbitrary filename text as
+# generator output: every non-matching file remains subject to the immutable
+# candidate-byte check below.
+GENERATED = re.compile(
+    r"1080i/script-skinvariables-generator-includes-(?:|user-[0-9A-Za-z]+)\.xml\Z"
+)
 IDENTITY_KEYS = (
     "cohort", "hostname", "wlan_mac", "jellyfin_user_id",
     "jellyfin_address", "remote_marker_sha256",

@@ -63,7 +63,12 @@ their complete runtime gates pass:
   selector checks and pinned source; exact official TMDb Helper6.19.2 artifact
   and 715-file payload now guarded in schema-3 private stages. Both installed
   dependency payloads pass read-only verification; rebuilt private generation
-  and paired installer/live UI acceptance remain pending.
+  and paired installer/live UI acceptance remain pending. The paired `.2`
+  adapter now has independent source review and 84 focused tests, preserves
+  the full latest parent without rewriting historical manifests, and has
+  durable protected-state recovery. An actual isolated run generated valid
+  managed selectors but exposed the evidence validator's default-user filename
+  mismatch; the corrected source still requires a fresh accepted runtime run.
 - [Jellyfin12.4](server/jellyfin-custom/candidate-12.4/README.md): patched server
   tests and exact12.4 Library Experience guard pass. The operational
   [LinuxServer candidate](server/jellyfin-custom/candidate-12.4-linuxserver/README.md)
@@ -87,6 +92,17 @@ their complete runtime gates pass:
   harmonization migration was checked against the original snapshot: it reconciles
   only the expected conflicting rows to their most recent playback state. No
   library scan or production database modification was used for that check.
+  **Production upgrade is now on hold:** the actual guarded rollout detected
+  an additional inherited-parental-rating regression and restored the exact
+  original12.1 image/configuration. All six database continuity groups matched
+  after rollback and native health passed. The upstream
+  [`MigrateRatingLevels` issue #18227](https://github.com/jellyfin/jellyfin/issues/18227)
+  clears inherited episode/season rating caches for items with empty own ratings.
+  Do not whitelist that difference or repeat the upgrade unchanged. Require an
+  official fix or an isolated, fully validated native rehydration/restricted-user
+  canary before another production exposure. Recovery archives remain retained;
+  redundant failed-upgrade working copies were removed only after independent
+  hash/decompression checks. No media or photos were removed.
 - [Seerr3.5.1](server/seerr-request-privacy/candidate-3.5.1/README.md): clean
   compiled overlay builds, syntax and isolated native owner/ordinary-user
   route/privacy acceptance pass; production recreation, existing-request privacy

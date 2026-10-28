@@ -105,12 +105,43 @@ target whose source bytes differ is rejected even if it still reports version
 rebuilt for both cohorts.
 
 `install.py` remains **plan-only**: public `--apply` exits before mutation.
-Its reviewed future adapter takes `/storage`, invokes the canonical
-library-transactions parent plan to verify every manifest-listed source and the
-full paired identity before inspecting Arctic, then repeats that guard after
-idle Kodi has stopped and before the recoverable directory switch. Normal use
+The paired `.2` adapter exposes separately reviewed `deployment_plan`,
+`apply_release`, `installed_plan` and `recover_release` library functions for a
+private controller; publishing them does not approve a device deployment.
+It takes `/storage`, invokes the latest `local-backup-receiver` parent plan to
+verify the complete inherited release chain and the full paired identity before
+inspecting Arctic, then repeats that guard after idle Kodi has stopped and
+before the recoverable directory switch. The local parent requires its genuine
+fresh backup-receiver acceptance; a historical service result cannot be re-dated.
+Normal use
 reads hostname and WLAN MAC from local CoreELEC files; caller assertions are
 not trusted.
+
+The private profile must pin the exact generation-evidence and proposed-release
+receipt SHA-256 values. The receipt binds the schema-3 stage, generated files,
+menu inputs, dependency closure, generation and adapter sources, and the full
+unchanged parent snapshot. The immutable historical manifest is never rewritten:
+its 16 old skin entries are checked against the preserved complete 3.3.1 tree,
+while every non-skin parent member remains checked against the live appliance.
+Each cohort receives its own stage, generated tree, profile and receipt.
+
+The directory transaction fsyncs a same-filesystem journal before copying or
+renaming, snapshots protected paths including their absence and permissions,
+and retains the old skin under `.kodi/.arctic3410-recovery/`. It requires Kodi
+inactive/dead with no main PID before switching or restoring directories. After
+startup, two nonce-bound in-process proofs must identify the actual 3.4.10
+`special://skin`, separated by a fresh receipt reset and stability interval.
+Only then are the final source guard and acceptance receipt committed. A failure
+restores the exact old tree/settings and proves actual 3.3.1 startup; an unproved
+stop or failed rollback leaves Kodi stopped with explicit recovery evidence.
+Interrupted journal, receipt and proof writes are retained for diagnosis.
+
+Use `recover_release` only for that exact private transaction, stage and profile.
+It reconstructs the durable state, rejects foreign or changed evidence, and
+handles a power loss between a rename and its journal update without guessing.
+An accepted transaction is validated as a no-op rather than automatically rolled
+back. Source/fault tests and independent review are not runtime or physical
+Home/search, playback, HDR/DV, audio or next-episode acceptance.
 
 The eventual paired transaction must
 build the complete pinned upstream skin plus this overlay **once per cohort**,
@@ -208,6 +239,19 @@ The regression starts with the actual Estuary/default-true input. This is not a
 relaxation of the runtime path proof, which correctly caught the reset.
 End-to-end generation with this correction remains pending until a fresh
 isolated runtime produces accepted XML.
+
+The next real isolated run passed runtime mapping, fresh XML and managed-route
+checks, then correctly stopped without an acceptance receipt because the
+evidence validator disagreed with the generator's default-user filename.
+Reviewed SkinVariables 2.2.10 emits `script-skinvariables-generator-includes-.xml`
+when `SkinVariables.SkinUser` is empty; Arctic's own `Includes.xml` explicitly
+loads that file for the default user. Named users created by the reviewed UI
+use `user-` plus ASCII alphanumerics. The evidence contract now accepts only
+those two official filename forms, still validates XML and every managed route,
+and still requires every other candidate byte unchanged. It does not ignore,
+rename or synthesize a failed probe's output. Both the default-user regression
+and rejection of unreviewed filenames are executable tests; a fresh run with
+the corrected published source is still required for deployment.
 
 This is deliberately not a generic Kodi database editor: it rejects a missing,
 symlinked, uncheckpointed, malformed, wrong-version, or incomplete private DB;
