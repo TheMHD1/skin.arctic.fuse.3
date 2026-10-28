@@ -172,7 +172,20 @@ To restore, stop only an in-progress artwork unit, restore the saved original
 unit, restore or remove the helpers/environment file according to their saved
 pre-deployment existence, run `systemctl daemon-reload`, and verify the timer.
 Do not delete artwork, ledgers or caches and do not manually rerun the job as
-part of rollback. This source revision is prepared and tested but not deployed.
+part of rollback.
+
+October28 deployment acceptance: both service paths, the readiness helper,
+worker and bounded wrapper are installed; the private environment and original
+timer schedule are retained. Native origin/readiness checks passed. A real
+existing-Primary sentinel performed three image reads and zero uploads, retained
+the same digest, and wrote no artwork state. The subsequent full maintenance
+run exited0: 1,376 selected items, 602 mapped existing images preserved, zero
+uploads, zero item errors and zero pending intents. The 774 unmatched items
+remain mapping/research work; this is not a claim that every channel has a logo.
+The timer is active with ten-minute bounded failure retry. Controlled fixture
+tests cover new upload/crash recovery; that particular live run did not exercise
+a missing-Primary upload. Private pre-change files and deployment proof remain
+with the production host.
 
 Verification includes `python3 -m unittest -v
 integration/server/test_venom_jellyfin_readiness.py

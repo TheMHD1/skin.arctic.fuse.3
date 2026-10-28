@@ -107,6 +107,11 @@ restricted receiver. A local filesystem test is not remote-receiver acceptance.
 The remote Python snapshot worker does not use these shell receiver targets;
 it needs independent normal backup verification, not this overlay.
 
-This repair is source-prepared; actual deployment and a completed new backup
-are separate private acceptance records. Roll back only the saved worker, not
-the package-owned receiver or either appliance's private profile.
+October28 local deployment acceptance: the exact guarded worker was replaced
+atomically, preserving its own mode/ownership and retaining the pre-change
+worker and failure journal privately. The real service then completed with
+exit0 and a new destination success marker. The backed-up worker matches the
+new source, and all14 backed-up SQLite databases pass `quick_check`. Earlier
+failure logs were retained; no package-owned receiver, restricted key or server
+access policy was changed. The separate remote snapshot worker was not changed.
+Roll back only the saved worker, not the receiver or either appliance's profile.
