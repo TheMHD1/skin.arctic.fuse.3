@@ -10,14 +10,14 @@ still depends on private deployment state.
 
 | Component | Reviewed version | Notes |
 | --- | --- | --- |
-| CoreELEC / Kodi | CoreELEC22 nightly20261012 local; nightly20261008 remote / Kodi22RC1 | Original AM9 now uses [standalone SD](device-policy/sd-only/README.md); the [October8 remote update](REMOTE-AM9-UPDATE-2026-10-08.md) preserves its separate standalone-SD setup. Future firmware updates still require separate review. |
+| CoreELEC / Kodi | CoreELEC22 nightly20261028 accepted locally; remote October28 postboot pending / Kodi22RC1 | Both use their own standalone SD and private identities. The remote October28 stage and controlled reboot request completed, but network return and postboot acceptance are not yet proved. Future firmware updates still require separate review. |
 | Arctic Fuse 3 | 3.3.1 on accepted devices | Reviewed upstream 3.3.1 source plus `patches/arctic-3.3.1-habibi.patch`; the repository root remains a legacy 3.2.19 baseline. |
 | Jellyfin for Kodi | 2.2.0+py3 | Apply only the consolidated 2.2 patch stack. |
 | Home companion | 1.1.0 | Server-backed Home, search, favourites and episode navigation. |
 | Venom TV | 1.3.1 | Separate local-PVR and remote-Jellyfin source cohorts. |
 | Up Next | 1.3.0 | Both clients reverified October28 against upstream tag `v1.3.0`; native prompt/cancel/Still Watching policy retained. |
 | Jellyfin server source | 12.1 | Custom server changes require the matching build source and tests. |
-| Dispatcharr source | 0.31.0 | Live-proxy patches are version-specific and must be rebased for an update. |
+| Dispatcharr source | 0.33.0 | Six version-rebased customizations are deployed; native UI and authenticated metadata-only HEAD passed. Provider/client playback remains separate. |
 
 Implicit addon defaults belong to these versions. `settings-reference.json` is
 a redacted inventory, not importable configuration.
@@ -65,8 +65,9 @@ their complete runtime gates pass:
 - [Arctic3.4.10](release/arctic-3.4.10/README.md): semantic rebase, generated
   selector checks and pinned source; exact official TMDb Helper6.19.2 artifact
   and 715-file payload now guarded in schema-3 private stages. Both installed
-  dependency payloads pass read-only verification; rebuilt private generation
-  and paired installer/live UI acceptance remain pending. The paired `.2`
+  dependency payloads pass read-only verification. A fresh actual local isolated
+  generation passed with independently validated evidence; live3.4.10 skin
+  installation and paired UI acceptance remain pending. The paired `.2`
   adapter now has independent source review and 84 focused tests, preserves
   the full latest parent without rewriting historical manifests, and has
   durable protected-state recovery. An actual isolated run generated valid
@@ -74,7 +75,12 @@ their complete runtime gates pass:
   mismatch. A subsequent remote probe generated selectors but also rebuilt the
   native viewtypes include. Its exact-path, complete-expression-set validator
   is now covered separately; neither failed run produced acceptance evidence.
-  Fresh accepted runtime generation remains required. Two required image
+  A subsequent genuine local generation passed, then a private deployment
+  preflight correctly rejected a byte-only live settings reordering after normal
+  Kodi startup. Every setting value remained unchanged. A fresh private stage
+  and generation are being used rather than rewriting evidence or weakening the
+  exact-input guard. The remote cohort still requires fresh accepted generation.
+  Two required image
   resources are present in private generation stages but absent from both live
   clients and their native add-on databases; installation/enabling and guarded recovery must
   pass before the skin is installed. Staged dependency hashes are not proof of

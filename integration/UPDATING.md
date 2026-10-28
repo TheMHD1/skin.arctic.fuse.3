@@ -4,8 +4,11 @@
 
 October28 update candidates and actual acceptance gates are listed in
 [the current maintenance inventory](CUSTOMIZATIONS.md#october-28-maintenance-source-candidates-and-acceptance-boundary).
-Do not overwrite the deployed12.1/3.4.1/0.31 custom server components with
-stock newer images. The guarded next-episode player must remain an emitted,
+Do not overwrite the deployed12.1/3.5.1/0.33 custom server components with
+stock newer images. Seerr3.5.1 and Dispatcharr0.33 have their own reviewed
+version-specific overlays and live acceptance records; Jellyfin12.4 remains
+held after the verified inherited-parental-rating rollback. The guarded
+next-episode player must remain an emitted,
 hashed Kodi payload member. Read its live-test state guard before any playback
 probe; never invent missing play history or use a household item with an
 unrestorable nullable baseline as a disposable fixture.
