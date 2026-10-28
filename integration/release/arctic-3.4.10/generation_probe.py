@@ -401,21 +401,37 @@ def _wait_for_rpc(timeout: int, rpc=lifecycle.rpc) -> None:
     raise RuntimeError("staged Kodi JSON-RPC did not become ready") from last_error
 
 
+def _wait_for_private_addons_enabled(rpc, addon_ids: set[str], timeout: int = 10,
+                                     *, clock=time.monotonic, sleeper=time.sleep) -> list[str]:
+    """Poll Kodi's database-backed enabled state until the audited closure settles."""
+    pending = set(addon_ids)
+    deadline = clock() + timeout
+    while clock() < deadline:
+        for addon_id in tuple(sorted(pending)):
+            details = rpc("Addons.GetAddonDetails", {"addonid": addon_id, "properties": ["enabled"]})
+            if details.get("addon", {}).get("enabled") is True:
+                pending.remove(addon_id)
+        if not pending:
+            return sorted(addon_ids)
+        sleeper(0.25)
+    raise RuntimeError("Kodi did not enable private add-ons: " + ", ".join(sorted(pending)))
+
+
 def _activate_private_skin(rpc, addon_ids: set[str]) -> list[str]:
-    """Enable only the staged closure, then use Kodi's supported skin switch."""
+    """Enable the candidate's exact private closure, then switch through Kodi."""
     addon_ids = set(addon_ids)
     if not addon_ids or SKIN_ID not in addon_ids:
         raise RuntimeError("private runtime closure does not contain the candidate skin")
-    enabled = []
-    for addon_id in sorted(addon_ids):
+    for addon_id in addon_ids:
         _safe_addon_id(addon_id)
-        acknowledged = rpc("Addons.SetAddonEnabled", {"addonid": addon_id, "enabled": True})
-        if not isinstance(acknowledged, str):
-            raise RuntimeError(f"Kodi did not acknowledge add-on enablement: {addon_id}")
-        details = rpc("Addons.GetAddonDetails", {"addonid": addon_id, "properties": ["enabled"]})
-        if details.get("addon", {}).get("enabled") is not True:
-            raise RuntimeError(f"Kodi did not enable private add-on: {addon_id}")
-        enabled.append(addon_id)
+    # Kodi's own CAddonMgr::EnableAddon resolves required dependencies
+    # recursively and enables them in reverse dependency order. Asking Kodi to
+    # enable only the candidate avoids inventing a second ordering algorithm;
+    # the following poll still verifies every member of our audited closure.
+    acknowledged = rpc("Addons.SetAddonEnabled", {"addonid": SKIN_ID, "enabled": True})
+    if acknowledged != "OK":
+        raise RuntimeError("Kodi rejected private candidate enablement: " + repr(acknowledged))
+    enabled = _wait_for_private_addons_enabled(rpc, addon_ids)
     if rpc("Settings.SetSettingValue", {"setting": "lookandfeel.skin", "value": SKIN_ID}) is not True:
         raise RuntimeError("Kodi rejected the private skin activation request")
     return enabled

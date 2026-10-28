@@ -296,7 +296,8 @@ class GenerationProbeTests(unittest.TestCase):
             calls.append((method, params))
             if method == "Addons.SetAddonEnabled":
                 self.assertTrue(params["enabled"])
-                enabled.add(params["addonid"])
+                self.assertEqual(params["addonid"], probe.SKIN_ID)
+                enabled.update(closure)
                 return "OK"
             if method == "Addons.GetAddonDetails":
                 return {"addon": {"enabled": params["addonid"] in enabled}}
@@ -308,11 +309,34 @@ class GenerationProbeTests(unittest.TestCase):
         closure = {probe.SKIN_ID, probe.SKINVARIABLES, "script.module.infotagger"}
         self.assertEqual(probe._activate_private_skin(rpc, closure), sorted(closure))
         set_calls = [params["addonid"] for method, params in calls if method == "Addons.SetAddonEnabled"]
-        self.assertEqual(set_calls, sorted(closure))
+        self.assertEqual(set_calls, [probe.SKIN_ID])
         self.assertEqual(calls[-1][0], "Settings.SetSettingValue")
 
         with self.assertRaises(RuntimeError):
             probe._activate_private_skin(rpc, {probe.SKINVARIABLES})
+
+    def test_activation_rejects_bad_ack_and_never_enabled_closure(self):
+        with self.assertRaises(RuntimeError):
+            probe._activate_private_skin(
+                lambda method, params=None: "not-acknowledged",
+                {probe.SKIN_ID},
+            )
+
+        calls = []
+        def never_enabled(method, params=None):
+            calls.append((method, params))
+            return {"addon": {"enabled": False}}
+
+        clock = iter((0.0, 0.0, 10.01)).__next__
+        with self.assertRaisesRegex(RuntimeError, probe.SKINVARIABLES):
+            probe._wait_for_private_addons_enabled(
+                never_enabled, {probe.SKINVARIABLES}, timeout=10,
+                clock=clock, sleeper=lambda _: None,
+            )
+        self.assertEqual(calls, [(
+            "Addons.GetAddonDetails",
+            {"addonid": probe.SKINVARIABLES, "properties": ["enabled"]},
+        )])
 
     def test_wait_for_active_skin_requires_candidate(self):
         responses = iter([{"skin": "skin.estuary"}, {"skin": probe.SKIN_ID}])
