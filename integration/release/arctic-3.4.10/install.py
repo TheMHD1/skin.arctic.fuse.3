@@ -59,6 +59,10 @@ HISTORICAL_SKIN_COUNT = 16
 HISTORICAL_SKIN_SHA256 = "d3bd5dafeb9a7e25dbc894589fc8249e6d13c36aaa8a74c3db1efb193787417d"
 SHA = re.compile(r"[0-9a-f]{64}\Z")
 RECEIPT_SCHEMA = 1
+ORDER_ONLY_MENU_INPUT = "userdata/addon_data/skin.arctic.fuse.3"
+ORDER_ONLY_SETTINGS = "settings.xml"
+MAX_MENU_INPUT_FILE_BYTES = 4 * 1024 * 1024
+MAX_MENU_INPUT_TREE_BYTES = 16 * 1024 * 1024
 RECEIPT_KEYS = {
     "schema", "release", "cohort", "parent_release", "parent_manifest_sha256",
     "parent_snapshot", "parent_snapshot_sha256", "historical_skin_count",
@@ -229,7 +233,163 @@ def plan(storage_root: Path, stage: Path, profile: dict,
     return transaction.Plan({skin: candidate}, dict(parent.expected))
 
 
-def _current_menu_inputs(storage_root: Path, names: dict[str, str]) -> dict[str, str]:
+def _tree_snapshot_signature(root: Path) -> tuple[tuple, dict[str, tuple]]:
+    """Describe one small menu-input tree without following special objects."""
+    root = Path(root)
+    info = root.stat(follow_symlinks=False)
+    require(stat.S_ISDIR(info.st_mode) and not root.is_symlink(),
+            "Menu input is not a regular directory")
+    root_identity = (info.st_dev, info.st_ino, stat.S_IMODE(info.st_mode),
+                     info.st_uid, info.st_gid, info.st_mtime_ns)
+    entries: dict[str, tuple] = {}
+    for path in sorted(root.rglob("*")):
+        relative = path.relative_to(root).as_posix()
+        require(relative and relative not in entries, "Duplicate menu-input member")
+        item = path.stat(follow_symlinks=False)
+        require(not stat.S_ISLNK(item.st_mode), "Symlink in generation menu input")
+        common = (item.st_dev, item.st_ino, stat.S_IMODE(item.st_mode),
+                  item.st_uid, item.st_gid, item.st_mtime_ns)
+        if stat.S_ISDIR(item.st_mode):
+            entries[relative] = ("directory", *common)
+        else:
+            require(stat.S_ISREG(item.st_mode) and item.st_nlink == 1,
+                    "Special or multiply-linked generation menu input")
+            require(0 <= item.st_size <= MAX_MENU_INPUT_FILE_BYTES,
+                    "Generation menu-input file is too large")
+            entries[relative] = ("file", *common, item.st_nlink, item.st_size)
+    return root_identity, entries
+
+
+def _stable_menu_file(path: Path, expected: tuple) -> bytes:
+    flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
+    descriptor = os.open(path, flags)
+    try:
+        before = os.fstat(descriptor)
+        identity = ("file", before.st_dev, before.st_ino, stat.S_IMODE(before.st_mode),
+                    before.st_uid, before.st_gid, before.st_mtime_ns,
+                    before.st_nlink, before.st_size)
+        require(identity == expected and stat.S_ISREG(before.st_mode),
+                "Generation menu input changed while opening")
+        chunks, remaining = [], before.st_size
+        while remaining:
+            chunk = os.read(descriptor, min(remaining, 64 * 1024))
+            require(chunk, "Generation menu input changed while reading")
+            chunks.append(chunk)
+            remaining -= len(chunk)
+        require(os.read(descriptor, 1) == b"", "Generation menu input grew while reading")
+        after = os.fstat(descriptor)
+        require((after.st_dev, after.st_ino, stat.S_IMODE(after.st_mode),
+                 after.st_uid, after.st_gid, after.st_mtime_ns,
+                 after.st_nlink, after.st_size) == identity[1:],
+                "Generation menu input changed while reading")
+    finally:
+        os.close(descriptor)
+    current = path.stat(follow_symlinks=False)
+    require((current.st_dev, current.st_ino, stat.S_IMODE(current.st_mode),
+             current.st_uid, current.st_gid, current.st_mtime_ns,
+             current.st_nlink, current.st_size) == identity[1:],
+            "Generation menu-input path changed while reading")
+    return b"".join(chunks)
+
+
+def _menu_tree_snapshot(root: Path) -> tuple[dict[str, tuple[str, bytes | None]], str]:
+    """Read a complete stable tree and reproduce ``tree_hash`` from captured bytes."""
+    root = Path(root)
+    root_before, before = _tree_snapshot_signature(root)
+    contents: dict[str, tuple[str, bytes | None]] = {}
+    total = 0
+    for relative, identity in before.items():
+        if identity[0] == "directory":
+            contents[relative] = ("directory", None)
+            continue
+        payload = _stable_menu_file(root / relative, identity)
+        total += len(payload)
+        require(total <= MAX_MENU_INPUT_TREE_BYTES, "Generation menu-input tree is too large")
+        contents[relative] = ("file", payload)
+    root_after, after = _tree_snapshot_signature(root)
+    require(root_after == root_before and after == before,
+            "Generation menu-input tree changed while reading")
+    digest = hashlib.sha256()
+    # Preserve the component-wise Path order used by tree_hash. Sorting the
+    # relative strings again changes nested a/x versus a-b/x ordering.
+    for relative, (kind, payload) in contents.items():
+        if kind != "file":
+            continue
+        encoded = relative.encode()
+        assert payload is not None
+        digest.update(len(encoded).to_bytes(4, "big"))
+        digest.update(encoded)
+        digest.update(len(payload).to_bytes(8, "big"))
+        digest.update(payload)
+    return contents, digest.hexdigest()
+
+
+def _strict_settings_semantics(raw: bytes) -> tuple:
+    """Parse Kodi settings without accepting active or ambiguous XML shapes."""
+    require(0 < len(raw) <= MAX_MENU_INPUT_FILE_BYTES, "Unsafe Arctic settings size")
+    try:
+        text = raw.decode("utf-8-sig")
+    except UnicodeDecodeError as exc:
+        raise ValueError("Arctic settings are not UTF-8") from exc
+    require("\x00" not in text and "<!" not in text,
+            "Unsafe declaration/comment/entity in Arctic settings")
+    remainder = text
+    if remainder.startswith("<?xml"):
+        require(len(remainder) > 5 and remainder[5].isspace(),
+                "Unsafe processing instruction in Arctic settings")
+        end = remainder.find("?>")
+        require(end >= 0, "Malformed Arctic XML declaration")
+        remainder = remainder[end + 2:]
+    require("<?" not in remainder, "Unsafe processing instruction in Arctic settings")
+    try:
+        root = ET.fromstring(raw)
+    except (ET.ParseError, UnicodeDecodeError) as exc:
+        raise ValueError("Malformed Arctic settings XML") from exc
+    require(root.tag == "settings" and (root.text is None or root.text.isspace())
+            and (root.tail is None or root.tail.isspace()),
+            "Unexpected Arctic settings root")
+    settings = {}
+    for child in root:
+        require(child.tag == "setting" and not list(child)
+                and (child.tail is None or child.tail.isspace()),
+                "Unexpected Arctic setting shape")
+        setting_id = child.attrib.get("id")
+        require(isinstance(setting_id, str) and setting_id and setting_id not in settings,
+                "Duplicate or missing Arctic setting id")
+        settings[setting_id] = (tuple(sorted(child.attrib.items())), child.text)
+    return tuple(sorted(root.attrib.items())), tuple(sorted(settings.items()))
+
+
+def _order_only_menu_equivalent(live: Path, reference: Path, expected: str) -> None:
+    reference_entries, reference_hash = _menu_tree_snapshot(reference)
+    require(reference_hash == expected,
+            "Staged generation menu-input reference drift")
+    live_entries, _live_hash = _menu_tree_snapshot(live)
+    require(set(live_entries) == set(reference_entries),
+            "Live generation menu-input membership changed")
+    require(ORDER_ONLY_SETTINGS in reference_entries
+            and reference_entries[ORDER_ONLY_SETTINGS][0] == "file"
+            and live_entries[ORDER_ONLY_SETTINGS][0] == "file",
+            "Arctic settings file is missing from menu input")
+    for relative, reference_item in reference_entries.items():
+        live_item = live_entries[relative]
+        require(live_item[0] == reference_item[0],
+                "Live generation menu-input member type changed: " + relative)
+        if relative != ORDER_ONLY_SETTINGS:
+            require(live_item == reference_item,
+                    "Live generation menu-input bytes changed: " + relative)
+    reference_settings = reference_entries[ORDER_ONLY_SETTINGS][1]
+    live_settings = live_entries[ORDER_ONLY_SETTINGS][1]
+    assert reference_settings is not None and live_settings is not None
+    require(_strict_settings_semantics(live_settings)
+            == _strict_settings_semantics(reference_settings),
+            "Live Arctic settings changed beyond element order")
+
+
+def _current_menu_inputs(storage_root: Path, stage: Path,
+                         names: dict[str, str]) -> dict[str, str]:
+    stage = Path(stage).resolve()
+    record, _raw = _stage_record(stage)
     result = {}
     for relative, expected in names.items():
         require(isinstance(relative, str) and isinstance(expected, str)
@@ -237,7 +397,22 @@ def _current_menu_inputs(storage_root: Path, names: dict[str, str]) -> dict[str,
                 "Invalid generation menu-input binding")
         path = _regular(Path(storage_root) / ".kodi", relative)
         require(path.is_dir() and not path.is_symlink(), "Missing live generation menu input")
-        result[relative] = directory_transaction.tree_hash(path)
+        require(isinstance(record.get("rollback"), dict)
+                and record["rollback"].get(relative) == "directory",
+                "Stage lacks bound generation menu-input reference")
+        reference = _regular(stage, "rollback/" + relative)
+        require(reference.is_dir() and not reference.is_symlink(),
+                "Missing staged generation menu-input reference")
+        require(directory_transaction.tree_hash(reference) == expected,
+                "Staged generation menu-input reference drift")
+        current = directory_transaction.tree_hash(path)
+        if current == expected:
+            result[relative] = current
+            continue
+        require(relative == ORDER_ONLY_MENU_INPUT,
+                "Live generation menu input changed after generation")
+        _order_only_menu_equivalent(path, reference, expected)
+        result[relative] = expected
     return dict(sorted(result.items()))
 
 
@@ -307,7 +482,7 @@ def deployment_plan(storage_root: Path, stage: Path, profile: dict,
     )
     require(evidence["runtime_dependencies"] == dict(sorted(runtime_dependencies.items())),
             "Runtime dependency closure changed after generation")
-    require(_current_menu_inputs(storage_root, evidence["menu_inputs"])
+    require(_current_menu_inputs(storage_root, stage, evidence["menu_inputs"])
             == evidence["menu_inputs"], "Live menu inputs changed after generation")
     target, _candidate = next(iter(preinstall.items()))
     receipt_path = _regular(storage_root, RECEIPT)

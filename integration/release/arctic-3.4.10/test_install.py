@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -75,11 +76,17 @@ class ArcticInstallTests(unittest.TestCase):
             self.addCleanup(item.stop)
 
         for relative, value in (
-            ("userdata/addon_data/skin.arctic.fuse.3/settings.xml", "<settings>skin</settings>"),
+            ("userdata/addon_data/skin.arctic.fuse.3/settings.xml",
+             '<settings version="2">\n'
+             '  <setting id="menu.alpha" default="true">one</setting>\n'
+             '  <setting id="menu.beta">two</setting>\n'
+             '  <setting id="menu.empty" />\n'
+             '</settings>\n'),
+            ("userdata/addon_data/skin.arctic.fuse.3/menu-layout.json", '{"layout":"main"}\n'),
             ("userdata/addon_data/script.skinvariables/settings.xml", "<settings>vars</settings>"),
         ):
             path = self.root / relative
-            path.parent.mkdir(parents=True)
+            path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(value)
         gui = self.root / "userdata/guisettings.xml"
         gui.parent.mkdir(parents=True, exist_ok=True)
@@ -93,11 +100,21 @@ class ArcticInstallTests(unittest.TestCase):
         shutil.copytree(self.old_skin, self.candidate)
         (self.candidate / "addon.xml").write_text(
             '<addon id="skin.arctic.fuse.3" version="3.4.10" />')
+        rollback = self.stage / "rollback"
+        menu_relatives = (
+            "userdata/addon_data/skin.arctic.fuse.3",
+            "userdata/addon_data/script.skinvariables",
+        )
+        for relative in menu_relatives:
+            shutil.copytree(self.root / relative, rollback / relative)
         self.record = {
             "schema": 3, "status": "staged-only-requires-real-kodi-generation",
             "upstream_commit": install.overlay.UPSTREAM_COMMIT,
             "tmdbhelper": install.dependencies.reviewed_binding(),
-            "rollback": {"addons/skin.arctic.fuse.3": "directory"},
+            "rollback": {
+                "addons/skin.arctic.fuse.3": "directory",
+                **{relative: "directory" for relative in menu_relatives},
+            },
             "source_skin_sha256": install.directory_transaction.tree_hash(self.old_skin),
             "source_resume_receipt_sha256": install.sha(self.manifest),
             "candidate_skin_sha256": install.directory_transaction.tree_hash(self.candidate),
@@ -111,10 +128,8 @@ class ArcticInstallTests(unittest.TestCase):
             b"<includes>" + markers + b"</includes>")
         self.dependencies = {
             "script.skinvariables": install.directory_transaction.tree_hash(skinvars.parent)}
-        self.menu = {relative: install.directory_transaction.tree_hash(self.root / relative)
-                     for relative in (
-                         "userdata/addon_data/skin.arctic.fuse.3",
-                         "userdata/addon_data/script.skinvariables")}
+        self.menu = {relative: install.directory_transaction.tree_hash(rollback / relative)
+                     for relative in menu_relatives}
         self.profile = {
             "cohort": "local", "hostname": "fixture", "wlan_mac": "aa:bb",
             "jellyfin_user_id": "u", "jellyfin_address": "http://j",
@@ -232,9 +247,162 @@ class ArcticInstallTests(unittest.TestCase):
                 self.storage, self.stage, self.profile, self.generated,
                 self.evidence_path, wrong, parent_guard=self.guard)
         menu = self.root / "userdata/addon_data/skin.arctic.fuse.3/settings.xml"
-        menu.write_text("changed")
-        with self.assertRaisesRegex(ValueError, "menu inputs"):
+        menu.write_text(
+            '<settings version="2"><setting id="menu.alpha" default="true">changed</setting>'
+            '<setting id="menu.beta">two</setting><setting id="menu.empty" /></settings>')
+        with self.assertRaisesRegex(ValueError, "settings changed"):
             self.deployment()
+
+    def test_skin_settings_order_only_drift_is_stage_bound_and_accepted(self):
+        settings = self.root / "userdata/addon_data/skin.arctic.fuse.3/settings.xml"
+        settings.write_text(
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<settings version="2"><setting id="menu.empty"></setting>\n'
+            '<setting id="menu.beta">two</setting>\n'
+            '<setting default="true" id="menu.alpha">one</setting></settings>\n')
+        prepared = self.deployment()
+        self.assertEqual(json.loads(prepared.receipt_raw)["menu_inputs"], self.menu)
+
+    def test_menu_snapshot_hash_preserves_component_wise_path_order(self):
+        root = self.storage / "nested-menu"
+        for relative in ("a/x", "a-b/x", "a.b", "a0", "z"):
+            path = root / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(relative)
+        contents, digest = install._menu_tree_snapshot(root)
+        self.assertIn("a", contents)
+        self.assertEqual(digest, install.directory_transaction.tree_hash(root))
+
+    def test_menu_snapshot_rejects_links_specials_and_size_limits(self):
+        root = self.storage / "unsafe-menu"
+        root.mkdir()
+        source = root / "source"
+        source.write_bytes(b"reviewed")
+        unsafe = root / "unsafe"
+        unsafe.symlink_to(source)
+        with self.assertRaisesRegex(ValueError, "Symlink"):
+            install._menu_tree_snapshot(root)
+        unsafe.unlink()
+        os.link(source, unsafe)
+        with self.assertRaisesRegex(ValueError, "multiply-linked"):
+            install._menu_tree_snapshot(root)
+        unsafe.unlink()
+        os.mkfifo(unsafe)
+        with self.assertRaisesRegex(ValueError, "Special"):
+            install._menu_tree_snapshot(root)
+        unsafe.unlink()
+        with patch.object(install, "MAX_MENU_INPUT_FILE_BYTES", 1):
+            with self.assertRaisesRegex(ValueError, "file is too large"):
+                install._menu_tree_snapshot(root)
+        with patch.object(install, "MAX_MENU_INPUT_TREE_BYTES", 1):
+            with self.assertRaisesRegex(ValueError, "tree is too large"):
+                install._menu_tree_snapshot(root)
+
+    def test_menu_snapshot_rejects_file_replacement_during_read(self):
+        root = self.storage / "unstable-menu"
+        root.mkdir()
+        source = root / "source"
+        source.write_bytes(b"reviewed")
+        original_read = install.os.read
+        replaced = [False]
+
+        def replacing_read(fd, amount):
+            payload = original_read(fd, amount)
+            if not replaced[0]:
+                replacement = root / "replacement"
+                replacement.write_bytes(b"reviewed")
+                replacement.replace(source)
+                replaced[0] = True
+            return payload
+
+        with patch.object(install.os, "read", side_effect=replacing_read):
+            with self.assertRaisesRegex(ValueError, "changed while reading"):
+                install._menu_tree_snapshot(root)
+
+    def test_skin_settings_value_field_and_attribute_drift_are_rejected(self):
+        settings = self.root / "userdata/addon_data/skin.arctic.fuse.3/settings.xml"
+        original = settings.read_bytes()
+        variants = {
+            "value": (
+                '<settings version="2"><setting id="menu.alpha" default="true">different</setting>'
+                '<setting id="menu.beta">two</setting><setting id="menu.empty" /></settings>'),
+            "added field": (
+                '<settings version="2"><setting id="menu.alpha" default="true">one</setting>'
+                '<setting id="menu.beta">two</setting><setting id="menu.empty" />'
+                '<setting id="menu.added">new</setting></settings>'),
+            "deleted field": (
+                '<settings version="2"><setting id="menu.alpha" default="true">one</setting>'
+                '<setting id="menu.empty" /></settings>'),
+            "attribute": (
+                '<settings version="2"><setting id="menu.alpha">one</setting>'
+                '<setting id="menu.beta">two</setting><setting id="menu.empty" /></settings>'),
+            "root attribute": (
+                '<settings version="3"><setting id="menu.alpha" default="true">one</setting>'
+                '<setting id="menu.beta">two</setting><setting id="menu.empty" /></settings>'),
+        }
+        for label, payload in variants.items():
+            with self.subTest(label=label):
+                settings.write_text(payload)
+                with self.assertRaisesRegex(ValueError, "settings changed"):
+                    self.deployment()
+                settings.write_bytes(original)
+
+    def test_skin_menu_other_bytes_and_membership_remain_exact(self):
+        root = self.root / "userdata/addon_data/skin.arctic.fuse.3"
+        other = root / "menu-layout.json"
+        original = other.read_bytes()
+        other.write_text('{"layout":"changed"}\n')
+        with self.assertRaisesRegex(ValueError, "bytes changed"):
+            self.deployment()
+        other.write_bytes(original)
+        added = root / "unexpected.txt"
+        added.write_text("unexpected")
+        with self.assertRaisesRegex(ValueError, "membership changed"):
+            self.deployment()
+        added.unlink()
+        other.unlink()
+        with self.assertRaisesRegex(ValueError, "membership changed"):
+            self.deployment()
+
+    def test_skin_menu_reference_must_still_match_generation_evidence(self):
+        reference = (self.stage / "rollback/userdata/addon_data/skin.arctic.fuse.3"
+                     / "settings.xml")
+        reference.write_text("<settings />")
+        with self.assertRaisesRegex(ValueError, "reference drift"):
+            self.deployment()
+
+    def test_skin_settings_duplicate_nested_and_unsafe_xml_are_rejected(self):
+        settings = self.root / "userdata/addon_data/skin.arctic.fuse.3/settings.xml"
+        variants = {
+            "duplicate": (
+                '<settings version="2"><setting id="menu.alpha" default="true">one</setting>'
+                '<setting id="menu.alpha" default="true">one</setting>'
+                '<setting id="menu.beta">two</setting><setting id="menu.empty" /></settings>'),
+            "nested": (
+                '<settings version="2"><setting id="menu.alpha" default="true">'
+                '<value>one</value></setting><setting id="menu.beta">two</setting>'
+                '<setting id="menu.empty" /></settings>'),
+            "comment": (
+                '<settings version="2"><!-- hidden --><setting id="menu.alpha" '
+                'default="true">one</setting><setting id="menu.beta">two</setting>'
+                '<setting id="menu.empty" /></settings>'),
+            "processing instruction": (
+                '<settings version="2"><?unsafe value?><setting id="menu.alpha" '
+                'default="true">one</setting><setting id="menu.beta">two</setting>'
+                '<setting id="menu.empty" /></settings>'),
+            "doctype/entity": (
+                '<!DOCTYPE settings [<!ENTITY one "one">]><settings version="2">'
+                '<setting id="menu.alpha" default="true">&one;</setting>'
+                '<setting id="menu.beta">two</setting><setting id="menu.empty" /></settings>'),
+            "unexpected child": (
+                '<settings version="2"><other id="menu.alpha">one</other>'
+                '<setting id="menu.beta">two</setting><setting id="menu.empty" /></settings>'),
+        }
+        for label, payload in variants.items():
+            with self.subTest(label=label):
+                settings.write_text(payload)
+                with self.assertRaisesRegex(ValueError, "Arctic setting|Unsafe"):
+                    self.deployment()
 
     def test_success_accepts_tree_and_retains_old_projection(self):
         proofs = [0]

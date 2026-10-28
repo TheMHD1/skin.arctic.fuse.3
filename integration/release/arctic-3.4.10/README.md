@@ -125,6 +125,19 @@ its 16 old skin entries are checked against the preserved complete 3.3.1 tree,
 while every non-skin parent member remains checked against the live appliance.
 Each cohort receives its own stage, generated tree, profile and receipt.
 
+Normal Kodi startup may serialize
+`userdata/addon_data/skin.arctic.fuse.3/settings.xml` with the same unique
+settings in a different element order. The deployment guard keeps its exact
+raw-tree-hash fast path, and permits that one known serialization only when the
+schema-3 stage's rollback subtree still hashes to the generation-evidence menu
+input. The live and rollback trees must have identical complete membership;
+every other file remains byte-exact. Both XML documents must be safe, flat
+`<settings>` trees with the same root attributes and the same unique setting
+IDs, attributes and text. Added, removed, duplicated, nested or changed settings,
+other file drift, comments, processing instructions, DTD/entities and unsafe
+objects remain fatal. The exception neither rewrites the live file nor replaces
+the evidence/stage hash, and it is rechecked at each pre-switch guard.
+
 The directory transaction fsyncs a same-filesystem journal before copying or
 renaming, snapshots protected paths including their absence and permissions,
 and retains the old skin under `.kodi/.arctic3410-recovery/`. It requires Kodi

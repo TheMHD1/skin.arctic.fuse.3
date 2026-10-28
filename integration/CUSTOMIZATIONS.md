@@ -77,9 +77,12 @@ their complete runtime gates pass:
   is now covered separately; neither failed run produced acceptance evidence.
   A subsequent genuine local generation passed, then a private deployment
   preflight correctly rejected a byte-only live settings reordering after normal
-  Kodi startup. Every setting value remained unchanged. A fresh private stage
-  and generation are being used rather than rewriting evidence or weakening the
-  exact-input guard. The remote cohort still requires fresh accepted generation.
+  Kodi startup. Every setting value remained unchanged; repeating the private
+  stage and generation reproduced the same order-only rejection. The deployment
+  source now binds that one serialization exception to the immutable rollback
+  subtree, preserving every setting ID/value/attribute and every other file.
+  No evidence is rewritten. Fresh generation and live installation using the
+  corrected source remain pending; the remote cohort also needs postboot acceptance.
   Two required image
   resources are present in private generation stages but absent from both live
   clients and their native add-on databases; installation/enabling and guarded recovery must
