@@ -20,6 +20,7 @@ jobs:
       - run: python integration/release/arctic-3.4.10/test_lifecycle.py
       - run: python integration/release/arctic-3.4.10/test_install.py
       - run: python integration/release/arctic-3.4.10/test_generation_probe.py
+      - run: python integration/release/arctic-3.4.10/test_generation_evidence.py
       - run: python integration/server/dovi/test_dovi_reconciler.py
       - run: python integration/server/dovi/test_fast_import.py
       - run: python integration/server/subtitle-publication/subtitle-publication-tests.py
