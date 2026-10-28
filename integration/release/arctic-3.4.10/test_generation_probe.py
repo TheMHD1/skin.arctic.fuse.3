@@ -1,10 +1,13 @@
 import importlib.util
+import io
 import json
 import sys
 import tempfile
 import types
 import unittest
 from pathlib import Path
+from unittest import mock
+from contextlib import redirect_stdout
 
 HERE = Path(__file__).resolve().parent
 spec = importlib.util.spec_from_file_location("generation_probe", HERE / "generation_probe.py")
@@ -281,6 +284,42 @@ class GenerationProbeTests(unittest.TestCase):
         self.assertTrue(any(call[0] == "stop-owned" for call in calls if isinstance(call, tuple)))
         self.assertEqual(calls[-1], ("systemctl", "start", "kodi"))
         self.assertEqual(result["generated"], [str(generated)])
+
+    def test_builtin_captures_kodi_send_chatter_and_main_emits_one_apply_receipt(self):
+        calls = []
+
+        def run(argv, **kwargs):
+            calls.append((argv, kwargs))
+            return types.SimpleNamespace(stdout="Sending: noisy helper output\n", stderr="")
+
+        helper = Path("/usr/bin/kodi-send")
+        with mock.patch.object(Path, "is_file", return_value=True), \
+             mock.patch.object(Path, "is_symlink", return_value=False):
+            probe._send_builtin(run, helper, "RunScript(test)")
+        self.assertEqual(calls[0][0], ["/usr/bin/kodi-send", "--action=RunScript(test)"])
+        self.assertEqual(calls[0][1], {
+            "check": True, "timeout": 10, "capture_output": True, "text": True,
+        })
+
+        profile = Path(self.tmp.name) / "profile.json"
+        profile.write_text(json.dumps({"cohort": "local"}))
+        stdout = io.StringIO()
+        args = [
+            "generation_probe.py", "--apply", "--stage", str(self.stage),
+            "--profile", str(profile), "--runtime-home",
+            str(self.root / ".arctic3410-generation/run-json"),
+        ]
+        with mock.patch.object(sys, "argv", args), \
+             mock.patch.object(probe, "preflight", return_value={}), \
+             mock.patch.object(probe, "runtime_dependency_preflight", return_value={"skinvariables": "hash"}), \
+             mock.patch.object(probe, "run_probe", return_value={"generated": ["private.xml"]}), \
+             redirect_stdout(stdout):
+            probe.main()
+        rendered = stdout.getvalue()
+        self.assertEqual(rendered.count("\n{"), 0)
+        receipt = json.loads(rendered)
+        self.assertEqual(receipt["mode"], "probe")
+        self.assertEqual(receipt["result"], {"generated": ["private.xml"]})
 
 
 if __name__ == "__main__":

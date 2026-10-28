@@ -155,6 +155,12 @@ sandbox.  The probe snapshots/removes only private generated includes, requires
 fresh nonempty XML containing every managed owned/Venom selector route, then
 stops only its own unit and restarts normal Kodi in a `finally` path.
 
+The original/local appliance completed this isolated runtime gate October28:
+private path proof and fresh XML selectors passed, and normal Kodi returned
+active/idle. This was not a live skin installation or physical UI acceptance.
+The CLI captures `kodi-send` helper chatter and emits one JSON receipt, with
+the apply result nested under `result`; remote runtime acceptance is separate.
+
 Example read-only plan:
 
 ```sh

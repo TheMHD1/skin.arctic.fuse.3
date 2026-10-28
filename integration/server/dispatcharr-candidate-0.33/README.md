@@ -54,7 +54,7 @@ the same file is included by the patch.
 
 ## Deployment gate
 
-This is source-only. Before a live update, snapshot the Dispatcharr data,
+Before a live update, snapshot the Dispatcharr data,
 build an image from the exact patched tree, and run a disposable smoke test for
 native PVR, XC TS/HLS and a provider-capacity follower. Do not reuse the
 disposable test volume or copy any provider configuration into source.
@@ -200,3 +200,15 @@ rollback archive; it is not a default destination for provider configuration.
 
 The separate profile-6 bounded input-retry policy is not a Dispatcharr model or
 mount; this candidate does not read, modify, or replace it.
+
+## October28 controlled production result
+
+The exact patched `4156cb52…` image was subsequently promoted after the full
+stopped-data/nginx snapshot. All channel IDs, provider/profile settings digests
+and continuity counts matched the pre-update state. The actual UI returned200,
+the active nginx streaming contract passed, and an existing authorized native
+XC metadata-only HEAD returned200 without a provider GET. The compressed
+rollback archive was copied to external host storage and its SHA-256 and zstd
+integrity verified. Old image and Compose recovery remain retained.
+Client playback, long-running provider behavior and physical output acceptance
+remain separate from those deployment checks.

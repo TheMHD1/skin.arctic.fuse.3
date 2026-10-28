@@ -103,3 +103,12 @@ DOVI artwork arguments/fast-config keys together, and retain the worker state
 database. Do not delete pending/dead jobs or replace the existing DOVI
 publication database: re-enabling with the same paths preserves bounded retry
 and age evidence.
+
+## Pending-work metric correction
+
+The reviewed reconciler now reports active outbox work with `dead=0`, rather
+than counting terminal jobs as pending. The source regression passed and this
+correction was deployed October28 without restarting active workers. The next
+normal notify-only run completed successfully and reported zero active pending
+notifications; historical dead letters and their evidence were preserved, not
+deleted or silently requeued.

@@ -507,7 +507,13 @@ def _send_builtin(run, kodi_send: Path, action: str) -> None:
     if (kodi_send != Path("/usr/bin/kodi-send") or kodi_send.name != "kodi-send"
             or kodi_send.is_symlink() or not kodi_send.is_file()):
         raise ValueError("refusing a nonstandard kodi-send helper")
-    run([str(kodi_send), "--action=" + action], check=True, timeout=10)
+    # CoreELEC's kodi-send emits a human-readable ``Sending: ...`` line on
+    # stdout.  The public CLI is intentionally a one-JSON-object interface so
+    # that its private receipt can be parsed without accepting arbitrary log
+    # prefixes.  Keep that helper chatter captured while still failing on a
+    # non-zero exit or timeout.
+    run([str(kodi_send), "--action=" + action], check=True, timeout=10,
+        capture_output=True, text=True)
 
 
 def _send_path_proof(run, kodi_send: Path) -> None:
@@ -629,11 +635,13 @@ def main() -> None:
                "cohort": profile["cohort"], "changes": [str(item) for item in changes],
                "runtime_home": str(args.runtime_home), "generator": GENERATOR,
                "runtime_dependencies": dependencies}
-    print(json.dumps(summary, indent=2, sort_keys=True))
     if args.apply:
-        print(json.dumps(run_probe(args.storage_root, args.stage, profile, args.runtime_home,
-                                   reviewed_addons_root=args.reviewed_addons_root),
-                         indent=2, sort_keys=True))
+        summary["result"] = run_probe(args.storage_root, args.stage, profile, args.runtime_home,
+                                      reviewed_addons_root=args.reviewed_addons_root)
+    # Emit one JSON object for either plan-only or apply.  In particular, do
+    # not serialize a plan before the apply result: callers retain a single
+    # receipt even when kodi-send itself is chatty.
+    print(json.dumps(summary, indent=2, sort_keys=True))
 
 
 if __name__ == "__main__":

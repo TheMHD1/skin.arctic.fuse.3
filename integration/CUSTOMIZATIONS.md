@@ -85,8 +85,10 @@ their complete runtime gates pass:
 - [Dispatcharr0.33](server/dispatcharr-candidate-0.33/README.md): exact-source
   semantic patch rebase, all six mounted-module behaviors,63 focused and79
   broader isolated Django regressions pass. Native movie/episode HEAD retains
-  authorization without entering stream allocation; production
-  transport/authentication and client acceptance remain separate.
+  authorization without entering stream allocation. The exact patched image is
+  now deployed with stopped data/nginx rollback copied and verified externally;
+  channel/provider/profile continuity, actual UI and authorized metadata-only
+  HEAD pass. Client/provider playback acceptance remains separate.
 
 This inventory distinguishes reviewed source, isolated tests and actual
 deployment. A Git push is not delivery to either appliance or server.
