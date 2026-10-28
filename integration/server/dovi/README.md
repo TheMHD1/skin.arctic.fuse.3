@@ -37,6 +37,29 @@ with every path and endpoint isolated, not just a MODE environment variable.
 
 ## Repairs retained
 
+October 8 publication correction: native discovery HTTP409 `not-ready` defers
+for thirty seconds without consuming the eight-failure retry budget. The existing
+finite age expiry remains authoritative. Other HTTP failures retain their tapered
+retries and shared outage circuit. Busy scans therefore cannot strand new titles
+after only eight readiness checks. Two isolated tests cover budget preservation
+and finite expiry; this does not remove the resolver's scan/concurrency guard.
+
+When the private exact-item artwork publisher is installed, pass both
+`--artwork-enqueue /data/config/_dovi/artwork-publication/artwork-publication.py`
+and its private `--artwork-config` to the DOVI reconciler's existing service
+override. After either an exact existing-item refresh or successful native
+`DiscoverTitle` acceptance, the reconciler invokes the publisher with the
+resolved item ID and canonical title directory. The DOVI event is not accepted
+if this durable enqueue fails; the next bounded retry repairs it. The artwork
+worker, not this 202 response, verifies that indexing completed and that a
+Primary image is actually present.
+
+The worker and both reconciler entry points run in CT103; see the
+[October 28 deployment gates](ARTWORK-CT103-DEPLOYMENT-2026-10-28.md) for matching
+canonical-path checks, paired fast-import arguments, protected configuration
+and rollback. Enqueue exit failures, launch errors and timeouts retain the
+bounded DOVI publication intent rather than acknowledging undelivered work.
+
 - Failed/blank media probes remain unknown, rather than being mistaken for SDR
   and exposing a P7 original through the compatibility view.
 - Per-file probe cooldown and retry-state fingerprints prevent repeated costly

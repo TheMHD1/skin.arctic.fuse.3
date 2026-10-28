@@ -1,0 +1,110 @@
+diff --git a/Jellyfin.Plugin.JellyfinEnhanced/js/jellyseerr/ui/ui-results.js b/Jellyfin.Plugin.JellyfinEnhanced/js/jellyseerr/ui/ui-results.js
+index 1681627..16d1849 100644
+--- a/Jellyfin.Plugin.JellyfinEnhanced/js/jellyseerr/ui/ui-results.js
++++ b/Jellyfin.Plugin.JellyfinEnhanced/js/jellyseerr/ui/ui-results.js
+@@ -19,6 +19,7 @@
+     let pendingRepositionObserver = null;
+     let pendingRepositionTimeout = null;
++    let pendingRepositionFrame = null;
+@@ -214,12 +215,17 @@
+             clearTimeout(pendingRepositionTimeout);
+             pendingRepositionTimeout = null;
+         }
++        if (pendingRepositionFrame !== null) {
++            cancelAnimationFrame(pendingRepositionFrame);
++            pendingRepositionFrame = null;
++        }
+ 
+         searchPage.querySelectorAll('.jellyseerr-section').forEach(section => section.remove());
+ 
+         const sectionToInject = createJellyseerrSection(results, isJellyseerrOnlyMode, isJellyseerrActive, jellyseerrUserFound);
+ 
+         const primaryCardTypes = ['movie', 'series'];
++        const secondarySelector = '[data-habibi-catalogue="venom"]';
+@@ -230,8 +236,7 @@
+         function findLastPrimarySection() {
+             const allSections = Array.from(searchPage.querySelectorAll('.verticalSection:not(.jellyseerr-section)'));
+             for (let i = allSections.length - 1; i >= 0; i--) {
+-                const cardType = allSections[i].querySelector('[data-type]')?.dataset.type?.toLowerCase();
+-                if (cardType && primaryCardTypes.includes(cardType)) {
++                if (isPrimarySection(allSections[i])) {
+                     return allSections[i];
+                 }
+             }
+@@ -247,6 +252,7 @@
+         function isPrimarySection(el) {
+             if (!el || !el.classList?.contains('verticalSection')) return false;
++            if (el.matches(secondarySelector)) return false;
+             const cardType = el.querySelector('[data-type]')?.dataset.type?.toLowerCase();
+             return !!cardType && primaryCardTypes.includes(cardType);
+         }
+@@ -315,12 +321,22 @@
+ 
+             const lastPrimary = findLastPrimarySection();
+             if (lastPrimary) {
+-                if (!isPrimarySection(sectionToInject.previousElementSibling)) {
++                if (sectionToInject.previousElementSibling !== lastPrimary) {
+                     lastPrimary.after(sectionToInject);
+                 }
+                 return true;
+             }
+ 
++            // Provider-only results still belong below Discover. Only move our
++            // own section; React retains ownership of native result rows.
++            const firstSecondary = searchPage.querySelector(secondarySelector);
++            if (firstSecondary) {
++                if (sectionToInject.nextElementSibling !== firstSecondary) {
++                    firstSecondary.before(sectionToInject);
++                }
++                return true;
++            }
++
+             const resultsContainer = searchPage.querySelector('.searchResults, [class*="searchResults"], .padded-top.padded-bottom-page');
+             if (resultsContainer) {
+                 if (sectionToInject.parentElement !== resultsContainer || resultsContainer.lastElementChild !== sectionToInject) {
+@@ -334,20 +350,42 @@
+ 
+         positionSection();
+ 
++        function stopReposition() {
++            observer.disconnect();
++            if (pendingRepositionObserver === observer) {
++                pendingRepositionObserver = null;
++                if (pendingRepositionTimeout) clearTimeout(pendingRepositionTimeout);
++                pendingRepositionTimeout = null;
++                if (pendingRepositionFrame !== null) cancelAnimationFrame(pendingRepositionFrame);
++                pendingRepositionFrame = null;
++            }
++        }
++
+         const observer = new MutationObserver((records) => {
+-            if (!sectionToInject.isConnected) {
+-                observer.disconnect();
++            if (!sectionToInject.isConnected || !searchPage.isConnected) {
++                stopReposition();
+                 return;
+             }
+             // Only Jellyfin's own rendering can make the position wrong; the
+             // cards infinite scroll and the collection lookups add inside the
+-            // section change nothing about where it sits.
++            // section change nothing about where it sits. Coalesce a batch of
++            // React metadata mutations into one next-frame placement pass.
+             if (records.every(record => sectionToInject.contains(record.target))) return;
+-            positionSection();
++            if (pendingRepositionFrame !== null) return;
++            pendingRepositionFrame = requestAnimationFrame(() => {
++                pendingRepositionFrame = null;
++                if (!sectionToInject.isConnected || !searchPage.isConnected) {
++                    stopReposition();
++                    return;
++                }
++                positionSection();
++            });
+         });
+         observer.observe(searchPage, { childList: true, subtree: true });
+         pendingRepositionObserver = observer;
+-        pendingRepositionTimeout = setTimeout(() => observer.disconnect(), 5000);
++        // Owned-library searches can resolve after Seerr. New renders and
++        // detached pages cancel this observer; it never becomes permanent.
++        pendingRepositionTimeout = setTimeout(stopReposition, 30000);
+     };

@@ -38,7 +38,13 @@ def main():
                         print('Catalogue unchanged:',library['Name']);continue
                     if library.get('RefreshStatus') in ('Active','Queued'):
                         print('Refresh already pending:',library['Name']);continue
-                    api('/Items/'+library['ItemId']+'/Refresh?Recursive=true&MetadataRefreshMode=Default&ImageRefreshMode=Default',method='POST')
+                    # The catalogue's NFO files can contain transient upstream
+                    # logo URLs.  A recursive image fetch turns one catalogue
+                    # update into thousands of failed remote image downloads
+                    # and blocks the shared Jellyfin refresh queue.  Metadata
+                    # discovery is still required; reviewed catalogue artwork
+                    # has its own exact-item publisher.
+                    api('/Items/'+library['ItemId']+'/Refresh?Recursive=true&MetadataRefreshMode=Default&ImageRefreshMode=None',method='POST')
                     requested[kind]=generation
                     tmp=state_path.with_suffix('.tmp')
                     tmp.write_text(json.dumps(requested));os.replace(tmp,state_path)

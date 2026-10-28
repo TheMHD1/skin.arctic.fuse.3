@@ -2,6 +2,20 @@
 
 ## Current release authority
 
+October28 update candidates and actual acceptance gates are listed in
+[the current maintenance inventory](CUSTOMIZATIONS.md#october-28-maintenance-source-candidates-and-acceptance-boundary).
+Do not overwrite the deployed12.1/3.4.1/0.31 custom server components with
+stock newer images. The guarded next-episode player must remain an emitted,
+hashed Kodi payload member. Read its live-test state guard before any playback
+probe; never invent missing play history or use a household item with an
+unrestorable nullable baseline as a disposable fixture.
+
+Artwork publication is a CT103-local worker plus protected configuration,
+not a script path inside the Jellyfin container. Follow the paired fast-import
+and notify-only [deployment gates](server/dovi/ARTWORK-CT103-DEPLOYMENT-2026-10-28.md),
+verify canonical namespaces before activation, retain retry state, and never
+turn a queued refresh response into a claim that an image is already visible.
+
 Preserve/rebase the [native XC HEAD overlay](server/vod-xc-head/README.md) only
 against its exact reviewed Dispatcharr image/module. A pinned read-only module
 mount survives recreation but is not permission to carry old upstream source

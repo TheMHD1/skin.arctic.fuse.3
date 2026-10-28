@@ -1,0 +1,11 @@
+[Unit]
+Description=Retry exact newly-imported Jellyfin artwork
+
+[Timer]
+OnBootSec=2min
+OnUnitInactiveSec=30s
+AccuracySec=1s
+Unit=artwork-publication.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,13 @@
+diff --git a/LibraryTitleDiscoveryController.cs b/LibraryTitleDiscoveryController.cs
+index 0000000..0000000 100644
+--- a/LibraryTitleDiscoveryController.cs
++++ b/LibraryTitleDiscoveryController.cs
+@@ -25,7 +25,9 @@ public sealed class LibraryTitleDiscoveryController(
+     IProviderManager providerManager,
+     IFileSystem fileSystem) : ControllerBase
+ {
+     private static readonly SemaphoreSlim DiscoveryLock = new(1, 1);
+-    private static readonly Version SupportedControllerVersion = new(12, 1, 0, 0);
++    // This candidate is built and tested only against the pinned 12.4 server.
++    // Do not make this range-based: a future Jellyfin upgrade requires review.
++    private static readonly Version SupportedControllerVersion = new(12, 4, 0, 0);

@@ -33,6 +33,7 @@ class ReleaseTests(unittest.TestCase):
             else:shutil.copy2(source_path,target)
         home=self.root/'addons/plugin.video.habibi.resume';shutil.copy2(self.payload/'search.py',home/'search.py')
         http=self.root/'addons/plugin.video.jellyfin/jellyfin_kodi/jellyfin/http.py';http.parent.mkdir(parents=True);shutil.copy2(self.payload/'jellyfin/http.py',http)
+        player=self.root/'addons/plugin.video.jellyfin/jellyfin_kodi/player.py';shutil.copy2(self.payload/'jellyfin/player.py',player)
         venom=self.root/'addons/plugin.video.venom.tv'
         for name in installer.VENOM_OUT:shutil.copy2(self.payload/'venom'/name,venom/name)
         helper=self.root/'addons/plugin.video.jellyfin/jellyfin_kodi/helper';helper.mkdir(parents=True)
@@ -73,6 +74,12 @@ class ReleaseTests(unittest.TestCase):
         manifest=self.root/'addons/plugin.video.habibi.resume/verified-build.json';data=json.loads(manifest.read_text())
         data['files']['addons/plugin.video.habibi.resume/client.py']='0'*64;manifest.write_text(json.dumps(data))
         with self.assertRaisesRegex(RuntimeError,'manifest drift'):installer.build_changes(self.root,self.payload,self.profile)
+
+    def test_next_episode_handoff_is_a_guarded_payload_member(self):
+        player=self.root/'addons/plugin.video.jellyfin/jellyfin_kodi/player.py'
+        self.assertEqual(installer.sha(player.read_bytes()),installer.PLAYER_OUT)
+        player.write_bytes(player.read_bytes()+b'\n# unreviewed\n')
+        with self.assertRaisesRegex(RuntimeError,'whole-file'):installer.build_changes(self.root,self.payload,self.profile)
 
     def test_profile_rejects_extra_fields(self):
         path=Path(self.temp.name)/'profile.json';path.write_text(json.dumps({**self.profile,'token':'no'}))

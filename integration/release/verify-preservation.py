@@ -55,9 +55,17 @@ def write():
         raise SystemExit("Review and stage sources before recording them:\n" + "\n".join(pending))
     payload = {
         "schema": 1,
-        "release": "2026-10-12-am9-native-iptv-head-and-arabic-keyboard",
+        "release": "2026-10-28-media-maintenance-source-candidates",
         "meaning": "Reviewed source bytes, not a runtime credential/settings backup or proof of deployment",
         "status": {
+            "october28_next_episode_payload": "patched-player-now-emitted-and-hash-guarded-both-live-clients-already-match-ordinary-eof-next-accepted-stop-cancel-terminal-pending",
+            "october28_artwork_publication": "source-tested-exact-item-durable-ct103-queue-and-paired-dovi-forwarding-not-yet-deployed",
+            "october28_venom_image_pressure": "source-tested-metadata-only-catalogue-refresh-not-yet-deployed-original-poster-absence-cause-not-proven",
+            "october28_arctic3410": "candidate-semantic-rebase-and-private-staging-tests-pass-paired-live-installer-and-acceptance-pending",
+            "october28_jellyfin124": "candidate-patched-server-and-libraryexperience-blank-runtime-pass-full-web-plugins-compatibility-pending-production121-unchanged",
+            "october28_enhanced1213": "candidate-priority-and-bounded-watcher-source-patch-backend864-and-js5-tests-pass-runtime-pending",
+            "october28_seerr351": "candidate-guarded-overlay-clean-build-and-isolated-native-owner-ordinary-privacy-routes-pass-production-pending",
+            "october28_dispatcharr033": "candidate-semantic-source-rebase-and-isolated-django58-tests-pass-production-transport-pending",
             "local_kodi_r6": "deployed-and-accepted",
             "local_kodi_r7": "deployed-source-and-live-api-accepted",
             "remote_kodi_r6": "deployed-headless-https-and-category-api-accepted-physical-playback-pending",

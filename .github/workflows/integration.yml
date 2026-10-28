@@ -12,6 +12,10 @@ jobs:
           python-version: '3.12'
       - run: python integration/check.py
       - run: python integration/check-catchup.py
+      - run: python integration/release/arctic-3.4.10/fetch.py --output "$RUNNER_TEMP/arctic-3410-upstream"
+      - run: ARCTIC_FUSE_3410_SOURCE="$RUNNER_TEMP/arctic-3410-upstream" python integration/release/arctic-3.4.10/test_overlay.py
+      - run: python integration/release/arctic-3.4.10/test_dependencies.py
+      - run: ARCTIC_FUSE_3410_SOURCE="$RUNNER_TEMP/arctic-3410-upstream" python integration/release/arctic-3.4.10/test_stage.py
       - run: python integration/server/dovi/test_dovi_reconciler.py
       - run: python integration/server/dovi/test_fast_import.py
       - run: python integration/server/subtitle-publication/subtitle-publication-tests.py
@@ -21,6 +25,7 @@ jobs:
         with:
           node-version: '22'
       - run: node --test integration/server/seerr-request-privacy/test_privacy.js
+      - run: SEERR_PRIVACY_BUILDER=./candidate-3.5.1/build-overlay.js node --test integration/server/seerr-request-privacy/test_privacy.js
       - run: bash -n integration/server/dovi/dovi-process-queue-20260922.sh
       - run: python integration/release/verify-preservation.py
       - run: python integration/release/test-preservation.py

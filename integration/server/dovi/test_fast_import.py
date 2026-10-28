@@ -150,6 +150,42 @@ class FastTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             module.transform(changed)
 
+    def test_scoped_reconciler_forwards_paired_artwork_worker_without_guessing_path(self):
+        self.config.update({
+            'reconciler': '/private/dovi-library-view.py',
+            'scoped_state': '/private/import-probe.sqlite',
+            'notification_state': '/private/publication.sqlite',
+            'reconcile_lock': '/private/scope.lock',
+            'publication_lock': '/private/publication.lock',
+            'title_locks': '/private/title-locks',
+            'artwork_enqueue': '/data/config/_dovi/artwork-publication/artwork-publication.py',
+            'artwork_config': '/data/config/_dovi/artwork-publication/config.json',
+        })
+        seen = []
+
+        class Api:
+            def get(_, route):
+                self.assertEqual(route, 'series/7')
+                return {'id': 7, 'path': str(self.title), 'tvdbId': 78107}
+
+        def execute(command, **_):
+            seen.append(command)
+            return subprocess.CompletedProcess(command, 0, stdout='{}\n')
+
+        worker = fast.FastImports(self.config, self.db, {'sonarr': Api()}, execute=execute, clock=lambda: 1000)
+        self.put('artwork.event')
+        self.assertEqual(worker.run()['linked_jobs'], 1)
+        self.assertEqual(seen[0][0:2], ['/usr/bin/python3', self.config['reconciler']])
+        index = seen[0].index('--artwork-enqueue')
+        self.assertEqual(seen[0][index:index + 4], ['--artwork-enqueue', self.config['artwork_enqueue'],
+                                                      '--artwork-config', self.config['artwork_config']])
+
+    def test_artwork_worker_pair_must_be_complete_and_absolute(self):
+        with self.assertRaises(ValueError):
+            fast.artwork_arguments({'artwork_enqueue': '/private/artwork.py'})
+        with self.assertRaises(ValueError):
+            fast.artwork_arguments({'artwork_enqueue': 'relative.py', 'artwork_config': '/private/artwork.json'})
+
 
 if __name__ == '__main__':
     unittest.main()

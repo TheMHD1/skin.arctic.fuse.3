@@ -429,6 +429,39 @@ class TargetedRefreshTests(unittest.TestCase):
         self.assertNotIn("recursive", request.full_url.lower())
         self.assertEqual(request.data, b"")
 
+    def test_exact_target_enqueues_artwork_after_jellyfin_acceptance(self):
+        folder = "/fixture/shows/title"
+        executable, config = Path("/private/artwork.py"), Path("/private/artwork.json")
+        with patch.object(dovi, "refresh_target", return_value="fixture-id"), \
+             patch.object(dovi.urllib.request, "urlopen", return_value=self.response({}, status=204)), \
+             patch.object(dovi.subprocess, "run", return_value=subprocess.CompletedProcess([], 0)) as enqueue:
+            self.assertEqual(dovi.notify_jellyfin("http://fixture", "fixture", {folder}, artwork_enqueue=executable,
+                                                  artwork_config=config), 1)
+        self.assertEqual(enqueue.call_args.args[0], [str(executable), "enqueue", "--config", str(config),
+                                                       "--item-id", "fixture-id", "--title-root", folder])
+
+    def test_artwork_enqueue_failure_is_not_acknowledged(self):
+        folder = "/fixture/shows/title"
+        failures = {}
+        with patch.object(dovi, "refresh_target", return_value="fixture-id"), \
+             patch.object(dovi.urllib.request, "urlopen", return_value=self.response({}, status=204)), \
+             patch.object(dovi.subprocess, "run", return_value=subprocess.CompletedProcess([], 1)):
+            self.assertEqual(dovi.notify_jellyfin("http://fixture", "fixture", {folder}, failures=failures,
+                                                  artwork_enqueue=Path("/private/artwork.py"),
+                                                  artwork_config=Path("/private/artwork.json")), 0)
+        self.assertEqual(failures[folder], "artwork-enqueue")
+
+    def test_artwork_enqueue_timeout_is_a_bounded_publication_failure(self):
+        folder = "/fixture/shows/title"
+        failures = {}
+        with patch.object(dovi, "refresh_target", return_value="fixture-id"), \
+             patch.object(dovi.urllib.request, "urlopen", return_value=self.response({}, status=204)), \
+             patch.object(dovi.subprocess, "run", side_effect=subprocess.TimeoutExpired("fixture", 15)):
+            self.assertEqual(dovi.notify_jellyfin("http://fixture", "fixture", {folder}, failures=failures,
+                                                  artwork_enqueue=Path("/private/artwork.py"),
+                                                  artwork_config=Path("/private/artwork.json")), 0)
+        self.assertEqual(failures[folder], "artwork-enqueue")
+
     def test_new_title_never_falls_back_to_media_update(self):
         folder = "/fixture/shows/new-title"
         with patch.object(dovi, "refresh_target", return_value=None), patch.object(dovi.urllib.request, "urlopen", return_value=self.response({}, status=204)) as post:
@@ -478,6 +511,26 @@ class DurablePublicationTests(unittest.TestCase):
         self.assertEqual(self.db.execute('SELECT dead,attempts FROM notification_outbox').fetchone(), (1, 8))
         self.outbox.stage(str(self.title), 'changed', self.video)
         self.assertEqual(self.db.execute('SELECT dead,attempts FROM notification_outbox').fetchone(), (0, 0))
+
+    def test_busy_scan_defers_without_spending_failure_attempts(self):
+        self.outbox.stage(str(self.title), 'first', self.video)
+        revision, first_seen = self.db.execute('SELECT revision,first_seen FROM notification_outbox').fetchone()
+        for _ in range(12):
+            self.outbox.retry(str(self.title), revision, 0, first_seen, 'not-ready')
+        attempts, dead, due, error = self.db.execute('SELECT attempts,dead,next_attempt,error FROM notification_outbox').fetchone()
+        self.assertEqual((attempts, dead, error), (0, 0, 'not-ready'))
+        self.assertGreater(due, first_seen)
+        self.assertLess(due-first_seen, 31)
+
+    def test_busy_scan_still_expires_at_finite_age_bound(self):
+        self.outbox.stage(str(self.title), 'first', self.video)
+        revision, first_seen = self.db.execute('SELECT revision,first_seen FROM notification_outbox').fetchone()
+        self.outbox.retry(str(self.title), revision, 0, first_seen, 'not-ready')
+        self.outbox.failed.clear()
+        with patch.object(dovi.time, 'time', return_value=first_seen+dovi.MAX_NOTIFICATION_AGE+1), patch.object(dovi, 'notify_jellyfin') as send:
+            self.outbox.flush(True)
+            send.assert_not_called()
+        self.assertEqual(self.db.execute('SELECT dead,error FROM notification_outbox').fetchone(), (1, 'expired'))
 
     def test_queued_not_acknowledged_and_no_repost_during_verification(self):
         self.outbox.stage(str(self.title), 'first', self.video)

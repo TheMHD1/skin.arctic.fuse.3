@@ -23,6 +23,10 @@ INPUTS={
 OUTPUTS={
     'jellyfin/api.py':'60397069f460c2ba79a183ed8904c31ce811097ae8e4cd9cdabdc64b976be4d4',
     'jellyfin/http.py':'cc8223016710bbeaae86034428f8b35d0d7fa376a11886f017ed297530bd6005',
+    # This is the early Episode -> Up Next handoff.  It must travel with the
+    # other reviewed Jellyfin files; applying its patch only in the temporary
+    # build tree made a later device update able to drop the handoff silently.
+    'jellyfin/player.py':'50f70d706fa769a05e330514762c9eebad130964512ac10fef67edfda1428f3b',
     'jellyfin/playutils.py':'1a786411ee85f9fe68cf994563ce83c02f9911aa86696f54b68a264462f186c9',
     'native_originals.py':INPUTS['native_originals.py'][1],
     'search.py':INPUTS['search.py'][1],
@@ -73,6 +77,7 @@ def build(output,jellyfin_source=None):
         products={
             'jellyfin/api.py':(jf/'jellyfin_kodi/helper/api.py').read_bytes(),
             'jellyfin/http.py':(jf/'jellyfin_kodi/jellyfin/http.py').read_bytes(),
+            'jellyfin/player.py':(jf/'jellyfin_kodi/player.py').read_bytes(),
             'jellyfin/playutils.py':(jf/'jellyfin_kodi/helper/playutils.py').read_bytes(),
             **{name:pinned(name) for name in INPUTS},
         }

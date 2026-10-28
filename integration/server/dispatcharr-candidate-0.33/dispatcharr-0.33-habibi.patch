@@ -1,0 +1,615 @@
+diff --git a/apps/channels/tests/test_ts_proxy_keepalive.py b/apps/channels/tests/test_ts_proxy_keepalive.py
+index 2ab565b..9a01e92 100644
+--- a/apps/channels/tests/test_ts_proxy_keepalive.py
++++ b/apps/channels/tests/test_ts_proxy_keepalive.py
+@@ -39,10 +39,10 @@ class OwnerWorkerKeepaliveTests(TestCase):
+         gen.consecutive_empty = consecutive_empty
+         return gen
+ 
+-    def test_owner_healthy_returns_false(self):
+-        """Owner worker, healthy stream -> no keepalive."""
++    def test_owner_healthy_still_keeps_downstream_transport_alive(self):
++        """Keepalive is based on the downstream quiet state, not upstream health."""
+         gen = self._make_generator(healthy=True, at_buffer_head=True, consecutive_empty=10)
+-        self.assertFalse(gen._should_send_keepalive(gen.local_index))
++        self.assertTrue(gen._should_send_keepalive(gen.local_index))
+ 
+     def test_owner_unhealthy_at_head_returns_true(self):
+         """Owner worker, unhealthy stream, at buffer head -> send keepalive."""
+@@ -102,8 +102,8 @@ class NonOwnerWorkerKeepaliveTests(TestCase):
+         redis_client.get.return_value = last_data_value
+         return server
+ 
+-    def test_non_owner_fresh_data_returns_false(self):
+-        """Non-owner, last_data < 10s ago -> stream healthy -> no keepalive."""
++    def test_non_owner_fresh_data_keeps_downstream_transport_alive(self):
++        """A follower does not gate its downstream keepalive on Redis freshness."""
+         gen = self._make_generator()
+         fresh_ts = str(time.time() - 2.0).encode()
+         server = self._mock_proxy_server(fresh_ts)
+@@ -112,7 +112,7 @@ class NonOwnerWorkerKeepaliveTests(TestCase):
+             MockPS.get_instance.return_value = server
+             result = gen._should_send_keepalive(gen.local_index)
+ 
+-        self.assertFalse(result, "Fresh data should NOT trigger keepalive")
++        self.assertTrue(result)
+ 
+     def test_non_owner_stale_data_returns_true(self):
+         """Non-owner, last_data >= 10s ago -> stream unhealthy -> send keepalive."""
+@@ -149,8 +149,8 @@ class NonOwnerWorkerKeepaliveTests(TestCase):
+ 
+         self.assertTrue(result, "Missing last_data key should trigger keepalive")
+ 
+-    def test_non_owner_redis_client_none_returns_false(self):
+-        """Non-owner, redis_client is None (disconnected) -> conservative, no keepalive."""
++    def test_non_owner_redis_client_none_still_keeps_transport_alive(self):
++        """Temporary Redis loss must not make an attached DVR client time out."""
+         gen = self._make_generator()
+         server = MagicMock()
+         server.redis_client = None
+@@ -159,17 +159,17 @@ class NonOwnerWorkerKeepaliveTests(TestCase):
+             MockPS.get_instance.return_value = server
+             result = gen._should_send_keepalive(gen.local_index)
+ 
+-        self.assertFalse(result, "No redis_client -> conservative, no keepalive")
++        self.assertTrue(result)
+ 
+-    def test_non_owner_redis_exception_returns_false(self):
+-        """Non-owner, Redis raises an exception -> conservative, no keepalive."""
++    def test_non_owner_redis_exception_still_keeps_transport_alive(self):
++        """Temporary Redis errors must not make an attached DVR client time out."""
+         gen = self._make_generator()
+ 
+         with patch("apps.proxy.live_proxy.output.ts.generator.ProxyServer") as MockPS:
+             MockPS.get_instance.side_effect = Exception("Redis error")
+             result = gen._should_send_keepalive(gen.local_index)
+ 
+-        self.assertFalse(result, "Redis error -> conservative, no keepalive")
++        self.assertTrue(result)
+ 
+     def test_non_owner_not_at_buffer_head_returns_false(self):
+         """Non-owner, NOT at buffer head -> no keepalive regardless of Redis."""
+diff --git a/apps/m3u/credentials.py b/apps/m3u/credentials.py
+index a89479e..d686e9a 100644
+--- a/apps/m3u/credentials.py
++++ b/apps/m3u/credentials.py
+@@ -83,7 +83,8 @@ def get_transformed_credentials(account, profile=None) -> TransformedCredentials
+     clean_server_url = base_url.rstrip("/")
+     # Synthetic XC live URL used only to apply search/replace and extract login.
+     complete_url = f"{clean_server_url}/live/{base_username}/{base_password}/1234.ts"
+-    logger.debug("Built complete URL for credential transform: %s", complete_url)
++    # This synthetic URL contains provider credentials. Never put it in logs.
++    logger.debug("Built synthetic URL for credential transform")
+ 
+     has_patterns = bool(
+         profile and profile.search_pattern and profile.replace_pattern
+@@ -123,20 +124,17 @@ def get_transformed_credentials(account, profile=None) -> TransformedCredentials
+         )
+         return None, None, None
+ 
+-    logger.info(
+-        "Transformed complete URL: %s -> %s",
+-        complete_url,
+-        transformed_complete_url,
+-    )
++    logger.info("Applied credential transform for profile '%s'", profile_label)
+ 
+     parsed_url = urllib.parse.urlparse(transformed_complete_url)
+     path_parts = [part for part in parsed_url.path.split("/") if part]
+ 
+-    if len(path_parts) < 4 or path_parts[-1] != "1234.ts":
++    # A transport-only rewrite (.ts -> .m3u8) preserves the synthetic
++    # identity and credentials. The real stream URL is rebuilt separately.
++    if len(path_parts) < 4 or path_parts[-1] not in ("1234.ts", "1234.m3u8"):
+         logger.warning(
+-            "Could not extract credentials from transformed URL for profile '%s': %s",
++            "Could not extract credentials from transformed URL for profile '%s'",
+             profile_label,
+-            transformed_complete_url,
+         )
+         return None, None, None
+ 
+diff --git a/apps/m3u/tests/test_credential_transform.py b/apps/m3u/tests/test_credential_transform.py
+index 82cbd06..7f94b44 100644
+--- a/apps/m3u/tests/test_credential_transform.py
++++ b/apps/m3u/tests/test_credential_transform.py
+@@ -65,6 +65,14 @@ class GetTransformedCredentialsFailClosedTests(TestCase):
+         self.assertEqual(username, "baseuser")
+         self.assertEqual(password, "basepass")
+ 
++    def test_hls_transport_rewrite_preserves_credential_identity(self):
++        self.default.search_pattern = r"\.ts$"
++        self.default.replace_pattern = ".m3u8"
++        self.assertEqual(
++            get_transformed_credentials(self.account, self.default),
++            ("http://provider.example", "baseuser", "basepass"),
++        )
++
+     def test_matching_literal_pattern_rewrites_credentials(self):
+         profile = M3UAccountProfile.objects.create(
+             m3u_account=self.account,
+@@ -141,6 +149,21 @@ class ResolveLiveStreamUrlFailClosedTests(TestCase):
+             "http://provider.example/live/user1/user1pass/441305.ts",
+         )
+ 
++    def test_hls_transport_uses_current_login_and_real_stream_id(self):
++        profile = M3UAccountProfile.objects.create(
++            m3u_account=self.account,
++            name="hls",
++            max_streams=1,
++            is_active=True,
++            search_pattern=r"\.ts$",
++            replace_pattern=".m3u8",
++        )
++        self.stream.url = "http://old.example/live/old/old/441305.ts"
++        self.assertEqual(
++            _resolve_live_stream_url(self.stream, self.account, profile),
++            "http://provider.example/live/baseuser/basepass/441305.m3u8",
++        )
++
+     def test_xc_live_returns_none_when_transform_fails(self):
+         profile = M3UAccountProfile.objects.create(
+             m3u_account=self.account,
+@@ -156,6 +179,17 @@ class ResolveLiveStreamUrlFailClosedTests(TestCase):
+ 
+ 
+ class TransformUrlFailClosedTests(SimpleTestCase):
++    def test_transform_does_not_log_url_or_replacement(self):
++        with self.assertLogs("live_proxy.url_utils", level="DEBUG") as logs:
++            transform_url(
++                "http://provider.example/live/baseuser/basepass/1.ts",
++                "baseuser/basepass",
++                "otheruser/otherpass",
++            )
++        output = "\n".join(logs.output)
++        self.assertNotIn("baseuser", output)
++        self.assertNotIn("otherpass", output)
++
+     def test_no_patterns_returns_original(self):
+         url = "http://example.com/live/a/b/1.ts"
+         self.assertEqual(transform_url(url, "", ""), url)
+diff --git a/apps/proxy/live_proxy/output/ts/generator.py b/apps/proxy/live_proxy/output/ts/generator.py
+index e4a882a..ec4c9e0 100644
+--- a/apps/proxy/live_proxy/output/ts/generator.py
++++ b/apps/proxy/live_proxy/output/ts/generator.py
+@@ -375,7 +375,10 @@ class StreamGenerator:
+                         )
+                         break
+ 
+-                    keepalive_packet = create_ts_packet('keepalive')
++                    # ISO/IEC 13818-1 null PID, payload-only AFC. The legacy
++                    # helper's synthetic keepalive can use reserved AFC=00,
++                    # which some downstream clients reject.
++                    keepalive_packet = b"\x47\x1f\xff\x10" + b"\xff" * 184
+                     logger.debug(f"[{self.client_id}] Sending keepalive packet while waiting at buffer head")
+                     yield keepalive_packet
+                     self.bytes_sent += len(keepalive_packet)
+@@ -531,41 +534,13 @@ class StreamGenerator:
+                 raise  # Re-raise to exit the generator
+ 
+     def _should_send_keepalive(self, local_index):
+-        """Determine if a keepalive packet should be sent."""
+-        # Check if we're caught up to buffer head
+-        at_buffer_head = local_index >= self.buffer.index
+-        if not at_buffer_head or self.consecutive_empty < 5:
+-            return False
++        """Keep an attached downstream transport alive at a quiet buffer head.
+ 
+-        if self.stream_manager is not None:
+-            # Owner worker: use the in-memory health flag directly.
+-            return not self.stream_manager.healthy
+-        else:
+-            # Non-owner worker: stream_manager only exists in the owner process.
+-            # Approximate health from the Redis last_data timestamp; if stale
+-            # beyond connection_timeout, send keepalives to prevent DVR timeout.
+-            # Throttled: only re-query Redis every _health_check_interval seconds
+-            # to avoid a Redis GET on every loop iteration during sustained waits.
+-            now = time.time()
+-            if now - self._last_health_check_time < self._health_check_interval:
+-                return self._last_health_check_result
+-            try:
+-                proxy_server = self.proxy_server or ProxyServer.get_instance()
+-                if proxy_server.redis_client:
+-                    raw = proxy_server.redis_client.get(RedisKeys.last_data(self.channel_id))
+-                    if raw:
+-                        age = now - float(raw)
+-                        timeout_threshold = ConfigHelper.connection_timeout()
+-                        result = age >= timeout_threshold
+-                    else:
+-                        # No timestamp in Redis → key missing or expired → unhealthy
+-                        result = True
+-                    self._last_health_check_time = now
+-                    self._last_health_check_result = result
+-                    return result
+-            except Exception:
+-                pass
+-            return False
++        Real media always wins in the caller. Global upstream health cannot
++        prove that a follower's TCP client is still receiving data, so this is
++        intentionally independent of owner/follower Redis state.
++        """
++        return local_index >= self.buffer.index and self.consecutive_empty >= 5
+ 
+     def _is_ghost_client(self, local_index):
+         """Check if this appears to be a ghost client (stuck but buffer advancing)."""
+diff --git a/apps/proxy/live_proxy/server.py b/apps/proxy/live_proxy/server.py
+index 576d275..5a74143 100644
+--- a/apps/proxy/live_proxy/server.py
++++ b/apps/proxy/live_proxy/server.py
+@@ -446,22 +446,24 @@ class ProxyServer:
+     def try_acquire_ownership(self, channel_id, ttl=30):
+         """Try to become the owner of this channel using proper locking"""
+         if not self.redis_client:
+-            return True  # If no Redis, always become owner
++            # Provider capacity and ownership are shared state. Starting a
++            # second upstream without a lock can overrun the provider limit.
++            return False
+ 
+         try:
+             # Create a lock key with proper namespace
+             lock_key = RedisKeys.channel_owner(channel_id)
+ 
+             # Use atomic SET NX EX for locking with error handling
+-            # None means Redis failed; a held lock gives False.
++            # A held lock yields False. A Redis execution failure yields None
++            # and must fail closed rather than granting a new owner.
+             acquired = self._execute_redis_command(
+                 lambda: self.redis_client.set(lock_key, self.worker_id, nx=True, ex=ttl)
+-                or False
+             )
+ 
+-            if acquired is None:  # Redis command failed
+-                logger.warning("Redis command failed during ownership acquisition - assuming ownership")
+-                return True
++            if acquired is None:
++                logger.warning("Redis unavailable during ownership acquisition; denying new owner")
++                return False
+ 
+             if acquired:
+                 logger.info(f"Worker {self.worker_id} acquired ownership of channel {channel_id}")
+diff --git a/apps/proxy/live_proxy/tests/test_xc_hls.py b/apps/proxy/live_proxy/tests/test_xc_hls.py
+index ef19a04..e8ca6c2 100644
+--- a/apps/proxy/live_proxy/tests/test_xc_hls.py
++++ b/apps/proxy/live_proxy/tests/test_xc_hls.py
+@@ -231,6 +231,26 @@ class StreamXcHlsRedirectTests(SimpleTestCase):
+         self.assertEqual(kwargs["force_output_format"], "mpegts")
+         self.assertFalse(kwargs["check_network"])
+ 
++    def test_head_passes_auth_but_never_starts_stream(self):
++        user = self._user()
++        channel = self._channel()
++        request = self.factory.head("/live/alice/secret/5.ts")
++
++        with patch("apps.proxy.live_proxy.views.close_old_connections"), patch(
++            "apps.proxy.live_proxy.views.stream_ts"
++        ) as mock_stream_ts, patch(
++            "apps.proxy.live_proxy.views._resolve_output_format", return_value="mpegts"
++        ), patch(
++            "apps.proxy.live_proxy.views._xc_live_channel_or_error",
++            return_value=(user, channel, None),
++        ):
++            response = stream_xc(request, "alice", "secret", "5.ts")
++
++        self.assertEqual(response.status_code, 200)
++        self.assertEqual(response["Content-Type"], "video/mp2t")
++        self.assertEqual(response["Cache-Control"], "no-cache")
++        mock_stream_ts.assert_not_called()
++
+ 
+ class XCLiveAuthHelperTests(SimpleTestCase):
+     def setUp(self):
+diff --git a/apps/proxy/live_proxy/url_utils.py b/apps/proxy/live_proxy/url_utils.py
+index 9742ee1..582d3a1 100644
+--- a/apps/proxy/live_proxy/url_utils.py
++++ b/apps/proxy/live_proxy/url_utils.py
+@@ -35,17 +35,15 @@ def _resolve_live_stream_url(stream, m3u_account, m3u_profile):
+         m3u_account.account_type == M3UAccount.Types.XC
+         and stream.stream_id
+     ):
+-        from apps.m3u.credentials import (
+-            build_xc_playback_url,
+-            get_transformed_credentials,
+-        )
++        from apps.m3u.credentials import build_xc_playback_url
++        from core.xtream_codes import normalize_server_url
+ 
+-        server_url, username, password = get_transformed_credentials(
+-            m3u_account, m3u_profile
+-        )
++        server_url = normalize_server_url(m3u_account.server_url)
++        username = m3u_account.username
++        password = m3u_account.password
+         if not (server_url and username and password):
+             return None
+-        return build_xc_playback_url(
++        current_url = build_xc_playback_url(
+             server_url,
+             username,
+             password,
+@@ -53,6 +51,14 @@ def _resolve_live_stream_url(stream, m3u_account, m3u_profile):
+             stream_id=str(stream.stream_id),
+             extension="ts",
+         )
++        # Transform once against current account credentials and the real ID.
++        # This preserves provider transport/path rewrites and never falls back
++        # to a stale synced stream.url when a transform fails.
++        return transform_url(
++            current_url,
++            m3u_profile.search_pattern,
++            m3u_profile.replace_pattern,
++        )
+ 
+     return transform_url(
+         stream.url or "",
+@@ -368,16 +374,14 @@ def transform_url(
+         return input_url
+ 
+     try:
+-        logger.debug("Executing URL pattern replacement:")
+-        logger.debug(f"  base URL: {input_url}")
+-        logger.debug(f"  search: {search_pattern}")
++        # URLs, patterns, and replacements can all contain provider login
++        # material. Keep transform observability without writing secrets.
++        logger.debug("Executing URL pattern replacement")
+ 
+         # Convert JS-style backreferences in replace pattern: $<name> -> \g<name>, $1 -> \1
+         # Fixed conversion patterns only; timeout is reserved for the user search.
+         safe_replace_pattern = regex.sub(r'\$<([^>]+)>', r'\\g<\1>', replace_pattern)
+         safe_replace_pattern = regex.sub(r'\$(\d+)', r'\\\1', safe_replace_pattern)
+-        logger.debug(f"  replace: {replace_pattern}")
+-        logger.debug(f"  safe replace: {safe_replace_pattern}")
+ 
+         # Apply the transformation (regex module accepts JS-style (?<name>...) natively).
+         # timeout bounds ReDoS from nested quantifiers in search_pattern.
+@@ -388,14 +392,10 @@ def transform_url(
+             timeout=URL_TRANSFORM_REGEX_TIMEOUT,
+         )
+         if match_count == 0:
+-            logger.warning(
+-                "URL pattern %r did not match: %s",
+-                search_pattern,
+-                input_url,
+-            )
++            logger.warning("URL transform did not match")
+             return None
+ 
+-        logger.info(f"Generated stream url: {stream_url}")
++        logger.info("Generated stream URL from configured transform")
+         return stream_url
+     except Exception as e:
+         logger.error("Error transforming URL: %s", e)
+diff --git a/apps/proxy/live_proxy/views.py b/apps/proxy/live_proxy/views.py
+index 2b353d4..98c7621 100644
+--- a/apps/proxy/live_proxy/views.py
++++ b/apps/proxy/live_proxy/views.py
+@@ -50,6 +50,27 @@ logger = get_logger()
+ _LOCAL_SETUP_WAIT_POLL_SECONDS = 0.05
+ 
+ 
++def _wait_for_stream_capacity(fetch, shutdown_delay, *, clock=time.monotonic, sleep=gevent.sleep):
++    """Bounded admission only; never release another viewer's provider slot."""
++    budget = max(3.0, min(15.0, float(shutdown_delay) + 2.0))
++    deadline = clock() + budget
++    interval = 0.1
++    attempts = 0
++    while True:
++        attempts += 1
++        result = fetch()
++        if result[0] is not None:
++            return result, attempts
++        reason = result[5]
++        if not reason or "maximum connection limits" not in reason:
++            return result, attempts
++        remaining = deadline - clock()
++        if remaining <= 0:
++            return result, attempts
++        sleep(min(interval, remaining))
++        interval += 0.025
++
++
+ def _is_skip_redirect_requested(request, user, client_id):
+     """True only for skip_redirect=true.
+ 
+@@ -110,95 +131,29 @@ def _obtain_stream_with_retries(
+         (stream_url, stream_user_agent, transcode, profile_value, slot_reserved,
+          error_reason, resolved_stream_id, attempt, wait_start_time)
+     """
+-    retry_timeout = 3
+-    retry_interval = 0.1
+-    wait_start_time = time.time()
+-
+-    stream_url = None
+-    stream_user_agent = None
+-    transcode = False
+-    profile_value = None
+-    slot_reserved = False
+-    error_reason = None
+-    resolved_stream_id = None
+-    attempt = 0
+-    should_retry = True
+-
+-    while should_retry and time.time() - wait_start_time < retry_timeout:
+-        attempt += 1
+-        (
+-            stream_url,
+-            stream_user_agent,
+-            transcode,
+-            profile_value,
+-            slot_reserved,
+-            error_reason,
+-            resolved_stream_id,
+-        ) = generate_stream_url(
++    wait_start_time = time.monotonic()
++    result, attempt = _wait_for_stream_capacity(
++        lambda: generate_stream_url(
+             channel_id,
+             user,
+             allowed_m3u_profiles,
+             override_stream_profile_id=override_stream_profile_id,
+-        )
+-
+-        if stream_url is not None:
+-            logger.info(
+-                f"[{client_id}] Successfully obtained stream for channel "
+-                f"{channel_id} after {attempt} attempts"
+-            )
+-            break
+-
+-        if attempt == 1:
+-            if error_reason and "maximum connection limits" not in error_reason:
+-                logger.warning(
+-                    f"[{client_id}] Can't retry - error not related to "
+-                    f"connection limits: {error_reason}"
+-                )
+-                should_retry = False
+-                break
+-
+-        elapsed_time = time.time() - wait_start_time
+-        remaining_time = retry_timeout - elapsed_time
+-        if remaining_time <= retry_interval:
+-            logger.info(
+-                f"[{client_id}] Insufficient time ({remaining_time:.1f}s) for "
+-                f"another sleep cycle, will make one final attempt"
+-            )
+-            break
+-
+-        logger.info(
+-            f"[{client_id}] Waiting {retry_interval*1000:.0f}ms for a connection "
+-            f"to become available (attempt {attempt}, {remaining_time:.1f}s remaining)"
+-        )
+-        gevent.sleep(retry_interval)
+-        retry_interval += 0.025
+-
+-    if (
+-        stream_url is None
+-        and should_retry
+-        and time.time() - wait_start_time < retry_timeout
+-    ):
+-        attempt += 1
+-        logger.info(f"[{client_id}] Making final attempt {attempt} at timeout boundary")
+-        (
+-            stream_url,
+-            stream_user_agent,
+-            transcode,
+-            profile_value,
+-            slot_reserved,
+-            error_reason,
+-            resolved_stream_id,
+-        ) = generate_stream_url(
+-            channel_id,
+-            user,
+-            allowed_m3u_profiles,
+-            override_stream_profile_id=override_stream_profile_id,
+-        )
+-        if stream_url is not None:
+-            logger.info(
+-                f"[{client_id}] Successfully obtained stream on final attempt "
+-                f"for channel {channel_id}"
+-            )
++        ),
++        CoreSettings.get_proxy_settings().get("channel_shutdown_delay", 0),
++    )
++    (
++        stream_url,
++        stream_user_agent,
++        transcode,
++        profile_value,
++        slot_reserved,
++        error_reason,
++        resolved_stream_id,
++    ) = result
++    logger.info(
++        f"[{client_id}] Stream admission finished after {attempt} attempts "
++        f"in {time.monotonic() - wait_start_time:.3f}s"
++    )
+ 
+     return (
+         stream_url,
+@@ -1106,7 +1061,7 @@ def _xc_live_channel_or_error(request, username, password, channel_id):
+     return user, channel, None
+ 
+ 
+-@api_view(["GET"])
++@api_view(["GET", "HEAD"])
+ @permission_classes([AllowAny])
+ def stream_xc(request, username, password, channel_id):
+     try:
+@@ -1127,6 +1082,16 @@ def stream_xc(request, username, password, channel_id):
+             force_format = 'hls'
+         else:
+             force_format = None
++        # Kodi probes a live URL before releasing the previous input. It must
++        # pass the same auth/channel gates but not allocate a provider slot or
++        # register a streaming client.
++        if request.method == "HEAD":
++            output_format = _resolve_output_format(user, force_format, request._request)
++            response = HttpResponse(content_type=(
++                "video/mp4" if output_format == "fmp4" else "video/mp2t"
++            ))
++            response["Cache-Control"] = "no-cache"
++            return response
+         return stream_ts(
+             request._request,
+             str(channel.uuid),
+diff --git a/tmp/dispatcharr-0.33-candidate/apps/proxy/live_proxy/tests/test_habibi_033_regressions.py b/apps/proxy/live_proxy/tests/test_habibi_033_regressions.py
+new file mode 100644
+index 0000000..ae8db49
+--- /dev/null
++++ b/apps/proxy/live_proxy/tests/test_habibi_033_regressions.py
+@@ -0,0 +1,56 @@
++"""Regression tests for the Dispatcharr 0.33 local compatibility port.
++
++These tests cover local safety behavior only: bounded admission, provider
++ownership, and downstream keepalives. They contain no provider configuration.
++"""
++
++from unittest.mock import MagicMock
++
++from django.test import SimpleTestCase
++
++from apps.proxy.live_proxy.server import ProxyServer
++from apps.proxy.live_proxy.views import _wait_for_stream_capacity
++
++
++def _result(url=None, reason="maximum connection limits"):
++    return (url, None, False, None, False, reason, None)
++
++
++class OwnershipFailClosedTests(SimpleTestCase):
++    def test_unavailable_redis_cannot_create_a_new_owner(self):
++        server = ProxyServer.__new__(ProxyServer)
++        server.redis_client = None
++        self.assertFalse(server.try_acquire_ownership("channel"))
++
++    def test_redis_command_failure_cannot_create_a_new_owner(self):
++        server = ProxyServer.__new__(ProxyServer)
++        server.redis_client = MagicMock()
++        server.worker_id = "worker"
++        server._execute_redis_command = MagicMock(return_value=None)
++        self.assertFalse(server.try_acquire_ownership("channel"))
++
++
++class AdmissionBudgetTests(SimpleTestCase):
++    def test_capacity_retries_until_a_slot_becomes_available(self):
++        calls = []
++        times = iter((0.0, 0.0, 0.1))
++
++        def fetch():
++            calls.append(None)
++            return _result() if len(calls) == 1 else _result("https://provider/live")
++
++        sleeps = []
++        result, attempts = _wait_for_stream_capacity(
++            fetch, 0, clock=lambda: next(times), sleep=sleeps.append
++        )
++        self.assertEqual(attempts, 2)
++        self.assertEqual(result[0], "https://provider/live")
++        self.assertEqual(sleeps, [0.1])
++
++    def test_non_capacity_failure_is_not_retried(self):
++        result, attempts = _wait_for_stream_capacity(
++            lambda: _result(reason="bad credentials"), 30,
++            clock=lambda: 0.0, sleep=lambda _: self.fail("must not sleep"),
++        )
++        self.assertEqual(attempts, 1)
++        self.assertEqual(result[5], "bad credentials")

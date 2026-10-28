@@ -7,7 +7,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { spawnSync } = require('node:child_process');
 const { filterRequests, requestPrivacy } = require('./requestPrivacy');
-const { patchIndex, patchRequest, build, PINS } = require('./build-overlay');
+const { patchIndex, patchRequest, build, PINS, VERSION } = require(process.env.SEERR_PRIVACY_BUILDER || './build-overlay');
 const Permission = { ADMIN: 2, MANAGE_REQUESTS: 16, REQUEST_VIEW: 16384 };
 const request = (id, userId) => ({ id, type: 'tv', is4k: false,
   requestedBy: { id: userId, displayName: `Fixture ${userId}` }, seasons: [{ seasonNumber: 2 }],
@@ -109,7 +109,7 @@ test('builder refuses wrong version and altered reviewed input before creating o
     fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: 'seerr', version: '9.0.0' }));
     const output = path.join(root, 'stage');
     assert.throws(() => build(root, output), /Unsupported Seerr/);
-    fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: 'seerr', version: '3.4.1' }));
+    fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: 'seerr', version: VERSION }));
     fs.mkdirSync(path.join(root, 'dist/routes'), { recursive: true });
     fs.writeFileSync(path.join(root, 'dist/routes/index.js'), 'drift');
     assert.throws(() => build(root, output), /Unreviewed source drift/);

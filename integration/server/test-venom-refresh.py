@@ -25,7 +25,11 @@ class Tests(unittest.TestCase):
     def test_unchanged_export_does_not_repeat_scan(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp)
-            self.assertEqual(len(self.run_helper(root)),1)
+            first=self.run_helper(root)
+            self.assertEqual(len(first),1)
+            self.assertIn('MetadataRefreshMode=Default',first[0])
+            self.assertIn('ImageRefreshMode=None',first[0])
+            self.assertNotIn('ImageRefreshMode=Default',first[0])
             self.assertEqual(self.run_helper(root),[])
             (root/'refresh-dirty-movies').write_text('new-generation')
             self.assertEqual(len(self.run_helper(root)),1)

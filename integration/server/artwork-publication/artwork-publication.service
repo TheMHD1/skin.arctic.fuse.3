@@ -1,0 +1,14 @@
+[Unit]
+Description=Verify exact newly-imported Jellyfin artwork
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+UMask=0077
+ExecStart=/usr/bin/python3 /data/config/_dovi/artwork-publication/artwork-publication.py work --config /data/config/_dovi/artwork-publication/config.json
+Nice=15
+IOSchedulingClass=idle
+TimeoutStartSec=5min
+MemoryMax=256M
+CPUQuota=25%

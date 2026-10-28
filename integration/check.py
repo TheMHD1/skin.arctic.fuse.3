@@ -52,6 +52,9 @@ with tempfile.TemporaryDirectory(prefix='arctic-integration-test-') as tmp:
 for name in SOURCE_LAYOUT_TESTS:run(sys.executable,str(HERE/name),cwd=ROOT)
 run(sys.executable,str(HERE/'release/kodi/test_rpc_stream.py'))
 run(sys.executable,str(HERE/'server/test-venom-series-revisions.py'))
+run(sys.executable,str(HERE/'server/artwork-publication/test_artwork_publication.py'))
+for name in ('test_contract.py','test_upnext_policy.py','test_state_guard.py'):
+    run(sys.executable,str(HERE/'release/next-episode'/name))
 run(sys.executable,str(HERE/'check-venom-package.py'))
 run(sys.executable,str(HERE/'device-policy/remote-startup/test_policy.py'))
 run(sys.executable,str(HERE/'device-policy/wifi-5ghz/test_policy.py'))

@@ -464,7 +464,8 @@ def refresh_target(url: str, token: str, folder: str,
 
 def notify_jellyfin(url: str, token: str, folders: set[str], targets: dict[str, str | None] | None = None,
                    catalogs: dict[str, list[dict]] | None = None, failures: dict | None = None,
-                   new_title_bridge: bool = False, identities: dict | None = None) -> int:
+                   new_title_bridge: bool = False, identities: dict | None = None,
+                   artwork_enqueue: Path | None = None, artwork_config: Path | None = None) -> int:
     sent = 0
     targets = targets if targets is not None else {}
     catalogs = catalogs if catalogs is not None else {}
@@ -509,6 +510,22 @@ def notify_jellyfin(url: str, token: str, folders: set[str], targets: dict[str, 
                             failures[folder] = "invalid-bridge-acceptance"
                             continue
                         targets[folder] = item_id
+                    # Queue artwork after the exact, native ID is accepted. A
+                    # 202 discovery response is not artwork proof: the separate
+                    # worker verifies indexing and a missing Primary itself.
+                    # Existing targets are safe too: refresh_target requires
+                    # one exact local title directory, never a display-name hit.
+                    if artwork_enqueue and artwork_config:
+                        command = [str(artwork_enqueue), "enqueue", "--config", str(artwork_config),
+                                   "--item-id", str(targets[folder]), "--title-root", folder]
+                        try:
+                            completed = subprocess.run(command, check=False, capture_output=True, text=True, timeout=15)
+                        except (OSError, subprocess.SubprocessError):
+                            failures[folder] = "artwork-enqueue"
+                            continue
+                        if completed.returncode:
+                            failures[folder] = "artwork-enqueue"
+                            continue
                     sent += 1
                 else:
                     failures[folder] = "unexpected-http-status"
@@ -556,11 +573,13 @@ class NotificationOutbox:
 
     def __init__(self, db: sqlite3.Connection, url: str, token: str | None, enabled: bool,
                  media_root: Path = Path("/data/media"), title_locks: Path | None = None,
-                 publish_lock: Path | None = None, new_title_bridge: bool = False):
+                 publish_lock: Path | None = None, new_title_bridge: bool = False,
+                 artwork_enqueue: Path | None = None, artwork_config: Path | None = None):
         self.db, self.url, self.token, self.enabled = db, url, token, enabled
         self.media_root = media_root
         self.title_locks, self.publish_lock = title_locks, publish_lock
         self.new_title_bridge = new_title_bridge
+        self.artwork_enqueue, self.artwork_config = artwork_enqueue, artwork_config
         self.targets: dict[str, str | None] = {}
         self.catalogs: dict[str, list[dict]] = {}
         self.failed: set[str] = set()
@@ -711,7 +730,8 @@ class NotificationOutbox:
             identity = self.db.execute("SELECT provider_ids FROM notification_identity WHERE folder=?", (folder,)).fetchone()
             identities = {folder: json.loads(identity[0])} if identity else {}
             if notify_jellyfin(self.url, self.token, {folder}, self.targets, self.catalogs,
-                              failures, self.new_title_bridge, identities) == 1:
+                              failures, self.new_title_bridge, identities,
+                              self.artwork_enqueue, self.artwork_config) == 1:
                 self.db.execute("UPDATE notification_outbox SET phase='await_index',target_id=?,attempts=?,next_attempt=?,error='' WHERE folder=? AND revision=?",
                                 (self.targets.get(folder), attempts + 1, time.time() + 30, folder, revision))
                 self.db.execute("INSERT INTO notification_receipts VALUES(?,?) ON CONFLICT(folder) DO UPDATE SET sent_at=excluded.sent_at",
@@ -756,12 +776,15 @@ class NotificationOutbox:
 
     def retry(self, folder, revision, attempts, first_seen, error):
         self.failed.add(folder)
-        local = error in {"bridge-unconfigured", "library-mapping-unknown"}
+        # A 409 means the native resolver is busy (usually a catalogue scan),
+        # not that discovery failed. Keep the finite 48-hour age bound, but
+        # don't exhaust eight failure attempts simply waiting for it to yield.
+        local = error in {"bridge-unconfigured", "library-mapping-unknown", "not-ready"}
         attempts += 0 if local else 1
         if attempts >= 8:
             self.deadletter(folder, revision, attempts, first_seen, error)
         else:
-            delay = 300 if local else RETRY_DELAYS[max(0, attempts - 1)] * random.uniform(0.9, 1.1)
+            delay = 30 if error == "not-ready" else 300 if local else RETRY_DELAYS[max(0, attempts - 1)] * random.uniform(0.9, 1.1)
             self.db.execute("UPDATE notification_outbox SET attempts=?,next_attempt=?,error=? WHERE folder=? AND revision=?",
                             (attempts, time.time() + delay, error, folder, revision))
             self.db.commit()
@@ -850,6 +873,10 @@ def main() -> None:
     parser.add_argument("--scope-file", action="append", type=Path, default=[])
     parser.add_argument("--provider-id", action="append", default=[])
     parser.add_argument("--new-title-bridge", action="store_true")
+    parser.add_argument("--artwork-enqueue", type=Path,
+                        help="private exact-item artwork worker executable; requires --artwork-config")
+    parser.add_argument("--artwork-config", type=Path,
+                        help="private artwork worker config; requires --artwork-enqueue")
     parser.add_argument("--retry-state", type=Path, default=Path("/data/config/_dovi/retry-state.sqlite"))
     parser.add_argument("--worker", type=Path, default=Path("/data/config/_dovi/process-queue.sh"))
     parser.add_argument("--jellyfin", default=os.environ.get("JELLYFIN_URL", "http://jellyfin:8096"))
@@ -862,6 +889,8 @@ def main() -> None:
     args = parser.parse_args()
     if args.notify_only and not (args.apply and args.notify_jellyfin):
         parser.error("--notify-only requires --apply --notify-jellyfin")
+    if bool(args.artwork_enqueue) != bool(args.artwork_config):
+        parser.error("--artwork-enqueue and --artwork-config must be set together")
     with contextlib.ExitStack() as stack:
         if args.apply and not args.notify_only:
             lock = stack.enter_context(args.run_lock.open("a+"))
@@ -883,7 +912,8 @@ def reconcile(args: argparse.Namespace, stack: contextlib.ExitStack) -> None:
     stack.callback(publication_db.close)
     token = worker_token(args.worker)
     outbox = NotificationOutbox(publication_db, args.jellyfin, token, args.apply and args.notify_jellyfin,
-                                args.media_root, args.title_locks, args.publication_lock, args.new_title_bridge)
+                                args.media_root, args.title_locks, args.publication_lock, args.new_title_bridge,
+                                args.artwork_enqueue, args.artwork_config)
     outbox.flush(force=True)
     if args.notify_only:
         print(json.dumps({"notify_only": True, "jellyfin_notifications": outbox.sent,

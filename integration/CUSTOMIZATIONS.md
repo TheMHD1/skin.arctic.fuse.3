@@ -15,12 +15,56 @@ still depends on private deployment state.
 | Jellyfin for Kodi | 2.2.0+py3 | Apply only the consolidated 2.2 patch stack. |
 | Home companion | 1.1.0 | Server-backed Home, search, favourites and episode navigation. |
 | Venom TV | 1.3.1 | Separate local-PVR and remote-Jellyfin source cohorts. |
-| Up Next | 1.1.9+matrix.1 | Unmodified addon, configured privately. |
+| Up Next | 1.3.0 | Both clients reverified October28 against upstream tag `v1.3.0`; native prompt/cancel/Still Watching policy retained. |
 | Jellyfin server source | 12.1 | Custom server changes require the matching build source and tests. |
 | Dispatcharr source | 0.31.0 | Live-proxy patches are version-specific and must be rebased for an update. |
 
 Implicit addon defaults belong to these versions. `settings-reference.json` is
 a redacted inventory, not importable configuration.
+
+## October 28 maintenance: source candidates and acceptance boundary
+
+The [next-episode release guard](release/next-episode/README.md) adds the patched
+Jellyfin player to the portable payload and exact installer hash checks. The
+old builder patched its temporary checkout but omitted this file from the
+emitted payload. Both live clients already contain the reviewed player, so
+this is a future-update preservation fix, not a proven current autoplay cause.
+Real ordinary EOF-to-adjacent playback passed on both local-native and
+remote-HTTPS cohorts. Explicit cancel/stop and genuinely terminal episode
+acceptance remain pending; do not infer them from an EOF check.
+
+The [exact-item artwork queue](server/artwork-publication/README.md) and
+[CT103 deployment gates](server/dovi/ARTWORK-CT103-DEPLOYMENT-2026-10-28.md)
+add durable, bounded image publication after an exact native import acceptance.
+They accept native compact Jellyfin UUIDs, verify canonical paths, retain
+existing Primary images, serialize workers, and poll accepted refreshes without
+reposting every thirty seconds. Repeated enqueue cannot resurrect a dead job.
+The DOVI fast and notify-only entry points must both receive the explicit pair
+of local worker/config paths. Timeout/launch failures keep bounded intent.
+The Venom exporter image-refresh change removes recursive catalogue image
+fetches from its frequent metadata refresh. These source changes are tested,
+but are not yet deployed; the original missing-artwork incident's exact cause
+is not proven merely by repairing posters.
+
+Version-scoped update candidates preserve existing deployed versions until
+their complete runtime gates pass:
+
+- [Arctic3.4.10](release/arctic-3.4.10/README.md): semantic rebase, generated
+  selector checks and pinned source; paired installer/live UI acceptance pending.
+- [Jellyfin12.4](server/jellyfin-custom/candidate-12.4/README.md): patched server
+  tests and blank loopback runtime pass, with exact12.4 Library Experience
+  guard. Production web/Enhanced/KodiSyncQueue/IntroSkipper compatibility is a
+  separate gate; the production12.1 image is not replaced by that blank test.
+- [Seerr3.5.1](server/seerr-request-privacy/candidate-3.5.1/README.md): clean
+  compiled overlay builds, syntax and isolated native owner/ordinary-user
+  route/privacy acceptance pass; live request/subtitle integration and controlled
+  production recreation remain required.
+- [Dispatcharr0.33](server/dispatcharr-candidate-0.33/README.md): exact-source
+  semantic patch rebase and isolated Django regressions pass; production
+  transport/authentication and client acceptance remain separate.
+
+This inventory distinguishes reviewed source, isolated tests and actual
+deployment. A Git push is not delivery to either appliance or server.
 
 ## October 12 remote Wi-Fi recovery
 

@@ -22,6 +22,25 @@ MAX_AGE = 48 * 3600
 VIDEOS = {".mkv", ".mp4", ".m4v", ".ts", ".m2ts", ".avi", ".mov", ".webm"}
 
 
+def artwork_arguments(config):
+    """Return paired explicit artwork-worker arguments for a scoped run.
+
+    CT103 owns the DOVI caller and artwork queue. The importer must not infer a
+    cross-container worker location, and a partial pair must fail before an
+    import has been claimed.
+    """
+    executable, private_config = config.get("artwork_enqueue"), config.get("artwork_config")
+    if bool(executable) != bool(private_config):
+        raise ValueError("artwork_enqueue and artwork_config must be configured together")
+    if not executable:
+        return []
+    if not isinstance(executable, str) or not isinstance(private_config, str):
+        raise ValueError("artwork worker paths must be strings")
+    if not Path(executable).is_absolute() or not Path(private_config).is_absolute():
+        raise ValueError("artwork worker paths must be absolute")
+    return ["--artwork-enqueue", executable, "--artwork-config", private_config]
+
+
 def timestamp(value):
     try:
         parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
@@ -107,6 +126,7 @@ class FastImports:
     def __init__(self, config, db, apis, execute=subprocess.run, clock=time.time):
         self.config, self.db, self.apis, self.execute, self.clock = config, db, apis, execute, clock
         self.media, self.spool, self.claims = (Path(config[key]) for key in ("media_root", "spool", "claims"))
+        self.artwork_args = artwork_arguments(config)
         self.db.execute("PRAGMA synchronous=FULL")
         self.db.execute("CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY,value TEXT NOT NULL)")
         self.db.execute("CREATE TABLE IF NOT EXISTS fingerprints(fingerprint TEXT PRIMARY KEY,name TEXT NOT NULL)")
@@ -315,6 +335,7 @@ class FastImports:
                 for option in ("view-root", "compatibility-root", "queue", "queue-lock", "retry-state", "worker", "jellyfin"):
                     if option.replace("-", "_") in self.config:
                         command += ["--" + option, self.config[option.replace("-", "_")]]
+                command += self.artwork_args
                 if self.config.get("new_title_bridge"):
                     command.append("--new-title-bridge")
                 for path in sorted({event["file"] for _, event in jobs}):

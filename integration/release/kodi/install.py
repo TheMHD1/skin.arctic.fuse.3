@@ -43,9 +43,12 @@ NATIVE_BASE={'api.py':'e625164ea9e3e86751d644b90c3ff1b6ff455558d7b8268ca03c42a83
 NATIVE_OUT={'api.py':'60397069f460c2ba79a183ed8904c31ce811097ae8e4cd9cdabdc64b976be4d4',
             'playutils.py':'1a786411ee85f9fe68cf994563ce83c02f9911aa86696f54b68a264462f186c9',
             'native_originals.py':'656df894c18d6d005c7d81a5ec04b3a9957a744f36ead16c6c05358309252171'}
+PLAYER_BASE='a4532bcc3b7a3508b67b9a00cadb6523e763d9510db12dc8f1f53c74c5459112'
+PLAYER_OUT='50f70d706fa769a05e330514762c9eebad130964512ac10fef67edfda1428f3b'
 PAYLOAD_HASHES={'search.py':'74a5b1dcb21b36ca3004179b81cf3d2f4e7894025bba85fe8a941c68d8033ee8',
  **{'venom/'+k:v for k,v in VENOM_OUT.items()},
- 'jellyfin/api.py':NATIVE_OUT['api.py'],'jellyfin/playutils.py':NATIVE_OUT['playutils.py'],
+ 'jellyfin/api.py':NATIVE_OUT['api.py'],'jellyfin/player.py':PLAYER_OUT,
+ 'jellyfin/playutils.py':NATIVE_OUT['playutils.py'],
  'native_originals.py':NATIVE_OUT['native_originals.py'],
  **{'remote-venom/'+k:v for k,v in REMOTE_OUT.items() if k!='shared_favorites.py'}}
 TOUCHED={
@@ -53,12 +56,14 @@ TOUCHED={
  'addons/plugin.video.habibi.resume/default.py':{'f6e0ed8daac2024bf189b7d2918b39019728371cf61ab77f70391bc124566bec','4a281b6036b25e927d34e1d2f500fc6bfcd092d7eeb87a77dc6d1fc355d5c810'},
  'addons/skin.arctic.fuse.3/shortcuts/generator/data/setup/search_path.xml':{'fee6f922930de8115cac3339629a35b2d022e87dc286706eaf81a353ac984ef2','5edb7d411bd5bbbcd5d045b694355879fb023a0019c7f6baf1850ef4b056b9e5'},
  'addons/plugin.video.jellyfin/jellyfin_kodi/jellyfin/http.py':{'d3fde303945807303a4399a98ec3cf3fe40481c599152e1d2d31a0b407fa0aad','cc8223016710bbeaae86034428f8b35d0d7fa376a11886f017ed297530bd6005'},
+ 'addons/plugin.video.jellyfin/jellyfin_kodi/player.py':{PLAYER_BASE,PLAYER_OUT},
 }
 TOUCHED_OUTPUT={
  'addons/plugin.video.habibi.resume/client.py':'72f944e2b93f1bc51b449830124ddf551d9222aa002e41edc6b18ce6d2594c5b',
  'addons/plugin.video.habibi.resume/default.py':'4a281b6036b25e927d34e1d2f500fc6bfcd092d7eeb87a77dc6d1fc355d5c810',
  'addons/skin.arctic.fuse.3/shortcuts/generator/data/setup/search_path.xml':'5edb7d411bd5bbbcd5d045b694355879fb023a0019c7f6baf1850ef4b056b9e5',
  'addons/plugin.video.jellyfin/jellyfin_kodi/jellyfin/http.py':'cc8223016710bbeaae86034428f8b35d0d7fa376a11886f017ed297530bd6005',
+ 'addons/plugin.video.jellyfin/jellyfin_kodi/player.py':PLAYER_OUT,
 }
 # One recorded remote baseline predates ownership of this generated search-path
 # source in its integrity manifest.  It may cross this bridge only when the
@@ -169,6 +174,12 @@ def build_changes(root,stage,profile):
     ET.fromstring(text);changes[template]=text.encode()
     http=root/'addons/plugin.video.jellyfin/jellyfin_kodi/jellyfin/http.py';verify_touched(http)
     replace(http,'        data["verify"] = data.get("verify") or self.config.data.get("auth.ssl", False)','        if data.get("verify") is None:\n            data["verify"] = self.config.data.get("auth.ssl")\n        if data["verify"] is None:\n            data["verify"] = True')
+    # Keep the Episode->Up Next data handoff in the same guarded transaction as
+    # the rest of the Jellyfin cohort.  It deliberately stays independent of
+    # direct-path/NFS policy, so both local and remote clients retain P7 and
+    # their existing authenticated transport behavior.
+    player=root/'addons/plugin.video.jellyfin/jellyfin_kodi/player.py';verify_touched(player)
+    if read(player)!=bundle['jellyfin/player.py']:changes[player]=bundle['jellyfin/player.py']
     skin=root/SEARCH_SKIN;skin_source=read(skin);skin_output=search_default(skin_source)
     recorded_skin=record['files'].get(SEARCH_SKIN)
     if skin_output==skin_source:require(recorded_skin==sha(skin_source),'Search skin/manifest drift')
